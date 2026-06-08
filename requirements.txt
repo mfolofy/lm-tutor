@@ -1,0 +1,9 @@
+# Lock file for lm-tutor core deps (Phase 0).
+# Manually pinned. Regenerate with: uv pip compile pyproject.toml -o requirements.txt
+# Only the three core deps + their direct runtime needs are pinned here.
+# Class-specific deps (pillow, beautifulsoup4, etc.) install into per-class venvs,
+# never into the core environment.
+
+mcp==1.26.0
+pydantic==2.12.5
+pyyaml==6.0.2

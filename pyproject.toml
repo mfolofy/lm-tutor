@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lm-tutor"
+version = "0.1.0"
+description = "The School for LLMs — structured AI education for any model. Phase 0: skeleton + Layer 1 rules engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "mfolofy" }]
+keywords = ["llm", "education", "mcp", "accessibility", "wcag", "eval"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+# Core deps only. Class-specific deps install lazily into per-class venvs.
+dependencies = [
+    "mcp>=1.0.0,<2.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "pyyaml>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/mfolofy/lm-tutor"
+Repository = "https://github.com/mfolofy/lm-tutor"
+
+# Single console script. Subcommands are dispatched by argparse in tutor.__main__.
+# tutor enroll | tutor learn | tutor eval | tutor mcp | tutor list
+[project.scripts]
+tutor = "tutor.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["tutor*"]
+
+[tool.setuptools.package-data]
+"tutor.registry" = ["*.json"]
+"tutor.classes.brushes" = ["*.yaml"]

@@ -1,0 +1,139 @@
+# brushes — UI/UX accessibility. First class in the School.
+#
+# Source standard: WCAG 2.2 (W3C Recommendation). See SOURCES.md for the
+# per-rule citations. Every rule is self-contained: it carries its teaching
+# examples (framework_*) AND the deterministic check (check_selector /
+# check_regex) the Layer 1 harness runs. No drift between teaching and testing.
+#
+# Selector dialect (Layer 1, stdlib): tag, tag[attr], tag[attr="v"],
+# tag[attr=""], tag:not([attr]), tag:empty. A match = a VIOLATION.
+# Injected size: ~120 tokens (rule lines only; framework examples are not
+# injected at generation time — they back the Socratic fix step).
+
+class:
+  id: brushes
+  title: "Brushes — Web Accessibility (WCAG 2.2)"
+  version: 1.0.0
+  sources: ["WCAG 2.2"]
+  prerequisites: []
+  target_violations: ["wcag-1.1.1", "wcag-2.4.4", "wcag-4.1.2", "wcag-3.3.2", "wcag-3.1.1", "wcag-2.4.2"]
+  estimated_cost_tokens: 120
+
+rules:
+  - id: img-alt
+    severity: fundamental
+    wcag: "1.1.1"
+    rule: "Every <img> must have an alt attribute (use alt=\"\" for decorative images)."
+    check_selector: "img:not([alt])"
+    framework_html: |
+      <!-- FAIL --> <img src="logo.png">
+      <!-- PASS --> <img src="logo.png" alt="Company logo">
+      <!-- PASS (decorative) --> <img src="divider.png" alt="">
+    framework_react: |
+      // FAIL: <img src={logo} />
+      // PASS: <img src={logo} alt="Company logo" />
+    framework_vue: |
+      <!-- FAIL --> <img :src="logo">
+      <!-- PASS --> <img :src="logo" alt="Company logo">
+    framework_vanilla: |
+      // FAIL: el.innerHTML = '<img src="x.png">'
+      // PASS: el.innerHTML = '<img src="x.png" alt="...">'
+
+  - id: input-image-alt
+    severity: fundamental
+    wcag: "1.1.1"
+    rule: "Image inputs (<input type=\"image\">) must have alt text."
+    check_selector: 'input[type="image"]:not([alt])'
+    framework_html: |
+      <!-- FAIL --> <input type="image" src="go.png">
+      <!-- PASS --> <input type="image" src="go.png" alt="Search">
+
+  - id: button-name
+    severity: fundamental
+    wcag: "4.1.2"
+    rule: "Buttons must have an accessible name: visible text, aria-label, or aria-labelledby. An empty button is a violation."
+    check_selector: "button:not([aria-label]):not([aria-labelledby]):empty"
+    framework_html: |
+      <!-- FAIL --> <button></button>
+      <!-- PASS --> <button>Submit</button>
+      <!-- PASS --> <button aria-label="Close dialog"></button>
+    framework_react: |
+      // FAIL: <button onClick={close} />
+      // PASS: <button aria-label="Close" onClick={close} />
+    framework_vue: |
+      <!-- FAIL --> <button @click="close"></button>
+      <!-- PASS --> <button aria-label="Close" @click="close"></button>
+    framework_vanilla: |
+      // FAIL: const b = document.createElement('button')
+      // PASS: b.setAttribute('aria-label', 'Close')
+
+  - id: empty-aria-label
+    severity: fundamental
+    wcag: "4.1.2"
+    rule: "aria-label must not be empty; an empty value provides no accessible name."
+    check_regex: 'aria-label\s*=\s*"\s*"'
+    framework_html: |
+      <!-- FAIL --> <button aria-label="">X</button>
+      <!-- PASS --> <button aria-label="Close">X</button>
+
+  - id: link-name
+    severity: fundamental
+    wcag: "2.4.4"
+    rule: "Links (<a href>) must have discernible text or an aria-label. An empty link is a violation."
+    check_selector: "a[href]:not([aria-label]):not([aria-labelledby]):empty"
+    framework_html: |
+      <!-- FAIL --> <a href="/home"></a>
+      <!-- PASS --> <a href="/home">Home</a>
+      <!-- PASS --> <a href="/home" aria-label="Home"></a>
+    framework_react: |
+      // FAIL: <a href="/home" />
+      // PASS: <a href="/home">Home</a>
+
+  - id: label-for-input
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Text/email/password inputs must have a label: aria-label, aria-labelledby, or an associated <label>. Bare inputs fail."
+    check_selector: 'input[type="text"]:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <input type="text">
+      <!-- PASS --> <label for="name">Name</label><input type="text" id="name">
+      <!-- PASS --> <input type="text" aria-label="Full name">
+    framework_react: |
+      // FAIL: <input type="text" />
+      // PASS: <input type="text" aria-label="Full name" />
+
+  - id: html-lang
+    severity: fundamental
+    wcag: "3.1.1"
+    rule: "The root <html> element must declare a lang attribute."
+    check_selector: "html:not([lang])"
+    framework_html: |
+      <!-- FAIL --> <html>
+      <!-- PASS --> <html lang="en">
+
+  - id: title-required
+    severity: advanced
+    wcag: "2.4.2"
+    rule: "A full page should have a non-empty <title> in its <head>."
+    check_selector: "title:empty"
+    framework_html: |
+      <!-- FAIL --> <title></title>
+      <!-- PASS --> <title>Account settings</title>
+
+  - id: positive-tabindex
+    severity: advanced
+    wcag: "2.4.3"
+    rule: "Avoid positive tabindex values; they break the natural focus order. Use 0 or -1."
+    check_regex: 'tabindex\s*=\s*"\s*[1-9][0-9]*\s*"'
+    framework_html: |
+      <!-- FAIL --> <div tabindex="3">...</div>
+      <!-- PASS --> <div tabindex="0">...</div>
+
+  - id: aria-live-valid
+    severity: advanced
+    wcag: "4.1.3"
+    rule: "aria-live must be one of: polite, assertive, or off."
+    check_regex: 'aria-live\s*=\s*"(?!polite"|assertive"|off")[^"]*"'
+    framework_html: |
+      <!-- FAIL --> <div aria-live="always">...</div>
+      <!-- PASS --> <div aria-live="polite">...</div>

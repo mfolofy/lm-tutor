@@ -1,0 +1,12 @@
+{
+  "_schema": {
+    "_comment": "Manual overrides win over auto-synced data in models.json. Each key is a model id (matching a key or alias in models.json). The value is a partial capability/metadata object that is deep-merged onto the registry entry AFTER auto-sync. Use this for fields that cannot be inferred from public benchmarks: tool_calling.reliability, aliases, or an explicit track override. Remove the _schema key is not required — it is ignored by the loader (keys starting with '_' are skipped). Example below is commented out via the _example wrapper.",
+    "_example": {
+      "deepseek-v4-flash": {
+        "capabilities": {"tool_calling": {"reliability": "high"}},
+        "aliases": ["deepseek-v4-flash", "deepseek-chat"],
+        "track": "honors"
+      }
+    }
+  }
+}

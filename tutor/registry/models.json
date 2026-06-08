@@ -1,0 +1,164 @@
+{
+  "deepseek-v4-flash": {
+    "tier": "mid",
+    "aliases": ["deepseek/deepseek-v4-flash", "deepseek-chat"],
+    "capabilities": {
+      "context_window": 65536,
+      "param_count_b": 37,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "medium", "max_reliable_steps": 5}
+    },
+    "known_failure_modes": [
+      "occasional hallucination on less common WCAG rules",
+      "verbose output when concise needed"
+    ],
+    "registry_metadata": {"source": "openrouter+manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "gemma4:latest": {
+    "tier": "small",
+    "aliases": ["gemma4", "gemma-4"],
+    "capabilities": {
+      "context_window": 8192,
+      "param_count_b": 8,
+      "code_generation": {"html": "low", "react": "low", "python": "medium", "sql": "low"},
+      "tool_calling": {"supported": true, "reliability": "low", "parallel_calls": false},
+      "reasoning": {"cot_reliable": false, "structured_cot_benefit": "high", "max_reliable_steps": 2}
+    },
+    "known_failure_modes": [
+      "forgets aria-live values after 3+ rules",
+      "drops alt attributes on ~30% of img tags"
+    ],
+    "registry_metadata": {"source": "open_llm_leaderboard", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  },
+
+  "claude-opus-4-8": {
+    "tier": "ultra",
+    "aliases": ["claude-opus-4.8", "opus-4-8"],
+    "capabilities": {
+      "context_window": 200000,
+      "param_count_b": 400,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "very_high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "low", "max_reliable_steps": 10}
+    },
+    "known_failure_modes": ["over-engineers simple tasks when not constrained"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "claude-sonnet-4-6": {
+    "tier": "high",
+    "aliases": ["claude-sonnet-4.6", "sonnet-4-6"],
+    "capabilities": {
+      "context_window": 200000,
+      "param_count_b": 200,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "very_high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "low", "max_reliable_steps": 8}
+    },
+    "known_failure_modes": ["occasionally verbose in explanations"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "claude-haiku-4-5": {
+    "tier": "mid",
+    "aliases": ["claude-haiku-4.5", "haiku-4-5"],
+    "capabilities": {
+      "context_window": 200000,
+      "param_count_b": 40,
+      "code_generation": {"html": "high", "react": "medium", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "medium", "max_reliable_steps": 5}
+    },
+    "known_failure_modes": ["weaker on multi-file architecture reasoning"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "gpt-4o": {
+    "tier": "high",
+    "aliases": ["openai/gpt-4o", "gpt4o"],
+    "capabilities": {
+      "context_window": 128000,
+      "param_count_b": 200,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "very_high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "low", "max_reliable_steps": 7}
+    },
+    "known_failure_modes": ["position bias when used as a judge"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "gpt-4o-mini": {
+    "tier": "small",
+    "aliases": ["openai/gpt-4o-mini", "gpt4o-mini"],
+    "capabilities": {
+      "context_window": 128000,
+      "param_count_b": 8,
+      "code_generation": {"html": "medium", "react": "medium", "python": "high", "sql": "medium"},
+      "tool_calling": {"supported": true, "reliability": "high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "high", "max_reliable_steps": 3}
+    },
+    "known_failure_modes": ["drops ARIA attributes under long rule lists"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  },
+
+  "gemini-2.5-flash": {
+    "tier": "mid",
+    "aliases": ["google/gemini-2.5-flash", "gemini-flash"],
+    "capabilities": {
+      "context_window": 1000000,
+      "param_count_b": 30,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "medium", "max_reliable_steps": 5}
+    },
+    "known_failure_modes": ["inconsistent JSON mode adherence"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  },
+
+  "gemini-2.5-pro": {
+    "tier": "ultra",
+    "aliases": ["google/gemini-2.5-pro", "gemini-pro"],
+    "capabilities": {
+      "context_window": 2000000,
+      "param_count_b": 300,
+      "code_generation": {"html": "high", "react": "high", "python": "high", "sql": "high"},
+      "tool_calling": {"supported": true, "reliability": "very_high", "parallel_calls": true},
+      "reasoning": {"cot_reliable": true, "structured_cot_benefit": "low", "max_reliable_steps": 9}
+    },
+    "known_failure_modes": ["verbose chain-of-thought leakage"],
+    "registry_metadata": {"source": "manual", "snapshot_date": "2026-06-08", "confidence": "high"}
+  },
+
+  "llama-4-8b": {
+    "tier": "small",
+    "aliases": ["meta-llama/llama-4-8b", "llama4-8b"],
+    "capabilities": {
+      "context_window": 8192,
+      "param_count_b": 8,
+      "code_generation": {"html": "medium", "react": "low", "python": "high", "sql": "medium"},
+      "tool_calling": {"supported": true, "reliability": "medium", "parallel_calls": false},
+      "reasoning": {"cot_reliable": false, "structured_cot_benefit": "high", "max_reliable_steps": 2}
+    },
+    "known_failure_modes": [
+      "forgets aria-live values after 3+ rules",
+      "inconsistent parameter naming across calls"
+    ],
+    "registry_metadata": {"source": "open_llm_leaderboard", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  },
+
+  "qwen3-9b": {
+    "tier": "small",
+    "aliases": ["qwen/qwen3-9b", "qwen3"],
+    "capabilities": {
+      "context_window": 32768,
+      "param_count_b": 9,
+      "code_generation": {"html": "medium", "react": "medium", "python": "high", "sql": "medium"},
+      "tool_calling": {"supported": true, "reliability": "low", "parallel_calls": false},
+      "reasoning": {"cot_reliable": false, "structured_cot_benefit": "high", "max_reliable_steps": 3}
+    },
+    "known_failure_modes": ["unreliable tool-call argument formatting"],
+    "registry_metadata": {"source": "open_llm_leaderboard", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  }
+}
