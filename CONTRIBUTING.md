@@ -1,5 +1,33 @@
 # Contributing to lm-tutor
 
+## License
+
+lm-tutor is **MIT licensed** (see `LICENSE`). Your contributions will be
+MIT licensed. The code you submit stays MIT — forever.
+
+## Contributor License Agreement (CLA)
+
+We require a signed CLA before merging any external contribution.
+
+**Why:** Every contributor owns a copyright slice of their code. A CLA
+grants the project owner the right to sublicense and relicense contributed
+code commercially — required for clean IP chain if the project is ever
+acquired or forms a legal entity. Without it, every unCLA'd commit is a
+liability.
+
+This does NOT change what users receive. Code shipped under MIT stays
+MIT. The CLA is an IP housekeeping requirement, not a license change.
+
+**How:** When you open a PR, a bot will ask you to sign via
+[cla-assistant.io](https://cla-assistant.io). It takes ~30 seconds via
+GitHub OAuth. See `CLA.md` for the full terms.
+
+No CLA = no merge. No exceptions, even for 1-line fixes.
+
+---
+
+## The Unit of Contribution: A Class
+
 The unit of contribution is a **class**. Adding one is exactly three files:
 
 ```

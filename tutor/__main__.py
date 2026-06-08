@@ -1,12 +1,14 @@
 """CLI entry point for lm-tutor.
 
-One console script (``tutor``) with five subcommands:
+One console script (``tutor``) with subcommands:
 
-    tutor enroll   — identify a model, get its curriculum track
-    tutor learn    — take a class (Phase 0: prints the injection prefix)
-    tutor eval     — grade a submission read from stdin (Layer 1 rules engine)
-    tutor mcp      — launch the MCP server (stdio) + HTTP health on :9090
-    tutor list     — list available classes
+    tutor enroll            — identify a model, get its curriculum track
+    tutor learn             — take a class (Phase 0: prints the injection prefix)
+    tutor eval              — grade a submission read from stdin (Layer 1 rules engine)
+    tutor fix               — eval → fix → re-eval correction loop
+    tutor mcp               — launch the MCP server (stdio) + HTTP health on :9090
+    tutor list              — list available classes
+    tutor booster <sub>     — Booster tools for small models
 
 Design note: each subcommand imports its own dependencies *inside* the handler,
 not at module top level. This keeps ``tutor --help`` and ``tutor eval`` from
@@ -25,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version", action="version", version=_version_string()
     )
-    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,mcp,list}")
+    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster}")
 
     # tutor enroll
     p_enroll = sub.add_parser("enroll", help="Identify a model, get its track.")
@@ -44,6 +46,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Syllabus to grade against. If omitted, inferred from content.",
     )
 
+    # tutor fix
+    p_fix = sub.add_parser("fix", help="Eval → fix → re-eval correction loop.")
+    p_fix.add_argument(
+        "--class", dest="class_name", default=None,
+        help="Syllabus to grade against. If omitted, inferred from content.",
+    )
+    p_fix.add_argument(
+        "--once", action="store_true",
+        help="Single pass: print fix suggestions, exit. Do not auto-iterate.",
+    )
+    p_fix.add_argument(
+        "--max-iter", type=int, default=5,
+        help="Maximum auto-iteration rounds (default: 5).",
+    )
+
     # tutor mcp
     p_mcp = sub.add_parser("mcp", help="Launch the MCP server (stdio).")
     p_mcp.add_argument(
@@ -53,6 +70,43 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # tutor list
     sub.add_parser("list", help="List available classes.")
+
+    # tutor booster — 4 sub-tools
+    p_booster = sub.add_parser("booster", help="Booster tools for small models.")
+    booster_sub = p_booster.add_subparsers(
+        dest="booster_cmd",
+        metavar="{scratchpad,verify,exemplars,foresee}",
+    )
+
+    p_scratch = booster_sub.add_parser(
+        "scratchpad", help="Run reasoning code in the sandbox. Reads from stdin."
+    )
+
+    p_verify = booster_sub.add_parser(
+        "verify", help="Check assumptions as Python boolean expressions."
+    )
+    p_verify.add_argument(
+        "assumptions", nargs="+",
+        help="Assumptions to verify (each a Python bool expression).",
+    )
+
+    p_exemplars = booster_sub.add_parser(
+        "exemplars", help="Build a few-shot prompt block from PASS/FAIL examples."
+    )
+    p_exemplars.add_argument("task", help="Task description.")
+    p_exemplars.add_argument(
+        "--examples", default=None,
+        help="Path to JSON file with [{\"fail\": ..., \"pass\": ...}] array.",
+    )
+
+    p_foresee = booster_sub.add_parser(
+        "foresee", help="Predict edge cases ~50 lines ahead from a choice."
+    )
+    p_foresee.add_argument("choice", help="The design choice to analyze.")
+    p_foresee.add_argument(
+        "--context", default="",
+        help="Optional context surrounding the choice.",
+    )
 
     return parser
 
@@ -80,14 +134,42 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "eval":
         from tutor.cli.eval import run
         return run(args)
+    if args.command == "fix":
+        from tutor.cli.fix import run
+        return run(args)
     if args.command == "mcp":
         from tutor.cli.mcp import run
         return run(args)
     if args.command == "list":
         from tutor.cli.list import run
         return run(args)
+    if args.command == "booster":
+        return _run_booster(args)
 
     parser.print_help()
+    return 1
+
+
+def _run_booster(args) -> int:
+    """Dispatch booster subcommands."""
+    if args.booster_cmd is None:
+        print("Booster subcommand required: {scratchpad,verify,exemplars,foresee}")
+        return 1
+
+    if args.booster_cmd == "scratchpad":
+        from tutor.cli.booster import run_scratchpad
+        return run_scratchpad(args)
+    if args.booster_cmd == "verify":
+        from tutor.cli.booster import run_verify
+        return run_verify(args)
+    if args.booster_cmd == "exemplars":
+        from tutor.cli.booster import run_exemplars
+        return run_exemplars(args)
+    if args.booster_cmd == "foresee":
+        from tutor.cli.booster import run_foresee
+        return run_foresee(args)
+
+    print(f"Unknown booster command: {args.booster_cmd}")
     return 1
 
 

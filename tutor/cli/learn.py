@@ -5,7 +5,9 @@ Phase 0 renders the class.yaml into its token-efficient injection prefix (the
 plus the enrollment record so the caller knows the track and whether the
 Booster is active. Progress is checkpointed to the crash-recovery state store.
 
-Full generate -> validate -> repair loops land in Phase 2 (Grading Board).
+When the Booster is active (remedial-track small models), the injection is
+augmented with concrete FAIL/PASS examples from the class syllabus so the
+model has both the rule and a worked example in context.
 """
 
 import sys
@@ -13,11 +15,23 @@ import sys
 from tutor.eval.harness import load_syllabus
 
 
-def _render_injection(cls: dict) -> str:
+def _render_injection(cls: dict, booster: bool = False) -> str:
+    """Render the token-efficient injection prefix.
+
+    Without Booster: just the [RULE ...] landmarks (~120 tokens for brushes).
+    With Booster: RULE landmarks + FAIL/PASS framework examples per rule.
+    """
     meta = cls.get("class", {})
     lines = [f"# {meta.get('title', meta.get('id', 'class'))}", "Apply these rules:"]
-    for rule in cls.get("rules", []) or []:
+    rules = cls.get("rules", []) or []
+
+    for rule in rules:
         lines.append(f"  [RULE {rule.get('id', '?')}] {rule.get('rule', '')}")
+        if booster:
+            html_ex = rule.get("framework_html", "")
+            if html_ex:
+                lines.append(f"    \\-- {html_ex.strip()}")
+
     return "\n".join(lines)
 
 
@@ -39,13 +53,30 @@ def run(args) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
+    booster_active = record.get("booster", False)
+
     # Checkpoint progress (crash recovery).
     store = TrackStateStore()
     store.save(record["model_id"], {
         "track": record["track"],
         "current_class": class_name,
-        "booster": record["booster"],
+        "booster": booster_active,
     })
 
-    print(_render_injection(cls))
+    # Print enrollment info to stderr (doesn't pollute the injection output).
+    print(record, file=sys.stderr)
+
+    # Print the injection (this is what the model reads).
+    print(_render_injection(cls, booster=booster_active))
+
+    # If Booster is active, remind the model about available tools.
+    if booster_active:
+        print(
+            "\n[BOOSTER] Sandbox tools available: `tutor booster scratchpad` "
+            "(reason before code), `tutor booster verify` (check assumptions), "
+            "`tutor booster exemplars` (few-shot examples), "
+            "`tutor booster foresee` (edge-case prediction).",
+            file=sys.stderr,
+        )
+
     return 0

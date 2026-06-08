@@ -32,6 +32,22 @@
     ],
     "registry_metadata": {"source": "open_llm_leaderboard", "snapshot_date": "2026-06-08", "confidence": "medium"}
   },
+  "gemma4:e4b": {
+    "tier": "small",
+    "aliases": ["gemma-4-4b", "gemma4-4b"],
+    "capabilities": {
+      "context_window": 8192,
+      "param_count_b": 4,
+      "code_generation": {"html": "low", "react": "low", "python": "low", "sql": "low"},
+      "tool_calling": {"supported": true, "reliability": "low", "parallel_calls": false},
+      "reasoning": {"cot_reliable": false, "structured_cot_benefit": "high", "max_reliable_steps": 2}
+    },
+    "known_failure_modes": [
+      "degrades beyond 4-rule injection — context pressure at 8K window",
+      "fails ~40% of aria-live checks due to token dropout"
+    ],
+    "registry_metadata": {"source": "open_llm_leaderboard", "snapshot_date": "2026-06-08", "confidence": "medium"}
+  },
 
   "claude-opus-4-8": {
     "tier": "ultra",
