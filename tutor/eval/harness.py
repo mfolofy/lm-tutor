@@ -21,6 +21,8 @@ lives in a per-class ``grader.py`` invoked through the class venv — NOT on thi
 happy path.
 """
 
+import importlib
+import logging
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -29,6 +31,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel
 
+logger = logging.getLogger("tutor.eval")
 _CLASSES_DIR = Path(__file__).parent.parent / "classes"
 
 
@@ -235,6 +238,30 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
                     wcag=str(wcag) if wcag is not None else None,
                     matched=m.group(0)[:120],
                 ))
+
+    # Deep-check rules: warn when grader.py not loaded.
+    for rule in rules:
+        if rule.get("deep_check"):
+            logger.debug(
+                "Rule '%s' has deep_check=true — requires grader.py for full results.",
+                rule.get("id", "?"),
+            )
+
+    # Per-class grader.py for computation-heavy rules (color-contrast, etc.).
+    try:
+        grader_mod = importlib.import_module(
+            f"tutor.classes.{syllabus}.grader"
+        )
+        if hasattr(grader_mod, "grade"):
+            grader_violations = grader_mod.grade(submission, rules)
+            violations.extend(
+                Violation(**v) if isinstance(v, dict) else v
+                for v in (grader_violations or [])
+            )
+    except ImportError:
+        pass  # No grader.py — fine, Layer 1 only.
+    except Exception as exc:
+        logger.debug("grader.py error for '%s': %s", syllabus, exc)
 
     return EvalResult(
         syllabus=syllabus,

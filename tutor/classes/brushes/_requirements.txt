@@ -1,7 +1,9 @@
 # Per-class dependencies for the brushes class.
 #
-# Phase 0 grades brushes entirely with the stdlib Layer 1 rules engine, so no
-# extra packages are required and this file is intentionally empty. When deeper
-# grading lands (e.g. colour-contrast via pillow, DOM parsing via
-# beautifulsoup4), pin those here. They install into ~/.tutor/venvs/brushes/
-# on first use, never into the core environment.
+# Phase 0 grades brushes entirely with the stdlib Layer 1 rules engine +
+# grader.py (stdlib regex for color extraction). No extra packages needed.
+#
+# Phase 1 (future): for precise CSS color parsing and WCAG contrast
+# computation, pin:
+#   pillow>=10.0  (for image-based color sampling)
+#   tinycss2>=1.2 (for robust CSS value parsing)

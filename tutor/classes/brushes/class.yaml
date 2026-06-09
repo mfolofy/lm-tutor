@@ -7,19 +7,39 @@
 #
 # Selector dialect (Layer 1, stdlib): tag, tag[attr], tag[attr="v"],
 # tag[attr=""], tag:not([attr]), tag:empty. A match = a VIOLATION.
-# Injected size: ~120 tokens (rule lines only; framework examples are not
-# injected at generation time — they back the Socratic fix step).
+# Injected size: ~120 tokens for core 10 rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix step).
+#
+# Extended rules (11+): form-label variants, landmark checks, table semantics,
+# and deeper UX patterns migrated from brush-stroke (24-brush catalog).
+# Rules marked with grader: true or deep_check: true need the per-class
+# grader.py for computation-heavy validation (color contrast ratios, heading
+# hierarchy, touch-target sizing). They still inject teaching content.
 
 class:
   id: brushes
   title: "Brushes — Web Accessibility (WCAG 2.2)"
-  version: 1.0.0
-  sources: ["WCAG 2.2"]
+  version: 2.0.0
+  sources: ["WCAG 2.2", "ARIA 1.2", "HTML Spec"]
   prerequisites: []
-  target_violations: ["wcag-1.1.1", "wcag-2.4.4", "wcag-4.1.2", "wcag-3.3.2", "wcag-3.1.1", "wcag-2.4.2"]
-  estimated_cost_tokens: 120
+  target_violations:
+    - "wcag-1.1.1"   # Non-text Content
+    - "wcag-2.4.4"   # Link Purpose
+    - "wcag-4.1.2"   # Name, Role, Value
+    - "wcag-3.3.2"   # Labels or Instructions
+    - "wcag-3.1.1"   # Language of Page
+    - "wcag-2.4.2"   # Page Titled
+    - "wcag-2.4.3"   # Focus Order
+    - "wcag-4.1.3"   # Status Messages
+    - "wcag-1.3.1"   # Info and Relationships (extended)
+    - "wcag-2.4.1"   # Bypass Blocks (extended)
+  estimated_cost_tokens: 280
+  brush_count: 24
 
 rules:
+
+  # ── CORE WCAG (10 rules, Phase 0) ──────────────────────────────────────
+
   - id: img-alt
     severity: fundamental
     wcag: "1.1.1"
@@ -92,7 +112,7 @@ rules:
   - id: label-for-input
     severity: fundamental
     wcag: "3.3.2"
-    rule: "Text/email/password inputs must have a label: aria-label, aria-labelledby, or an associated <label>. Bare inputs fail."
+    rule: "Text inputs must have a label: aria-label, aria-labelledby, or an associated <label>. Bare inputs fail."
     check_selector: 'input[type="text"]:not([aria-label]):not([aria-labelledby]):not([id])'
     framework_html: |
       <!-- FAIL --> <input type="text">
@@ -137,3 +157,356 @@ rules:
     framework_html: |
       <!-- FAIL --> <div aria-live="always">...</div>
       <!-- PASS --> <div aria-live="polite">...</div>
+
+  # ── EXTENDED FORM LABELS (brush-stroke: form-labels) ────────────────────
+
+  - id: select-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Select menus must have a label: aria-label, aria-labelledby, or an associated <label>. Bare selects fail."
+    check_selector: 'select:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <select><option>...</option></select>
+      <!-- PASS --> <label for="country">Country</label><select id="country">...</select>
+      <!-- PASS --> <select aria-label="Country">...</select>
+
+  - id: textarea-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Textareas must have a label: aria-label, aria-labelledby, or an associated <label>. Bare textareas fail."
+    check_selector: 'textarea:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <textarea></textarea>
+      <!-- PASS --> <label for="bio">Bio</label><textarea id="bio"></textarea>
+      <!-- PASS --> <textarea aria-label="Comments"></textarea>
+
+  - id: input-email-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Email inputs must have a label: aria-label, aria-labelledby, or an associated <label>."
+    check_selector: 'input[type="email"]:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <input type="email">
+      <!-- PASS --> <label for="email">Email</label><input type="email" id="email">
+
+  - id: input-password-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Password inputs must have a label: aria-label, aria-labelledby, or an associated <label>."
+    check_selector: 'input[type="password"]:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <input type="password">
+      <!-- PASS --> <label for="pass">Password</label><input type="password" id="pass">
+
+  - id: input-checkbox-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Checkboxes must have a label: aria-label or an associated <label>."
+    check_selector: 'input[type="checkbox"]:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <input type="checkbox">
+      <!-- PASS --> <label><input type="checkbox"> Accept terms</label>
+      <!-- PASS --> <input type="checkbox" aria-label="Accept terms">
+    framework_react: |
+      // FAIL: <input type="checkbox" />
+      // PASS: <label><input type="checkbox" /> Accept terms</label>
+
+  - id: input-radio-label
+    severity: fundamental
+    wcag: "3.3.2"
+    rule: "Radio buttons must have a label: aria-label or an associated <label>."
+    check_selector: 'input[type="radio"]:not([aria-label]):not([aria-labelledby]):not([id])'
+    framework_html: |
+      <!-- FAIL --> <input type="radio" name="opt">
+      <!-- PASS --> <label><input type="radio" name="opt"> Option A</label>
+
+  # ── ERROR STATES (brush-stroke: error-states) ──────────────────────────
+
+  - id: error-association
+    severity: fundamental
+    wcag: "3.3.1"
+    rule: "When an input has aria-invalid, associate the error message via aria-describedby. Error text alone is invisible to screen readers."
+    check_regex: 'aria-invalid\s*=\s*"(?:true|")(?![^>]*aria-describedby)'
+    framework_html: |
+      <!-- FAIL --> <input aria-invalid="true"><span class="err">Required</span>
+      <!-- PASS --> <input aria-invalid="true" aria-describedby="e1"><span id="e1" role="alert">Required</span>
+    framework_react: |
+      // FAIL: <input aria-invalid={true} />
+      // PASS: <input aria-invalid={true} aria-describedby="email-error" />
+
+  # ── LANDMARK & SECTION RULES (brush-stroke: navigation-landmarks) ───────
+
+  - id: section-name
+    severity: advanced
+    wcag: "1.3.1"
+    rule: "Each <section> needs an accessible name via aria-label, aria-labelledby, or a heading child. Unlabeled sections are role=generic."
+    check_selector: "section:not([aria-label]):not([aria-labelledby])"
+    framework_html: |
+      <!-- FAIL --> <section><p>Content</p></section>
+      <!-- PASS --> <section aria-label="Overview"><h2>Overview</h2><p>Content</p></section>
+    framework_react: |
+      // FAIL: <section><p>Content</p></section>
+      // PASS: <section aria-label="Overview"><h2>Overview</h2><p>Content</p></section>
+
+  - id: nav-landmark
+    severity: advanced
+    wcag: "1.3.1"
+    rule: "Use a <nav> element for navigation, not <div role=\"navigation\">. Semantic elements carry implicit ARIA roles."
+    check_selector: 'div[role="navigation"]'
+    framework_html: |
+      <!-- FAIL --> <div role="navigation"><a href="/">Home</a></div>
+      <!-- PASS --> <nav><a href="/">Home</a></nav>
+    framework_react: |
+      // FAIL: <div role="navigation"><a href="/">Home</a></div>
+      // PASS: <nav><a href="/">Home</a></nav>
+
+  # ── TABLE RULES (brush-stroke: semantic-tables) ────────────────────────
+
+  - id: th-scope
+    severity: advanced
+    wcag: "1.3.1"
+    rule: "Header cells (<th>) must have a scope attribute (col, row, colgroup, or rowgroup) to associate with data cells."
+    check_selector: "th:not([scope])"
+    framework_html: |
+      <!-- FAIL --> <th>Name</th>
+      <!-- PASS --> <th scope="col">Name</th>
+    framework_react: |
+      // FAIL: <th>Name</th>
+      // PASS: <th scope="col">Name</th>
+
+  - id: table-caption
+    severity: advanced
+    wcag: "1.3.1"
+    rule: "Data tables should have a <caption> to describe their purpose."
+    check_selector: "table:not([aria-label]):not([aria-labelledby])"
+    framework_html: |
+      <!-- FAIL --> <table><tr><td>...</td></tr></table>
+      <!-- PASS --> <table><caption>Q1 Results</caption><tr><td>...</td></tr></table>
+
+  # ── LIST SEMANTICS (brush-stroke: list-semantics) ──────────────────────
+
+  - id: list-structure
+    severity: advanced
+    wcag: "1.3.1"
+    rule: "Use <ul>/<ol>/<dl> for lists, not styled <div> or <br> separators. Lists must contain only <li>/<dt>/<dd> children."
+    check_selector: "ul:empty, ol:empty"
+    framework_html: |
+      <!-- FAIL --> <ul></ul>
+      <!-- PASS --> <ul><li>Item</li></ul>
+      <!-- PASS --> <ul><li>Apples</li><li>Oranges</li></ul>
+
+  # ── SKIP NAVIGATION (brush-stroke: skip-navigation) ────────────────────
+
+  - id: skip-link
+    severity: advanced
+    wcag: "2.4.1"
+    rule: "The first focusable element on every page should be a skip link (<a href=\"#main\">Skip to content</a>) to bypass repeated navigation."
+    # Note: we cannot detect ABSENCE of a skip link with element-level selectors.
+    # This rule flags pages where a skip link IS present but malformed — empty href or linking to nonexistent id.
+    check_regex: 'href\s*=\s*"\s*#"'
+    framework_html: |
+      <!-- FAIL --> <a href="#">Skip</a>
+      <!-- PASS --> <a href="#main-content">Skip to main content</a>
+    framework_react: |
+      // FAIL: <a href="#">Skip</a>
+      // PASS: <a href="#main-content">Skip to main content</a>
+
+  # ── FOCUS & OUTLINE (brush-stroke: focus-management) ───────────────────
+
+  - id: outline-none
+    severity: fundamental
+    wcag: "2.4.7"
+    rule: "Never remove the focus outline without replacing it with a visible :focus-visible style. outline:none destroys keyboard navigation."
+    check_regex: 'outline\s*:\s*none|outline:\s*0(?![^}]*:focus-visible)'
+    framework_html: |
+      <!-- FAIL --> <style>*:focus { outline: none; }</style>
+      <!-- PASS --> <style>:focus-visible { outline: 2px solid #005fcc; outline-offset: 2px; }</style>
+    framework_react: |
+      // FAIL: import './reset.css' /* contains *:focus { outline: none; } */
+      // PASS: import './focus.css' /* :focus-visible { outline: 2px solid blue; } */
+    framework_vue: |
+      // FAIL: *:focus { outline: none; }
+      // PASS: :focus-visible { outline: 2px solid #005fcc; }
+
+  # ── RESPONSIVE & VIEWPORT (brush-stroke: responsive-breakpoints) ───────
+
+  - id: viewport-meta
+    severity: advanced
+    wcag: "1.4.4"
+    rule: "Every page needs a <meta name=\"viewport\"> tag with width=device-width for proper mobile rendering and text resize support. The content attribute must not be empty."
+    check_regex: '<meta[^>]*content\s*=\s*"\s*"'
+    framework_html: |
+      <!-- FAIL --> <meta name="viewport" content="">
+      <!-- PASS --> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  # ── INPUT PATTERNS (brush-stroke: input-patterns) ─────────────────────
+
+  - id: input-autocomplete
+    severity: advanced
+    wcag: "3.3.2"
+    rule: "Inputs collecting personal info should have an autocomplete attribute for browser autofill. Common: name, email, tel, address-level1, country."
+    framework_html: |
+      <!-- FAIL --> <input type="email" id="email">
+      <!-- PASS --> <input type="email" id="email" autocomplete="email">
+    framework_react: |
+      // FAIL: <input type="email" id="email" />
+      // PASS: <input type="email" id="email" autoComplete="email" />
+
+  # ── MOTION & ANIMATION (brush-stroke: motion-animation) ────────────────
+
+  - id: prefers-reduced-motion
+    severity: advanced
+    wcag: "2.3.3"
+    rule: "Animations must be paired with @media (prefers-reduced-motion: reduce) that disables or minimizes motion. Never animate without this guard."
+    framework_html: |
+      <!-- FAIL --> <style>@keyframes slide { from {left: -100px} to {left: 0} }</style>
+      <!-- PASS --> <style>@keyframes slide { from {left: -100px} to {left: 0} } @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }</style>
+    framework_react: |
+      // FAIL: <div className="animate-slide">...</div>
+      // PASS: tailwind.config: { theme: { extend: { animation: { ... } } } }  // with respect for motion preference
+
+  # ── I18N / RTL (brush-stroke: i18n-rtl) ────────────────────────────────
+
+  - id: dir-attribute
+    severity: advanced
+    wcag: "3.1.1"
+    rule: "Set dir=\"rtl\" on <html> for right-to-left languages. Use dir=\"auto\" on inputs in mixed-locale contexts."
+    framework_html: |
+      <!-- FAIL --> <html lang="ar">
+      <!-- PASS --> <html lang="ar" dir="rtl">
+
+  # ── DEEPER / COMPUTATION-HEAVY RULES (checked by grader.py) ────────────
+
+  - id: color-contrast
+    severity: fundamental
+    wcag: "1.4.3"
+    deep_check: true
+    detail: "honest-check-color-contrast-reviewed-by-grader"
+    rule: "Text must have a minimum 4.5:1 contrast ratio against its background (3:1 for large text ≥18px or ≥14px bold). Gray text (#999, #aaa, #bbb) on white always fails. Use color + icon, never color alone."
+    framework_html: |
+      <!-- FAIL --> <p style="color: #999;">Light gray text</p>
+      <!-- FAIL --> <p style="color: #aaa;">Slightly darker gray</p>
+      <!-- PASS --> <p style="color: #333;">Body text at 12.6:1</p>
+      <!-- PASS --> <p style="color: #595959;">Muted text at 4.5:1 (minimum)</p>
+      <!-- PASS --> <p><span style="color: #c62828;">⚠️</span> Error with icon</p>
+    framework_react: |
+      // FAIL: <p className="text-gray-300">Text</p> /* 2.8:1 on white */
+      // PASS: <p className="text-gray-700">Text</p> /* 5.7:1 on white */
+    framework_vue: |
+      /* FAIL */ .muted { color: #bbb; }
+      /* PASS */ .muted { color: #595959; }
+    framework_vanilla: |
+      /* FAIL */ <p style="color:#999">light</p>
+      /* PASS */ <style>.body { color: #333; }</style>
+
+  - id: heading-order
+    severity: fundamental
+    wcag: "1.3.1"
+    deep_check: true
+    detail: "honest-check-heading-order-reviewed-by-grader"
+    rule: "Headings must form a sequential hierarchy: h1 → h2 → h3, no skipping levels. Exactly one h1 per page. Never style div/span as headings."
+    framework_html: |
+      <!-- FAIL --> <h1>Title</h1><h3>Skip</h3>
+      <!-- FAIL --> <h1>Title</h1><h1>Another</h1>
+      <!-- FAIL --> <div class="heading">Fake</div>
+      <!-- PASS --> <h1>Page</h1><h2>Section</h2><h3>Sub</h3>
+    framework_react: |
+      // FAIL: <div className="text-2xl font-bold">Section</div>
+      // PASS: <h2 className="text-2xl font-bold">Section</h2>
+    framework_vue: |
+      <!-- FAIL --> <div class="heading-xl">Section</div>
+      <!-- PASS --> <h2 class="heading-xl">Section</h2>
+    framework_vanilla: |
+      <!-- FAIL --> <div class="section-title">About</div>
+      <!-- PASS --> <h2 class="section-title">About</h2>
+
+  - id: touch-target
+    severity: advanced
+    wcag: "2.5.8"
+    deep_check: true
+    detail: "honest-check-touch-target-sizing-reviewed-by-grader"
+    rule: "Interactive elements need minimum 24×24px touch targets (WCAG 2.5.8 AA). Prefer 44×44px. Closely packed links fail — provide adequate spacing."
+    framework_html: |
+      <!-- FAIL --> <button style="padding: 2px;"><svg><!-- icon --></svg></button>
+      <!-- PASS --> <button style="padding: 12px 16px;">Submit</button>
+      <!-- PASS --> <a href="/" style="display: inline-block; padding: 12px;">Home</a>
+    framework_react: |
+      // FAIL: <button className="p-0.5"><Icon /></button>
+      // PASS: <button className="p-3"><Icon /></button>
+
+  - id: spacing-system
+    severity: warning
+    wcag: "1.4.8"
+    deep_check: true
+    detail: "honest-check-spacing-system-reviewed-by-grader"
+    rule: "Use a consistent 4px-based spacing scale (4, 8, 12, 16, 24, 32, 48, 64) for padding and margins. Arbitrary values (9px, 14px, 22px) create visual noise."
+    framework_html: |
+      <!-- FAIL --> <div style="padding: 14px;"><h2 style="margin-bottom: 9px;">Title</h2></div>
+      <!-- PASS --> <div style="padding: 16px;"><h2 style="margin-bottom: 8px;">Title</h2></div>
+    framework_react: |
+      // FAIL: <div className="p-[14px]">...
+      // PASS: <div className="p-4">...
+
+  - id: typography-minimum
+    severity: warning
+    wcag: "1.4.4"
+    deep_check: true
+    detail: "honest-check-typography-minimums-reviewed-by-grader"
+    rule: "Body text minimum 16px, line-height minimum 1.5, max-width 80ch for readability. Use a modular type scale (1.25 ratio)."
+    framework_html: |
+      <!-- FAIL --> <p style="font-size: 14px; line-height: 1.2;">Long text...</p>
+      <!-- PASS --> <p style="font-size: 16px; line-height: 1.6; max-width: 70ch;">Readable text...</p>
+    framework_react: |
+      // FAIL: <p className="text-sm leading-tight">...
+      // PASS: <p className="text-base leading-relaxed max-w-prose">...
+    framework_vue: |
+      /* FAIL */ p { font-size: 14px; line-height: 1.2; }
+      /* PASS */ p { font-size: 16px; line-height: 1.6; max-width: 70ch; }
+
+  # ── CARD & DATA-VIZ (teaching-only, no check_* — judgement-based) ─────
+
+  - id: card-hierarchy
+    severity: warning
+    wcag: "1.3.2"
+    rule: "Cards need clear visual hierarchy: heading → metadata → body → action. Use consistent image ratios, adequate padding (≥16px), and distinguishable borders."
+    framework_html: |
+      <!-- FAIL --> <div class="card"><img src="x.jpg"><h3>Title</h3><p>Body</p></div>
+      <!-- PASS --> <div class="card"><img src="x.jpg" alt=""><h3>Title</h3><p class="text-sm text-secondary">Jan 1, 2026</p><p>Body</p><a href="/more">Read more</a></div>
+
+  - id: data-viz-a11y
+    severity: warning
+    wcag: "1.1.1"
+    rule: "Data visualizations must provide text alternatives: data tables alongside charts, descriptive captions, pattern fills (not color-only), and aria-labels on SVG elements."
+    framework_html: |
+      <!-- FAIL --> <svg><!-- chart with color-only legend --></svg>
+      <!-- PASS --> <figure><svg role="img" aria-label="Bar chart: Sales Q1 $50K, Q2 $75K"><!-- ... --></svg><figcaption>Quarterly sales by region</figcaption><table class="sr-only"><!-- data table --></table></figure>
+
+  # ── STACKING CONTEXT (teaching-only) ──────────────────────────────────
+
+  - id: stacking-context
+    severity: warning
+    wcag: "1.4.12"
+    rule: "Avoid z-index values above 10. Use CSS stacking context creation (positioned + transform/opacity) instead of high z-index. Each stacking context isolates its children."
+    framework_html: |
+      <!-- FAIL --> <div style="position: relative; z-index: 999;">...</div>
+      <!-- PASS --> <div style="position: relative; isolation: isolate;">...</div>
+
+  # ── PERFORMANCE (teaching-only) ────────────────────────────────────────
+
+  - id: performance-web-vitals
+    severity: warning
+    wcag: "2.2.2"
+    rule: "Lazy-load images below the fold (loading=\"lazy\"), defer non-critical JS, keep CSS in <head>. Largest Contentful Paint should be under 2.5s."
+    framework_html: |
+      <!-- FAIL --> <img src="hero.jpg">
+      <!-- PASS --> <img src="hero.jpg" loading="lazy" width="1200" height="600">
+
+  # ── LOADING STATES (teaching-only) ────────────────────────────────────
+
+  - id: loading-skeleton
+    severity: warning
+    wcag: "4.1.3"
+    rule: "Async content regions should use role=status or aria-live=polite so screen readers announce updates. Skeleton loaders need aria-busy=true on the container."
+    framework_html: |
+      <!-- FAIL --> <div id="results">Loading...</div>
+      <!-- PASS --> <div id="results" aria-busy="true" role="status"><span class="sr-only">Loading results</span></div>
