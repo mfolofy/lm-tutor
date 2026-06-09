@@ -1,0 +1,3 @@
+# Per-class dependencies for the credential-ra class.
+# All checks are stdlib-only regex (Layer 1).
+# No extra packages needed. Teaching-only rules have no checker.
