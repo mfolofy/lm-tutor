@@ -392,3 +392,29 @@ lm-tutor is the **canonical answer layer** for Ghost Stack. Every "how do I" get
 | Community infra | v1 first, v2 community |
 | Training / fine-tuning | Inference-side only |
 | PyPI publishing | Unreliable. Clone + `pip install -e .` is primary. |
+
+---
+
+## Boundaries
+
+- **lm-tutor does NOT depend on any Ghost Stack project** — it imports no Ghost Stack code, has no Ghost Stack runtime dependency. Classes cite external standards only (WCAG, OWASP, IEEE, NIST). Zero coupling.
+- **lm-tutor is NOT an evaluation platform** — the eval harness is a teaching feedback tool, not a certification engine. No grading board, no progression tracking, no human-facing audit dashboards.
+- **lm-tutor is NOT a linter or CI tool** — it does not run in CI pipelines, does not produce build-fail signals, does not replace axe-core, Lighthouse, or any human-facing audit tool. The eval harness is a model's feedback loop, not a human's QA gate.
+- **lm-tutor shares the monorepo with Ghost Stack projects** but is architecturally independent. The standalone repo (`github.com/mfolofy/lm-tutor`) is the canonical distribution.
+
+## Locked Decisions
+
+These decisions cannot be re-litigated without Miguel:
+
+1. **Classes ARE the product.** The unit of delivery is a `class.yaml` with `[RULE]` checklists, FAIL/PASS framework examples, and a `SOURCES.md` with cited research. No evaluation infrastructure beyond Layer 1 (selector/regex). No computation engines. No CSS parsers.
+2. **No human-facing audit tools.** No dashboards, no CI integrations, no grading scorecards for humans. The eval harness (`tutor eval`) is a CLI tool for models — pipe content in, get violations out. That is the ceiling.
+3. **No evaluation infrastructure for Phase 0.** No benchmarks, no grading board, no progression tracking. The benchmark protocol in Success Criteria #1 is aspirational — not a build requirement.
+4. **Research-first class creation.** Every class requires a `SOURCES.md` with cited standards before any YAML is written. No "because I think so" rules.
+5. **Per-class virtual environments** for dependency isolation. No core dependency bloat.
+6. **CLI-only delivery.** No daemon mode, no persistent server (the MCP server is a thin wrapper for IDE/agent integration, not a primary delivery target).
+
+## Last Reviewed
+
+- **Date:** 2026-06-09
+- **Reviewer:** Mike (Claude Code / deepseek-v4-flash)
+- **Approved by:** Miguel

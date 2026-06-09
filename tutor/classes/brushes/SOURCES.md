@@ -127,25 +127,16 @@ type hierarchy, low contrast, pure black/white).
 **Layer 1 (selector/regex) rules** cover codifiable WCAG SCs with high
 precision: attribute presence, ARIA roles, structural elements. They do **not**
 cover SCs needing rendered-pixel computation, semantic judgement, or
-cross-element analysis — those are handled by the per-class ``grader.py``
-(Layer 1.5, Phase 0) or the LLM judge (Layer 2, Phase 1).
+cross-element analysis — those are deferred to the LLM judge (Layer 2, Phase 1).
 
 The honest coverage boundary for the 24-brush migration:
 - ~40–50% of WCAG A/AA criteria are codifiable at Layer 1
-- ~20% need computation (color ratios, dimensions, heading hierarchy)
+- ~20% need computation (color ratios, dimensions, heading hierarchy) — documented as teaching-only rules with no checker
 - ~30–40% need human or LLM judgement (alt quality, helpful error messages)
 
 ## Verification
 
-Each rule's `check_selector` / `check_regex` is FAIL/PASS tested in
-`tests/test_brushes.py`. Grader-only rules (`deep_check: true`) are tested
-separately in the grader test section. A rule cannot ship without its test
-pair — see CONTRIBUTING.md.
-
-## Per-class grader
-
-`grader.py` (`tutor/classes/brushes/grader.py`) implements computation-heavy
-WCAG checks: color-contrast ratio computation (WCAG formula), heading
-hierarchy validation, touch-target sizing, typography minimums, and spacing
-scale adherence. Called by the harness after Layer 1 checks when
-`deep_check: true` rules are present.
+Each rule with a `check_selector` or `check_regex` is FAIL/PASS tested in
+`tests/test_brushes.py`. Teaching-only rules (no checker) are tested for
+content presence only. A rule cannot ship without its test pair — see
+CONTRIBUTING.md.

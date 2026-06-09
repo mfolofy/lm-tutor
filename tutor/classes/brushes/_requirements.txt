@@ -1,9 +1,4 @@
 # Per-class dependencies for the brushes class.
 #
-# Phase 0 grades brushes entirely with the stdlib Layer 1 rules engine +
-# grader.py (stdlib regex for color extraction). No extra packages needed.
-#
-# Phase 1 (future): for precise CSS color parsing and WCAG contrast
-# computation, pin:
-#   pillow>=10.0  (for image-based color sampling)
-#   tinycss2>=1.2 (for robust CSS value parsing)
+# Phase 0: all checks are stdlib-only (selector/regex Layer 1).
+# No extra packages needed. Teaching-only rules have no checker.

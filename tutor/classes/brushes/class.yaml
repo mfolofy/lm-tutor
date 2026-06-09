@@ -375,13 +375,11 @@ rules:
       <!-- FAIL --> <html lang="ar">
       <!-- PASS --> <html lang="ar" dir="rtl">
 
-  # ── DEEPER / COMPUTATION-HEAVY RULES (checked by grader.py) ────────────
+  # ── UX / DESIGN RULES (teaching only, no deterministic checker) ───────
 
   - id: color-contrast
     severity: fundamental
     wcag: "1.4.3"
-    deep_check: true
-    detail: "honest-check-color-contrast-reviewed-by-grader"
     rule: "Text must have a minimum 4.5:1 contrast ratio against its background (3:1 for large text ≥18px or ≥14px bold). Gray text (#999, #aaa, #bbb) on white always fails. Use color + icon, never color alone."
     framework_html: |
       <!-- FAIL --> <p style="color: #999;">Light gray text</p>
@@ -402,8 +400,6 @@ rules:
   - id: heading-order
     severity: fundamental
     wcag: "1.3.1"
-    deep_check: true
-    detail: "honest-check-heading-order-reviewed-by-grader"
     rule: "Headings must form a sequential hierarchy: h1 → h2 → h3, no skipping levels. Exactly one h1 per page. Never style div/span as headings."
     framework_html: |
       <!-- FAIL --> <h1>Title</h1><h3>Skip</h3>
@@ -423,8 +419,6 @@ rules:
   - id: touch-target
     severity: advanced
     wcag: "2.5.8"
-    deep_check: true
-    detail: "honest-check-touch-target-sizing-reviewed-by-grader"
     rule: "Interactive elements need minimum 24×24px touch targets (WCAG 2.5.8 AA). Prefer 44×44px. Closely packed links fail — provide adequate spacing."
     framework_html: |
       <!-- FAIL --> <button style="padding: 2px;"><svg><!-- icon --></svg></button>
@@ -437,8 +431,6 @@ rules:
   - id: spacing-system
     severity: warning
     wcag: "1.4.8"
-    deep_check: true
-    detail: "honest-check-spacing-system-reviewed-by-grader"
     rule: "Use a consistent 4px-based spacing scale (4, 8, 12, 16, 24, 32, 48, 64) for padding and margins. Arbitrary values (9px, 14px, 22px) create visual noise."
     framework_html: |
       <!-- FAIL --> <div style="padding: 14px;"><h2 style="margin-bottom: 9px;">Title</h2></div>
@@ -450,8 +442,6 @@ rules:
   - id: typography-minimum
     severity: warning
     wcag: "1.4.4"
-    deep_check: true
-    detail: "honest-check-typography-minimums-reviewed-by-grader"
     rule: "Body text minimum 16px, line-height minimum 1.5, max-width 80ch for readability. Use a modular type scale (1.25 ratio)."
     framework_html: |
       <!-- FAIL --> <p style="font-size: 14px; line-height: 1.2;">Long text...</p>
