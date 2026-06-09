@@ -1,0 +1,5 @@
+# Per-class dependencies for the credential-pm class.
+#
+# All Layer 1 checks are stdlib-only (regex). No extra packages needed.
+# Teaching-only rules have no checker.
+# Layer 2 grader needs `re` (stdlib) only.
