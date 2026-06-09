@@ -1,0 +1,300 @@
+# python-best-practices — Python coding standards for LLM-generated code.
+#
+# Source standard: PEP 8, PEP 257, PEP 484 (Python.org). See SOURCES.md for
+# per-rule citations. Every rule is self-contained: it carries teaching examples
+# (framework_python) and, where detectable, a deterministic regex check
+# (check_regex) that the Layer 1 harness runs. No drift between teaching and
+# testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.fullmatch-equivalent via finditer.
+# A match = a VIOLATION. Rules without check_regex are teaching-only and
+# require no deterministic checker — they guide the LLM during Socratic fix.
+#
+# Coverage honesty:
+#   ~6 rules (38%) have deterministic regex checks — patterns like bare
+#   except:, == None, mutable default args, wildcard imports, old-style
+#   string formatting, and == True / == False are reliably detectable.
+#   ~10 rules (62%) are teaching-only — formatting, naming, docstrings,
+#   type annotations, list mutation, context managers, comprehensions,
+#   loop patterns, return consistency, and dead code require semantic
+#   judgement beyond regex scope.
+#
+# Injected size: ~140 tokens for 16 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: python-best-practices
+  title: "Python Best Practices — PEP 8, PEP 257, PEP 484, and Idiomatic Python"
+  version: 1.0.0
+  sources: ["PEP 8", "PEP 257", "PEP 484", "Python Docs", "Flake8 Docs", "Black Docs"]
+  prerequisites: []
+  target_violations:
+    - "pep8-formatting"
+    - "pep484-types"
+    - "import-style"
+    - "naming-conventions"
+    - "docstring-standards"
+    - "exception-handling"
+    - "list-mutation"
+    - "mutable-defaults"
+    - "comparison-idioms"
+    - "string-formatting"
+    - "context-managers"
+    - "comprehensions"
+    - "boolean-checking"
+    - "loop-patterns"
+    - "return-consistency"
+    - "dead-code"
+  estimated_cost_tokens: 180
+  rule_count: 16
+
+rules:
+
+  # ── FORMATTING & STYLE (3 rules, teaching-only) ─────────────────────────
+
+  - id: pep8-formatting
+    severity: fundamental
+    rule: "Use 4-space indentation (no tabs), 79-character lines (88 for Black), two blank lines around top-level functions and classes, one blank line around method definitions, and imports at the top of the file."
+    framework_python: |
+      # FAIL: def add(a,b):
+      #     ...     return a+b
+      # FAIL: import os; import sys
+      # PASS: def add(a: int, b: int) -> int:
+      #     ...     return a + b
+      # PASS:
+      #     ... import os
+      #     ... import sys
+
+  - id: pep484-types
+    severity: advanced
+    rule: "Annotate public function signatures with types (PEP 484). Use Optional[T] over Union[T, None]. Avoid Any when a more specific type is possible. Prefer | syntax on Python 3.10+."
+    framework_python: |
+      # FAIL: def get_user(id):
+      #     ...     return db.query(id)
+      # PASS: def get_user(id: int) -> User | None:
+      #     ...     return db.query(id)
+      # FAIL: def lookup(key) -> Union[str, None]:
+      #     ...     ...
+      # PASS: def lookup(key: str) -> str | None:
+      #     ...     ...
+
+  - id: import-style
+    severity: fundamental
+    rule: "Prefer absolute imports over relative imports. Never use wildcard imports (from module import *). Use explicit re-exports in __init__.py."
+    check_regex: 'from\s+\S+\s+import\s+\*'
+    framework_python: |
+      # FAIL: from os import *
+      # PASS: from os import path
+      # FAIL: from math import *  # pollutes namespace
+      # PASS: import math
+      # PASS: from math import sqrt, cos
+
+  # ── NAMING & DOCUMENTATION (2 rules, teaching-only) ─────────────────────
+
+  - id: naming-conventions
+    severity: fundamental
+    rule: "Use snake_case for functions and variables, PascalCase for classes, UPPER_CASE for constants. Prefix internal use with a single underscore (_private). Name dunder methods consistently (__init__, __str__)."
+    framework_python: |
+      # FAIL: def CalculateSum(): ...
+      # FAIL: class user_profile: ...
+      # PASS: def calculate_sum(): ...
+      # PASS: class UserProfile: ...
+      # FAIL: max_retries = 3
+      # PASS: MAX_RETRIES = 3
+
+  - id: docstring-standards
+    severity: advanced
+    rule: "Every public module, class, and function needs a docstring (PEP 257). Use triple double-quotes. One-line docstrings stay on one line. Multi-line docstrings: summary line, blank line, body. Document Args, Returns, Raises in Google or NumPy format."
+    framework_python: |
+      # FAIL: def add(a, b):
+      #     ...     return a + b
+      # PASS: def add(a, b):
+      #     ...     """Return the sum of a and b."""
+      #     ...     return a + b
+      # PASS: def fetch(url: str) -> dict:
+      #     ...     """Fetch JSON from a URL.
+      #     ...
+      #     ...     Args:
+      #     ...         url: The endpoint to fetch.
+      #     ...
+      #     ...     Returns:
+      #     ...         Parsed JSON response.
+      #     ...
+      #     ...     Raises:
+      #     ...         HTTPError: On non-200 status.
+      #     ...     """
+
+  # ── CORRECTNESS (5 rules, mixed checker status) ─────────────────────────
+
+  - id: exception-handling
+    severity: fundamental
+    rule: "Catch specific exceptions, never bare except:. Use context managers for resources. Avoid swallowing errors silently — log or re-raise. Prefer except ... as e: over except ..., e:."
+    check_regex: 'except\s*:'
+    framework_python: |
+      # FAIL: try:
+      #     ...     process(data)
+      #     ... except:
+      #     ...     pass
+      # PASS: try:
+      #     ...     process(data)
+      #     ... except ValueError:
+      #     ...     logger.exception("invalid data")
+      # PASS: try:
+      #     ...     result = risky()
+      #     ... except (ValueError, KeyError) as e:
+      #     ...     handle(e)
+
+  - id: list-mutation
+    severity: fundamental
+    rule: "Do not modify a list while iterating over it — this skips elements or causes IndexError. Use a list comprehension, iterate over a copy (list[:]), or build a new list."
+    framework_python: |
+      # FAIL:
+      #     for item in items:
+      #         if condition(item):
+      #             items.remove(item)
+      # PASS:
+      #     items = [item for item in items if not condition(item)]
+      # PASS:
+      #     for item in items[:]:
+      #         if condition(item):
+      #             items.remove(item)
+
+  - id: mutable-defaults
+    severity: fundamental
+    rule: "Never use mutable objects (list, dict, set) as default arguments. The default is evaluated once at function definition, so mutations persist across calls. Use None and instantiate inside the function."
+    check_regex: 'def\s+\w+\s*\([^)]*=\s*\[\s*\]|def\s+\w+\s*\([^)]*=\s*\{\s*\}|def\s+\w+\s*\([^)]*=\s*set\s*\(\s*\)'
+    framework_python: |
+      # FAIL:
+      #     def add_item(item, items=[]):
+      #         items.append(item)
+      #         return items
+      # PASS:
+      #     def add_item(item, items=None):
+      #         if items is None:
+      #             items = []
+      #         items.append(item)
+      #         return items
+
+  - id: comparison-idioms
+    severity: fundamental
+    rule: "Use is None (not == None) for singleton comparison. Use is not None (not != None). Use if x (not if len(x) > 0) for emptiness. Use not x (not if x == False) for falsiness. The == operator invokes __eq__ which can be overridden; is cannot."
+    check_regex: '==\s*None|!=\s*None'
+    framework_python: |
+      # FAIL: if result == None:
+      #     ...     return default
+      # PASS: if result is None:
+      #     ...     return default
+      # FAIL: if found != None:
+      #     ...     return found
+      # PASS: if found is not None:
+      #     ...     return found
+
+  - id: string-formatting
+    severity: advanced
+    rule: "Prefer f-strings over %-formatting and str.format(). Use str.join() for concatenating sequences of strings. F-strings are more readable, faster, and less error-prone."
+    check_regex: '"[^"]*"\s*%[\s(]|\.\s*format\s*\('
+    framework_python: |
+      # FAIL: greeting = "Hello, %s!" % name
+      # FAIL: greeting = "Hello, {}".format(name)
+      # PASS: greeting = f"Hello, {name}!"
+      # FAIL: label = "Count: %d" % len(items)
+      # PASS: label = f"Count: {len(items)}"
+      # FAIL: ", ".join(items)  # correct — but shown here as context
+      # PASS: delimiter = ", "; result = delimiter.join(items)
+
+  # ── IDIOMS & PATTERNS (4 rules, mixed checker status) ───────────────────
+
+  - id: context-managers
+    severity: fundamental
+    rule: "Use the with statement for file I/O, locks, database connections, and any resource that needs cleanup. Never open() without a corresponding close() — exceptions skip manual cleanup."
+    framework_python: |
+      # FAIL:
+      #     f = open("file.txt")
+      #     data = f.read()
+      #     f.close()
+      # PASS:
+      #     with open("file.txt") as f:
+      #         data = f.read()
+      # FAIL:
+      #     lock.acquire()
+      #     try:
+      #         ...
+      #     finally:
+      #         lock.release()
+      # PASS:
+      #     with lock:
+      #         ...
+
+  - id: comprehensions
+    severity: advanced
+    rule: "Prefer list/dict/set comprehensions and generator expressions over map()/filter() with lambda. Comprehensions are more readable and often faster."
+    framework_python: |
+      # FAIL: squares = list(map(lambda x: x**2, range(10)))
+      # PASS: squares = [x**2 for x in range(10)]
+      # FAIL: evens = list(filter(lambda x: x % 2 == 0, nums))
+      # PASS: evens = [x for x in nums if x % 2 == 0]
+      # FAIL: keys = list(map(lambda kv: kv[0], d.items()))
+      # PASS: keys = [k for k in d]
+
+  - id: boolean-checking
+    severity: fundamental
+    rule: "Use implicit truthiness: if x for truthy, if not x for falsy. Avoid == True, == False, is True, is False. Empty containers, zero, None, and False are all falsy."
+    check_regex: '==\s*True\b|==\s*False\b'
+    framework_python: |
+      # FAIL: if done == True:
+      #     ...     break
+      # PASS: if done:
+      #     ...     break
+      # FAIL: if result == False:
+      #     ...     fallback()
+      # PASS: if not result:
+      #     ...     fallback()
+
+  - id: loop-patterns
+    severity: advanced
+    rule: "Use enumerate() for indexed loops instead of range(len()). Use zip() for parallel iteration over multiple sequences. Use dict.items() for key-value iteration. These are clearer and avoid off-by-one errors."
+    framework_python: |
+      # FAIL: for i in range(len(items)):
+      #     ...     print(items[i])
+      # PASS: for item in items:
+      #     ...     print(item)
+      # PASS: for i, item in enumerate(items):
+      #     ...     print(i, item)
+      # FAIL: for i in range(len(keys)):
+      #     ...     print(keys[i], values[i])
+      # PASS: for key, value in zip(keys, values):
+      #     ...     print(key, value)
+
+  # ── CLEANUP & MAINTAINABILITY (2 rules, teaching-only) ──────────────────
+
+  - id: return-consistency
+    severity: fundamental
+    rule: "Return a consistent type from a function. Either always return a value or never return (implicit None). Mixed return (some paths return, others fall off) is confusing and masks bugs."
+    framework_python: |
+      # FAIL:
+      #     def find(items, target):
+      #         for item in items:
+      #             if item == target:
+      #                 return item
+      #         # falls off — implicit None
+      # PASS:
+      #     def find(items, target):
+      #         for item in items:
+      #             if item == target:
+      #                 return item
+      #         return None
+
+  - id: dead-code
+    severity: fundamental
+    rule: "Remove unused imports, unused variables, and unreachable code after return/raise/break/continue. Dead code misleads readers and wastes compilation time. Run flake8 or ruff to detect it."
+    framework_python: |
+      # FAIL:
+      #     import os  # unused
+      #     import sys
+      #     def greet():
+      #         return "hello"
+      #         print("unreachable")
+      # PASS:
+      #     import sys
+      #     def greet():
+      #         return "hello"
