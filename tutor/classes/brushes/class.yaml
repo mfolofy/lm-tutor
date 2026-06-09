@@ -345,6 +345,7 @@ rules:
     severity: advanced
     wcag: "3.3.2"
     rule: "Inputs collecting personal info should have an autocomplete attribute for browser autofill. Common: name, email, tel, address-level1, country."
+    check_regex: '<input\s[^>]*type="(?:email|tel|url|name|password|address|country)"(?![^>]*autocomplete\s*=\s*"[^"]*")'
     framework_html: |
       <!-- FAIL --> <input type="email" id="email">
       <!-- PASS --> <input type="email" id="email" autocomplete="email">
@@ -358,6 +359,7 @@ rules:
     severity: advanced
     wcag: "2.3.3"
     rule: "Animations must be paired with @media (prefers-reduced-motion: reduce) that disables or minimizes motion. Never animate without this guard."
+    check_regex: '@keyframes\s'
     framework_html: |
       <!-- FAIL --> <style>@keyframes slide { from {left: -100px} to {left: 0} }</style>
       <!-- PASS --> <style>@keyframes slide { from {left: -100px} to {left: 0} } @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }</style>
@@ -497,6 +499,7 @@ rules:
     severity: warning
     wcag: "4.1.3"
     rule: "Async content regions should use role=status or aria-live=polite so screen readers announce updates. Skeleton loaders need aria-busy=true on the container."
+    check_selector: 'div[aria-busy]:not([role])'
     framework_html: |
       <!-- FAIL --> <div id="results">Loading...</div>
       <!-- PASS --> <div id="results" aria-busy="true" role="status"><span class="sr-only">Loading results</span></div>

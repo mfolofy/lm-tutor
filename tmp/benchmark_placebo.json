@@ -2,25 +2,25 @@
   {
     "condition": "raw",
     "run": 0,
-    "violations": 16,
+    "violations": 18,
     "passed": false
   },
   {
     "condition": "raw",
     "run": 1,
-    "violations": 14,
+    "violations": 11,
     "passed": false
   },
   {
     "condition": "raw",
     "run": 2,
-    "violations": 14,
+    "violations": 17,
     "passed": false
   },
   {
     "condition": "raw",
     "run": 3,
-    "violations": 19,
+    "violations": 16,
     "passed": false
   },
   {
@@ -30,63 +30,63 @@
     "passed": false
   },
   {
-    "condition": "class",
+    "condition": "placebo",
     "run": 0,
-    "violations": 9,
+    "violations": 13,
+    "passed": false
+  },
+  {
+    "condition": "placebo",
+    "run": 1,
+    "violations": 14,
+    "passed": false
+  },
+  {
+    "condition": "placebo",
+    "run": 2,
+    "violations": 10,
+    "passed": false
+  },
+  {
+    "condition": "placebo",
+    "run": 3,
+    "violations": 15,
+    "passed": false
+  },
+  {
+    "condition": "placebo",
+    "run": 4,
+    "violations": 13,
     "passed": false
   },
   {
     "condition": "class",
-    "run": 1,
+    "run": 0,
     "violations": 1,
     "passed": false
   },
   {
     "condition": "class",
-    "run": 2,
-    "violations": 6,
-    "passed": false
-  },
-  {
-    "condition": "class",
-    "run": 3,
+    "run": 1,
     "violations": 7,
     "passed": false
   },
   {
     "condition": "class",
-    "run": 4,
-    "violations": 2,
+    "run": 2,
+    "violations": 11,
     "passed": false
   },
   {
-    "condition": "booster",
-    "run": 0,
+    "condition": "class",
+    "run": 3,
     "violations": 6,
     "passed": false
   },
   {
-    "condition": "booster",
-    "run": 1,
-    "violations": 4,
-    "passed": false
-  },
-  {
-    "condition": "booster",
-    "run": 2,
-    "violations": 5,
-    "passed": false
-  },
-  {
-    "condition": "booster",
-    "run": 3,
-    "violations": 3,
-    "passed": false
-  },
-  {
-    "condition": "booster",
+    "condition": "class",
     "run": 4,
-    "violations": 2,
+    "violations": 4,
     "passed": false
   }
 ]

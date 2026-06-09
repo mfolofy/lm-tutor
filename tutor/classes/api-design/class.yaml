@@ -96,6 +96,7 @@ rules:
   - id: http-methods
     severity: fundamental
     rule: "Use the correct HTTP method for each operation: GET for read, POST for create, PUT for full replace, PATCH for partial update, DELETE for delete. Never use GET to mutate state. Never use POST for idempotent read-only queries that are semantically GET."
+    check_regex: 'GET\s+\/.*(?:delete|remove|destroy|activate|deactivate|create|add|update|edit)\b'
     framework_rest: |
       # FAIL — GET mutates state; POST for read; wrong methods
       GET /api/v1/users/123/activate    # Activates user via GET!
