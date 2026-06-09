@@ -20,6 +20,20 @@ ENV/
 .tutor/
 class_venvs/
 
+# Secrets / sensitive data
+secrets/
+*.env
+*.env.local
+*.env.production
+
+# Logs
+*.log
+
+# Keys / certificates (never commit)
+*.key
+*.pem
+*.cert
+
 # Test / coverage
 .pytest_cache/
 .coverage
@@ -35,6 +49,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Local state (tutor writes here at runtime; never commit)
+# Temp / scratch files
+tmp/
 *.tmp
+
+# Local state (tutor writes here at runtime; never commit)
 track_state.json

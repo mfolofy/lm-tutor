@@ -66,7 +66,7 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 11 classes, 185 rules, 494 tests. Benchmarked across 2 model tiers
+**Beta.** 12 classes, 202 rules, 636 tests. Benchmarked across 2 model tiers
 (Flash and Gemma). Working in production at Ghost Stack.
 
 ---

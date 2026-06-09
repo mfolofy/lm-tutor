@@ -1,0 +1,893 @@
+# devops — DevOps, SRE, and CI/CD Practices. Sixteenth class in the School.
+#
+# Source standards: Google SRE Books, DORA (Accelerate), ITIL 4, AWS Well-Architected,
+# CNCF Trail Map, 12 Factor App. See SOURCES.md for per-rule citations. Every rule
+# is self-contained: it carries teaching examples (framework_*) AND, where codifiable,
+# a deterministic regex check (check_regex) that the Layer 1 harness runs. No drift
+# between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the Socratic
+# fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~240 tokens for checkable rules (rule lines only; framework examples
+# are not injected at generation time — they back the Socratic fix step).
+#
+# Rules marked with check_regex need a FAIL/PASS test pair in
+# tests/test_devops.py. Teaching-only rules are tested for content presence only.
+
+class:
+  id: devops
+  title: "DevOps — SRE, CI/CD, and Production Excellence (Google SRE, DORA, ITIL 4)"
+  version: 1.0.0
+  sources:
+    - "Google — Site Reliability Engineering (O'Reilly, 2016)"
+    - "Google — The Site Reliability Workbook (O'Reilly, 2018)"
+    - "Forsgren, Humble, Kim — Accelerate: The Science of Lean Software and DevOps (DORA, 2018)"
+    - "ITIL 4 Foundation (AXELOS, 2019)"
+    - "AWS Well-Architected Framework (aws.amazon.com/well-architected)"
+    - "CNCF Trail Map (cncf.io/trailmap)"
+    - "Wiggins — The Twelve-Factor App (12factor.net, 2011)"
+  prerequisites: []
+  target_violations:
+    - "dora-metrics"              # Missing DORA four-packet tracking
+    - "ci-pipeline-gates"         # Bypassing CI checks or missing gates
+    - "cd-deployment-patterns"    # Direct-to-prod, no blue-green/canary
+    - "incident-response"         # Missing severity matrix or postmortems
+    - "monitoring-observability"  # Unstructured logs, missing USE metrics
+    - "alerting"                  # Cause-based alerts, no runbooks
+    - "slo-sli"                   # Missing SLOs, defaulting to 99.9% blindly
+    - "infrastructure-as-code"    # Manual infra changes, mutable deployments
+    - "containerization"          # SSH into containers, privileged, no health checks
+    - "secrets-management"        # Hardcoded secrets in code or config
+    - "backup-disaster-recovery"  # Missing RPO/RTO, untested restores
+    - "change-management"         # Friday deploys, undocumented changes
+    - "capacity-planning"         # No utilization monitoring or auto-scaling
+    - "cost-optimization"         # Untagged resources, no right-sizing
+    - "dependency-management"     # Unpinned deps, no CVE scanning
+    - "feature-flags"             # Direct deploy of incomplete features
+    - "runbook-documentation"     # Missing operational runbooks
+  estimated_cost_tokens: 340
+  rule_count: 17
+
+rules:
+
+  # ── CORE DORA & METRICS (2 rules) ────────────────────────────────────────────
+
+  - id: dora-metrics
+    severity: fundamental
+    rule: "Track all four DORA metrics: Deployment Frequency, Lead Time for Changes (commit to production), Time to Restore Service (MTTR), and Change Failure Rate (% of deploys causing incidents). Measure trends over trailing windows (7d, 30d, 90d), not as absolute snapshots. Display on a team-visible dashboard. Use metrics to guide improvement, not as a performance scorecard."
+    framework_code: |
+      # FAIL — only tracking 1 metric, no trend windows
+      metrics:
+        tracked:
+          - deploy_frequency
+        windows: []
+      # PASS — all four DORA metrics with trend analysis
+      metrics:
+        tracked:
+          - deploy_frequency        # How often we ship to production
+          - lead_time_for_changes   # From first commit to production deploy
+          - time_to_restore         # MTTR: time to recover from incidents
+          - change_failure_rate     # % of deployments causing a failure
+        windows: ["7d", "30d", "90d"]
+        dashboard: "elixir/engineering-dora"
+        trend_tracking: true
+    framework_config: |
+      # FAIL — missing three metrics
+      dora:
+        deploy_frequency: {}
+      # PASS — complete four-packet
+      dora:
+        deploy_frequency: { target: "daily", current: "3/week" }
+        lead_time: { target: "< 1h", current: "45m" }
+        mttr: { target: "< 30m", current: "22m" }
+        change_failure_rate: { target: "< 5%", current: "3%" }
+
+  - id: ci-pipeline-gates
+    severity: fundamental
+    rule: "Every change must pass lint, test, build, and security scan gates before it merges. No bypass mechanisms. A broken build blocks the branch until fixed. Never use --no-verify, skip-ci labels, or bypass flags. Security scanning must include dependency CVE checks, SAST, and secrets scanning."
+    check_regex: |-
+      (?i)(?:--no-verify|skip[-\s]?(?:checks?|ci|tests?|gates?|pipeline)|bypass\s+(?:ci\s+)?(?:test|lint|build|check|gate|pipeline|security)|\[skip[-\s]?(?:ci|tests?)\])
+    framework_code: |
+      # FAIL — bypassing CI gates
+      git commit --no-verify -m "urgent fix"
+      git push origin main --skip-checks
+      [skip ci]  # Bad — bypasses CI
+      # PASS — proper pipeline with gates
+      name: CI Pipeline
+      on: [push, pull_request]
+      jobs:
+        lint:
+          runs-on: ubuntu-latest
+          steps: [uses: actions/super-linter@v2]
+        test:
+          runs-on: ubuntu-latest
+          steps: [run: pytest tests/]
+        build:
+          runs-on: ubuntu-latest
+          steps: [run: docker build .]
+        security:
+          runs-on: ubuntu-latest
+          steps: [uses: aquasecurity/trivy-action@master]
+    framework_config: |
+      # FAIL — missing security and lint gates
+      pipeline:
+        stages: [test, build]
+      # PASS — full gate pipeline
+      pipeline:
+        stages: [lint, test, build, security]
+        block_on_failure: true
+        bypass_allowed: false
+        security_scanning:
+          sast: true
+          cve: true
+          secrets: true
+    framework_cli: |
+      # FAIL: git commit --no-verify -m "hotfix"  — bypasses pre-commit hooks
+      # PASS: git commit -m "fix: resolve timeout in checkout flow"
+    framework_generic: |
+      # FAIL: PR merged without CI passing. The bypass label was set on the PR.
+      # PASS: CI status check is REQUIRED. The PR cannot merge until all gates pass.
+
+  # ── DEPLOYMENT PATTERNS (1 rule) ─────────────────────────────────────────────
+
+  - id: cd-deployment-patterns
+    severity: fundamental
+    rule: "Production deployments must use blue-green or canary strategies to shift traffic gradually. Never deploy directly to production (strategy: recreate, direct-to-prod). Rollback must be faster than deploy (target rollback < 5 min). Health checks must pass in the new environment before traffic shifts. Automated rollback on failed health checks."
+    check_regex: |-
+      (?i)(?:deploy\s+(?:\S+\s+)?(?:directly|direct)\s+(?:to\s+)?(?:production|prod)|push-to-prod|strategy:\s*recreate|update-prod-directly|kubectl\s+set\s+image.*--(?:all|production)|helm\s+upgrade\s+\S+\s+--install\s+--force)
+    framework_manifest: |
+      # FAIL — direct-to-prod with recreate strategy
+      apiVersion: apps/v1
+      kind: Deployment
+      spec:
+        strategy:
+          type: Recreate          # Causes downtime, no gradual shift
+      # PASS — blue-green deployment
+      apiVersion: apps/v1
+      kind: Deployment
+      spec:
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+      # Blue-green handled at CI/CD level:
+      # deploy: blue → smoke test → promote green → drain blue
+    framework_code: |
+      # FAIL — direct deployment, no rollback plan
+      steps:
+        - run: kubectl apply -f prod/
+      # PASS — canary with automated rollback
+      steps:
+        - run: kubectl apply -f canary/
+        - run: ./scripts/wait-for-health.sh
+        - run: kubectl apply -f prod/
+      rollback:
+        script: kubectl apply -f previous/
+        timeout: 120s
+        auto: true
+    framework_config: |
+      # FAIL — strategy is recreate, no canary
+      deploy:
+        strategy: recreate
+        target: production
+      # PASS — blue-green with auto-promote
+      deploy:
+        strategy: blue-green
+        target: production
+        auto_promote: true
+        health_check_timeout: 300s
+        rollback_timeout: 120s
+    framework_generic: |
+      # FAIL: Helm upgrade --force on production. Direct mutation, no gradual shift.
+      # PASS: Deploy to canary first (10% traffic), observe, then roll to full prod.
+      # If health checks fail, auto-rollback to previous version.
+
+  # ── INCIDENT RESPONSE (1 rule) ───────────────────────────────────────────────
+
+  - id: incident-response
+    severity: fundamental
+    rule: "Maintain a documented severity matrix (SEV1-SEV4) with clear classification criteria. SEV1 (customer-facing outage, data loss, security breach) triggers a war room within 15 minutes and engages all on-call engineers. Postmortem written within 48 hours of resolution. Blameless culture — root cause analysis focuses on system failures, not human errors. Action items tracked to completion."
+    framework_code: |
+      # FAIL — no severity definitions, no postmortem timeline
+      incident_response:
+        channel: "#ops"
+      # PASS — complete incident management
+      incident_response:
+        severities:
+          SEV1:
+            description: "Customer-facing outage or data loss"
+            response_sla: 15m
+            war_room: true
+            postmortem: 48h
+            notify: ["@oncall", "@engineering"]
+          SEV2:
+            description: "Degraded performance for subset of users"
+            response_sla: 30m
+            postmortem: 1w
+            notify: ["@oncall"]
+          SEV3:
+            description: "Minor issue, no customer impact"
+            response_sla: 4h
+            postmortem: optional
+          SEV4:
+            description: "Cosmetic or documentation issue"
+            response_sla: 24h
+            postmortem: none
+        blameless: true
+        postmortem_template: "docs/templates/postmortem.md"
+    framework_config: |
+      # FAIL — no SLAs, no postmortem requirement
+      incidents:
+        sev1: { channel: "#sev1" }
+      # PASS — complete matrix with SLAs
+      incidents:
+        sev1:
+          response: 15m
+          war_room: true
+          postmortem_hours: 48
+          action_items_required: true
+        sev2:
+          response: 30m
+          postmortem_hours: 168
+    framework_generic: |
+      # FAIL: Incident declared but no severity level assigned. No war room called.
+      # Response took 4 hours for a customer-facing outage.
+      # FAIL: Postmortem never written. Same incident happened again 3 weeks later.
+      # PASS: SEV1 paged within 3 minutes. War room in #ops-sev1 within 10 minutes.
+      # Postmortem filed 12 hours later with 3 action items, all resolved within 1 week.
+
+  # ── MONITORING & OBSERVABILITY (1 rule) ──────────────────────────────────────
+
+  - id: monitoring-observability
+    severity: fundamental
+    rule: "Every service must expose: latency (request duration), traffic (requests per second), error rate (% of failed requests), and saturation (how close to capacity) following the USE method. Logs must be structured (JSON) with correlation IDs for request tracing. Metrics stored in a time-series database. Distributed tracing for end-to-end visibility."
+    check_regex: |-
+      (?i)(?:print\s*\(\s*["']log|format:\s*text(?:\s|$)|logging:\s*(?:print|echo|fmt\.Print|console\.log)|console\.(?:log|info)\s*\()
+    framework_code: |
+      # FAIL — unstructured logging, no metrics defined
+      logging:
+        format: text
+        level: debug
+      metrics: []
+      tracing: disabled
+      # PASS — structured logging, USE metrics, distributed tracing
+      logging:
+        format: json
+        correlation_id: x-request-id
+        level: info
+      USE:
+        latency: latency_p99
+        traffic: requests_per_second
+        errors: error_rate_5xx
+        saturation: cpu_utilization_p95
+      metrics:
+        storage: prometheus
+        retention: 30d
+      tracing:
+        exporter: otlp
+        endpoint: http://otel-collector:4318
+        sampling_rate: 0.1
+    framework_config: |
+      # FAIL — text logs, no structured format
+      logging:
+        format: text
+        output: stdout
+      monitoring:
+        metrics: []
+      # PASS — structured JSON, full observability
+      logging:
+        format: json
+        output: stdout
+      monitoring:
+        USE: [latency, traffic, errors, saturation]
+        storage: prometheus
+        dashboards:
+          - USE Dashboard
+          - DORA Metrics
+    framework_generic: |
+      # FAIL: Service logs with print("log: ...") — unstructured, no correlation IDs.
+      # Can't trace a single request across services. No metrics exported.
+      # PASS: All services emit structured JSON logs with correlation_id:
+      # {"level":"info","correlation_id":"req_abc123","service":"checkout",
+      #  "latency_ms":42}. Prometheus scrapes /metrics for USE signals.
+
+  # ── ALERTING (1 rule) ────────────────────────────────────────────────────────
+
+  - id: alerting
+    severity: advanced
+    rule: "Alert on symptoms (latency > 500ms, error rate > 1%), not causes (CPU > 90%, disk usage > 80%). Never page for predictable events (scheduled deployments, maintenance windows, known batch jobs). Alert fatigue is a system failure — review and tune thresholds quarterly. Every alert must have a linked runbook. Use alerting silences (not threshold changes) for maintenance windows."
+    framework_code: |
+      # FAIL — cause-based alerts, no runbooks, pages for maintenance
+      alerts:
+        - condition: cpu > 90
+          page: true
+        - condition: disk > 80
+          page: true
+        - condition: deployment_in_progress
+          page: true
+      # PASS — symptom-based alerts with runbooks
+      alerts:
+        latency_p99:
+          condition: latency_p99 > 500ms
+          duration: 5m
+          severity: SEV2
+          page: true
+          runbook: docs/runbooks/high-latency.md
+        error_rate:
+          condition: error_rate > 1%
+          duration: 3m
+          severity: SEV1
+          page: true
+          runbook: docs/runbooks/error-spike.md
+        cpu_high:
+          condition: cpu > 90%
+          page: false            # Cause — use as dashboard signal, not page
+          severity: SEV4
+    framework_config: |
+      # FAIL — paging on cause, no runbooks
+      alert_rules:
+        - metric: node_cpu_seconds_total
+          threshold: 0.9
+          pagerduty: true
+      # PASS — symptom-based, runbooks linked
+      alert_rules:
+        - metric: http_request_duration_seconds_p99
+          threshold: 0.5
+          severity: SEV2
+          pagerduty: true
+          runbook: "docs/runbooks/high-latency.md"
+        - metric: http_requests_errors_total
+          threshold: 0.01
+          severity: SEV1
+          pagerduty: true
+          runbook: "docs/runbooks/error-spike.md"
+    framework_generic: |
+      # FAIL: PagerDuty pages every time CPU hits 90%. Engineers stop responding.
+      # The page fires during every deploy (predictable). Alert fatigue is the result.
+      # PASS: Page when latency_p99 exceeds 500ms for 5 minutes. CPU chart is
+      # available on the dashboard for diagnosis but doesn't page.
+
+  # ── SLO / SLI / ERROR BUDGETS (1 rule) ───────────────────────────────────────
+
+  - id: slo-sli
+    severity: fundamental
+    rule: "Define SLOs for every user-facing service. SLIs must measure compliance objectively (latency percentiles, availability fraction, accuracy rate). Error budgets govern release velocity — stop shipping when the budget is exhausted. 99.9% is never the default SLO; choose based on user expectations and business impact. Document SLO review cadence."
+    check_regex: |-
+      (?i)(?:slo:\s*99\.9[%]?\s*(?:\s|$)|missing\s+(?:slo|service level objective)|error_budget:\s*(?:none|null|0|missing)|no\s+slos?\s+defined)
+    framework_code: |
+      # FAIL — default 99.9% with no rationale, no SLIs
+      slo:
+        availability: "99.9%"
+        error_budget: null
+      slis: []
+      # PASS — justified SLO with measurable SLIs
+      slo:
+        service: user-api
+        slis:
+          - name: latency_p99
+            target: 200ms
+            measurement: "99th percentile of GET /users latency over 5m windows"
+          - name: availability
+            target: 99.95%
+            measurement: "fraction of successful requests over 1m windows"
+          - name: error_rate
+            target: 0.1%
+            measurement: "fraction of 5xx responses"
+        slo:
+          latency_p99: 200ms
+          availability: 99.95%
+          rationale: "99.9% external SLA requires 99.95% internal SLO for headroom"
+        error_budget:
+          monthly_minutes: 21
+          consumed: 9
+          remaining: 12
+        review_cadence: quarterly
+    framework_config: |
+      # FAIL — default SLO, no SLIs
+      service:
+        slo: 99.9%
+      # PASS — complete SLO/SLI/error budget
+      service:
+        name: billing-api
+        sli:
+          - latency_p99 < 300ms
+          - availability > 99.95%
+          - throughput > 1000 rpm
+        slo:
+          latency_p99: 300ms
+          availability: 99.95%
+        error_budget: { monthly: 21m, remaining: 12m }
+    framework_generic: |
+      # FAIL: SLO: 99.9% — why 99.9%? No SLIs defined, no measurement plan.
+      # If you can't measure it, it's not an SLO — it's a wish.
+      # PASS: Three SLIs measured (latency, availability, error rate) with
+      # explicit measurement windows. SLO set at 99.95% for headroom against
+      # the 99.9% business SLA. Error budget tracked and governs releases.
+
+  # ── INFRASTRUCTURE AS CODE (1 rule) ──────────────────────────────────────────
+
+  - id: infrastructure-as-code
+    severity: fundamental
+    rule: "All infrastructure must be defined in version-controlled configuration files (Terraform, CloudFormation, Pulumi). No manual changes to production infrastructure. Deployments must be immutable — never patch running instances; replace them. Configuration drift must be detected and remediated automatically. Every change to infra follows the same review process as application code."
+    check_regex: |-
+      (?i)(?:ssh\s+\S+@.*(?:prod|production).*(?:config|setup|change|update|edit)|manual\s+(?:change|edit|update|modify|provision).*(?:infra|server|config|env)|patch\s+(?:running\s+)?(?:instance|server|prod|production)|drift:\s*(?:none|disabled|false|off))
+    framework_code: |
+      # FAIL — manual changes to production infra
+      deploy_strategy: "ssh into prod and update config"
+      # PASS — IaC, immutable
+      terraform:
+        backend: s3
+        version: 1.6
+        config: infra/terraform/
+      drift_detection:
+        enabled: true
+        schedule: "0 */6 * * *"
+        notification: "#ops-drift"
+      immutable: true
+    framework_config: |
+      # FAIL — manual provisioning
+      provisioning:
+        method: manual
+        docs: "Ask Alice to create the RDS instance"
+      # PASS — everything as code
+      provisioning:
+        method: terraform
+        state_backend: s3
+        version_control: git
+        review_required: true
+      drift_detection:
+        enabled: true
+        auto_remediate: false  # Notify first, act second
+    framework_cli: |
+      # FAIL: ssh prod-01 "sudo apt update && sudo systemctl restart app"
+      # Manual SSH to production. Change is not tracked.
+      # FAIL: kubectl exec -it deploy/app -- rm -rf /tmp/cache
+      # Manual change inside container. Will be lost on restart — good, but
+      # the change should have been applied through proper config/redeploy.
+      # PASS: terraform apply -auto-approve infra/production/
+      # Change is version-controlled. Drift detection will catch any diff.
+
+  # ── CONTAINERIZATION (1 rule) ────────────────────────────────────────────────
+
+  - id: containerization
+    severity: fundamental
+    rule: "Run one process per container. Never SSH into containers — use kubectl exec or docker exec for emergency debugging only. Root filesystem must be read-only. Define liveness and readiness health checks. Scan images for vulnerabilities before deploying. No privileged containers. Use distroless or slim base images. Containers must be disposable."
+    check_regex: |-
+      (?i)(?:ssh\s+(?:into|to)\s+(?:container|docker|pod|k8s)|entrypoint:\s*\[\s*["']*(?:/bin/)?(?:bash|sh)["']?\s*\]|privileged:\s*true|readOnlyRootFilesystem:\s*false|securityContext:\s*\{(?!.*readOnlyRootFilesystem)|docker\s+exec\s+-it\s+\w+)
+    framework_manifest: |
+      # FAIL — privileged, no health checks, writable root, bash entrypoint
+      containers:
+        - name: app
+          image: app:latest
+          privileged: true
+          command: ["bash"]
+          securityContext:
+            readOnlyRootFilesystem: false
+      # PASS — single process, health checks, read-only root
+      containers:
+        - name: app
+          image: app:1.2.3-slim
+          command: ["./app"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            privileged: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /ready, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      imageScanning:
+        enabled: true
+        registry: harbor.internal
+        fail_on: critical
+    framework_code: |
+      # FAIL — container image with shell as entrypoint, no health check
+      FROM ubuntu:latest
+      ENTRYPOINT ["bash"]
+      # PASS — distroless with health check
+      FROM gcr.io/distroless/base
+      COPY app /app
+      ENTRYPOINT ["/app"]
+      HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:8080/healthz || exit 1
+    framework_generic: |
+      # FAIL: docker exec -it app-prod bash — SSH into running container.
+      # Changes are lost on restart, but the practice means you're debugging
+      # in production rather than fixing the root cause.
+      # FAIL: privileged: true — container has host-level access. If compromised,
+      # attacker controls the host. Unnecessary for 99% of workloads.
+      # PASS: kubectl exec app-5d7f8c9b-abc -- cat /var/log/app.log
+      # Debugging with read-only commands, no shell, no modifications.
+
+  # ── SECRETS MANAGEMENT (1 rule) ──────────────────────────────────────────────
+
+  - id: secrets-management
+    severity: fundamental
+    rule: "Store secrets in a dedicated secret management system (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault). Never hardcode secrets in source code, configuration files, environment variable defaults, or container images. Rotate credentials automatically on a schedule. Log and audit every secret access. Use short-lived credentials where possible."
+    check_regex: |-
+      (?i)(?:(?:password|passwd|pwd|secret|api[_-]?key|token|credential)\s*[:=]\s*["'][^"'${}]{8,}["']|hardcoded\s+(?:password|secret|key|token|credential)|DEFAULT_PASSWORD|default_password)
+    framework_code: |
+      # FAIL — hardcoded secrets in source code
+      database:
+        password: "s3cr3t-p@ss!"
+      stripe:
+        api_key: "sk_live_abc123def456"
+      config:
+        jwt_secret: "my-super-secret-key-change-me"
+      # PASS — secrets from vault
+      database:
+        password: ${DB_PASSWORD}          # Resolved at deploy time from Vault
+      stripe:
+        api_key: ${STRIPE_SECRET_KEY}     # From AWS Secrets Manager
+      config:
+        jwt_secret_file: /run/secrets/jwt  # Mounted secret file
+    framework_manifest: |
+      # FAIL — secrets in plaintext
+      containers:
+        - name: app
+          env:
+            - name: DB_PASSWORD
+              value: "hunter2"
+            - name: API_KEY
+              value: "sk-abc123"
+      # PASS — secrets from secret store
+      containers:
+        - name: app
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: stripe
+    framework_generic: |
+      # FAIL: password = "admin123" in source code. Every developer has access.
+      # Accidentally pushed to GitHub? The secret is compromised immediately.
+      # FAIL: DEFAULT_PASSWORD in a config file. Defaults should not exist.
+      # PASS: Secrets loaded from Vault at runtime. Every access is logged.
+      # Access can be revoked per-credential without redeploying anything.
+
+  # ── BACKUP & DISASTER RECOVERY (1 rule) ──────────────────────────────────────
+
+  - id: backup-disaster-recovery
+    severity: fundamental
+    rule: "Implement automated backups with verified restores. Document RPO (Recovery Point Objective — maximum acceptable data loss) and RTO (Recovery Time Objective — maximum acceptable downtime) for every service. Test restores quarterly. Maintain off-site or cross-region copies. Disaster recovery plan must be documented and practiced at least annually. Backups must be encrypted."
+    framework_code: |
+      # FAIL — no RPO/RTO, no restore testing, no off-site copy
+      backup:
+        enabled: true
+        schedule: "0 2 * * *"
+      # PASS — complete DR plan with quarterly verification
+      backup:
+        enabled: true
+        schedule: "0 2 * * *"
+        retention: "30d daily, 12m monthly"
+        offsite: true
+        encryption: aes256
+        rpo: "1h"              # Max 1 hour of data loss
+        rto: "4h"              # Recover within 4 hours
+        restore_testing:
+          schedule: "0 0 1 */3 *"  # Quarterly
+          last_test: "2026-05-15"
+          result: passed
+        dr_plan:
+          document: "docs/disaster-recovery.md"
+          last_test: "2026-01-20"
+          test_participants: ["oncall", "dbreliability"]
+    framework_config: |
+      # FAIL — no DR plan
+      backup: { enabled: true }
+      # PASS — full DR configuration
+      backup:
+        schedule: daily
+        retention: 30d
+        cross_region: true
+        encryption: true
+      disaster_recovery:
+        rpo: 1h
+        rto: 4h
+        test_schedule: quarterly
+        runbook: "docs/runbooks/dr-failover.md"
+    framework_generic: |
+      # FAIL: "We have backups" — when was the last time you tested a restore?
+      # A backup that hasn't been restored is not a backup — it's a hope.
+      # FAIL: No RPO documented. When a disaster happens, how much data can you lose?
+      # FAIL: No RTO documented. How long will customers wait?
+      # PASS: Automated backup, quarterly restore test, encrypted off-site copy.
+      # RPO=1h, RTO=4h. Everyone knows what to expect.
+
+  # ── CHANGE MANAGEMENT (1 rule) ──────────────────────────────────────────────
+
+  - id: change-management
+    severity: advanced
+    rule: "Every production change requires: a documented plan, rollback procedure, successful test in a lower environment, and peer review approval. Never deploy on Friday afternoon or before a holiday. Use defined change windows for risky changes. Emergency changes require expedited approval, not a bypass. All changes logged with who, what, when, and result."
+    framework_code: |
+      # FAIL — Friday deploy, no change request, no rollback
+      deploy:
+        day: Friday
+        time: "16:30"
+      change_request: null
+      rollback: null
+      # PASS — documented change request, proper timing, tested rollback
+      change_request:
+        id: CR-2026-06-09-001
+        plan: "docs/change-plans/db-migration-v2.md"
+        rollback: "docs/rollback/db-migration-v1.md"
+        tested_in: staging
+        reviewer: alice@example.com
+        window:
+          day: Tuesday
+          time: "10:00-14:00 ET"
+        risk: medium
+    framework_config: |
+      # FAIL — no change controls
+      change_management: disabled
+      # PASS — full change management
+      change_management:
+        required: true
+        approval_count: 1
+        test_env_required: true
+        rollback_plan_required: true
+        forbidden_windows:
+          - "Friday after 14:00"
+          - "Day before public holiday"
+        emergency_process:
+          approval: expedited
+          post_hoc_review: required
+    framework_generic: |
+      # FAIL: Deploy at 4:30 PM on Friday. Something goes wrong. Nobody is around
+      # to help rollback. The incident stretches into the weekend.
+      # FAIL: Production change with no rollback plan. If it breaks, you're
+      # debugging under pressure with no safety net.
+      # PASS: Change CR-2026-06-09-001 planned for Tuesday 10-14 ET. Rollback
+      # tested in staging. Alice reviewed the plan. Jimmy deploys at 10:05.
+
+  # ── CAPACITY PLANNING (1 rule) ─────────────────────────────────────────────
+
+  - id: capacity-planning
+    severity: advanced
+    rule: "Monitor utilization trends (CPU, memory, storage, network I/O) over trailing windows. Set scaling triggers at 80% capacity for proactive scaling. Use auto-scaling (horizontal and vertical) where feasible. Conduct regular load testing at 2x peak traffic. Document capacity forecasts quarterly. Plan for spikes (marketing campaigns, holiday traffic)."
+    framework_code: |
+      # FAIL — no monitoring, no auto-scaling, no load testing
+      autoscaling: disabled
+      capacity_planning: {}
+      # PASS — monitored, auto-scaled, load tested
+      capacity:
+        monitoring:
+          - cpu_utilization
+          - memory_utilization
+          - disk_usage
+          - network_throughput
+        scaling_triggers:
+          cpu: 80%
+          memory: 80%
+        autoscaling:
+          enabled: true
+          min_replicas: 3
+          max_replicas: 20
+          target_cpu: 70%
+        load_testing:
+          enabled: true
+          schedule: monthly
+          peak_multiplier: 2.0
+          last_test: "2026-06-01"
+          result: passed
+        forecast:
+          next_quarter: "Q3 2026"
+          expected_growth: "15%"
+    framework_config: |
+      # FAIL — no capacity planning
+      scaling: disabled
+      # PASS — complete capacity strategy
+      capacity:
+        metrics: [cpu, memory, disk, network]
+        auto_scale: true
+        scale_up_threshold: 80
+        scale_down_threshold: 40
+        load_test_frequency: monthly
+    framework_generic: |
+      # FAIL: Black Friday traffic spike. No load testing done. No auto-scaling.
+      # The service goes down at 2x normal traffic. Recovery takes hours.
+      # PASS: Load testing at 2x peak every month. Auto-scaling configured at 80%
+      # CPU. Black Friday capacity plan reviewed and approved in September.
+
+  # ── COST OPTIMIZATION (1 rule) ──────────────────────────────────────────────
+
+  - id: cost-optimization
+    severity: advanced
+    rule: "Tag all cloud resources with owner, project, cost center, and environment. Monitor and eliminate unused resources (orphaned volumes, idle load balancers, unattached IPs). Rightsize continually — over-provisioning is waste. Use reserved instances or savings plans for stable, predictable workloads (target 70% coverage). Review cost reports weekly at the team level."
+    framework_code: |
+      # FAIL — no tags, no cost monitoring
+      resources:
+        - type: ec2
+          tags: {}
+        - type: rds
+          tags: {}
+      cost_optimization: {}
+      # PASS — fully tagged, monitored, right-sized
+      cost_optimization:
+        tagging:
+          required_tags:
+            - owner
+            - project
+            - cost_center
+            - environment
+          enforcement: "deny_create_untagged"
+        monitoring:
+          unused_resources:
+            cadence: weekly
+            channels: ["#cost-alerts"]
+          right_sizing:
+            cadence: monthly
+            auto_apply: false  # Review first
+        reserved_instances:
+          coverage_target: 70
+          term: "1 year"
+          next_review: "2026-07-01"
+        review:
+          cadence: weekly
+          team_slack: "#eng-cost"
+    framework_config: |
+      # FAIL — no cost allocation
+      cost:
+        tagging: {}
+      # PASS — cost allocation strategy
+      cost:
+        tagging:
+          required: [owner, project, cost_center, environment]
+          deny_untagged: true
+        monitoring:
+          unused_instances: true
+          orphaned_volumes: true
+          idle_load_balancers: true
+        reserved_instances:
+          enabled: true
+          target_coverage: "70%"
+    framework_generic: |
+      # FAIL: 50 EC2 instances with no tags. Nobody knows who owns them or what
+      # they do. Can't delete any because "someone might be using it."
+      # FAIL: 200GB orphaned EBS volumes from terminated instances. Paying for
+      # storage that holds nothing.
+      # PASS: Every resource tagged with owner + project + cost_center.
+      # Weekly report shows orphaned resources for cleanup. 70% RI coverage.
+
+  # ── DEPENDENCY MANAGEMENT (1 rule) ──────────────────────────────────────────
+
+  - id: dependency-management
+    severity: advanced
+    rule: "Pin dependency versions for reproducible builds (use lockfiles). Scan all dependencies for known vulnerabilities (CVE) as part of CI. Fail the build on critical or high severity vulnerabilities. Update dependencies on a regular cadence (monthly or per sprint). Document breaking-change upgrade plans. Remove unused dependencies."
+    framework_code: |
+      # FAIL — unpinned versions, no scanning
+      dependencies:
+        flask: "*"
+        requests: "latest"
+      # PASS — pinned, scanned, maintained
+      dependencies:
+        pinned: true
+        lockfile: requirements.txt.lock
+        vulnerability_scanning:
+          enabled: true
+          severity_threshold: high
+          block_on_critical: true
+          tool: trivy
+        update_policy:
+          cadence: monthly
+          review: team
+          auto_approve_patch: true
+    framework_config: |
+      # FAIL — no dependency controls
+      dependency_management: {}
+      # PASS — managed dependencies
+      dependency_management:
+        pinning: true
+        lockfile: true
+        scan_cadence: every_commit
+        block_failures: true
+        update_cadence: monthly
+    framework_generic: |
+      # FAIL: flask: "*" — deploys flask 8.0 on Monday, everything breaks.
+      # The wildcard means every build is a gamble.
+      # FAIL: No CVE scanning. A critical vulnerability in requests 2.31.0
+      # (CVE-2024-1234) has been in production for 6 months.
+      # PASS: Every dependency pinned in requirements.txt.lock. CI runs
+      # trivy on every commit. Critical CVEs block the build.
+
+  # ── FEATURE FLAGS (1 rule) ──────────────────────────────────────────────────
+
+  - id: feature-flags
+    severity: advanced
+    rule: "Use feature flags for gradual rollouts and kill switches. Never deploy incomplete features directly to users. Separate flag configuration from application code. Remove flags once the feature is fully rolled out (max flag age 90 days). Log all flag evaluations for observability. Use percentage rollouts and targeting rules."
+    framework_code: |
+      # FAIL — no feature flags, deploying incomplete features directly
+      deploy:
+        incomplete_feature: true
+        exposed_to_all: true
+      # PASS — feature flags for gradual rollout
+      feature_flags:
+        provider: launchdarkly
+        flags:
+          new_checkout:
+            rollout_percentage: 25
+            kill_switch: true
+            targeting_rules:
+              - ["internal", 100]
+              - ["beta", 50]
+              - ["general", 25]
+          dark_mode:
+            rollout_percentage: 100
+            status: FULLY_ROLLED_OUT
+            cleanup_scheduled: "2026-07-01"
+        cleanup_policy:
+          max_flag_age_days: 90
+          review_cadence: monthly
+    framework_config: |
+      # FAIL — no feature flag system
+      feature_flags: {}
+      # PASS — complete feature flag strategy
+      feature_flags:
+        provider: launchdarkly
+        evaluation_logging: true
+        kill_switch_enabled: true
+        max_flag_age: 90d
+        cleanup_review: monthly
+    framework_generic: |
+      # FAIL: New billing flow deployed to all users on day 1. It has a bug that
+      # double-charges customers. The only rollback option is a full redeploy.
+      # FAIL: Old feature flags never cleaned up. 47 stale flags in the system.
+      # Nobody knows which ones still do anything.
+      # PASS: New billing flow behind a feature flag. 10% rollout day 1, 25% day 3,
+      # 50% day 5, 100% day 7 with monitoring. Kill switch available at all times.
+
+  # ── RUNBOOK DOCUMENTATION (1 rule) ──────────────────────────────────────────
+
+  - id: runbook-documentation
+    severity: advanced
+    rule: "Every operational procedure must have a documented runbook in version control. Runbooks include: purpose, prerequisites, step-by-step instructions, expected outputs, rollback procedures, and escalation contacts. Test runbooks at least annually. Store runbooks alongside the code they operate on. Every alert must link to its runbook."
+    framework_code: |
+      # FAIL — no runbooks, implicit knowledge
+      runbooks: []
+      # PASS — complete runbook documentation
+      runbooks:
+        - procedure: "Deploy new version"
+          path: "runbooks/deploy.md"
+          last_tested: "2026-05-20"
+          last_updated: "2026-05-20"
+          contacts: ["#ops-deploy"]
+        - procedure: "Database failover"
+          path: "runbooks/db-failover.md"
+          last_tested: "2026-04-15"
+        - procedure: "Incident response"
+          path: "runbooks/incident-response.md"
+          includes: [severity_matrix, war_room_setup, postmortem_template]
+        - procedure: "Certificate rotation"
+          path: "runbooks/cert-rotation.md"
+          last_tested: "2026-03-01"
+    framework_config: |
+      # FAIL — no operational docs
+      documentation: {}
+      # PASS — runbook requirements
+      documentation:
+        runbooks_required: true
+        storage: git
+        test_cadence: annually
+        alert_link_required: true
+    framework_generic: |
+      # FAIL: "Ask Bob how to restart the service" — tribal knowledge.
+      # Bob is on vacation. The service is down. Nobody knows the restart procedure.
+      # FAIL: Runbook exists but hasn't been updated since 2021. The commands are
+      # wrong. The screenshots show a different UI.
+      # PASS: Every operational procedure has a tested, up-to-date runbook in
+      # the runbooks/ directory next to the code. Runbooks are tested annually
+      # as part of the chaos engineering drill.
