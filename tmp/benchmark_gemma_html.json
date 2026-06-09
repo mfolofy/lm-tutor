@@ -1,0 +1,44 @@
+[
+  {
+    "task": "html",
+    "condition": "raw",
+    "run": 0,
+    "violations": 9,
+    "passed": false
+  },
+  {
+    "task": "html",
+    "condition": "raw",
+    "run": 1,
+    "violations": 8,
+    "passed": false
+  },
+  {
+    "task": "html",
+    "condition": "raw",
+    "run": 2,
+    "violations": 9,
+    "passed": false
+  },
+  {
+    "task": "html",
+    "condition": "class",
+    "run": 0,
+    "violations": 6,
+    "passed": false
+  },
+  {
+    "task": "html",
+    "condition": "class",
+    "run": 1,
+    "violations": 9,
+    "passed": false
+  },
+  {
+    "task": "html",
+    "condition": "class",
+    "run": 2,
+    "violations": 8,
+    "passed": false
+  }
+]

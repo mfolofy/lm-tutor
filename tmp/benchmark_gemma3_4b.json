@@ -1,0 +1,170 @@
+[
+  {
+    "task": "react",
+    "condition": "raw",
+    "run": 0,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "react",
+    "condition": "raw",
+    "run": 1,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "react",
+    "condition": "raw",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "react",
+    "condition": "class",
+    "run": 0,
+    "violations": 3,
+    "passed": false
+  },
+  {
+    "task": "react",
+    "condition": "class",
+    "run": 1,
+    "violations": 2,
+    "passed": false
+  },
+  {
+    "task": "react",
+    "condition": "class",
+    "run": 2,
+    "violations": 2,
+    "passed": false
+  },
+  {
+    "task": "json",
+    "condition": "raw",
+    "run": 0,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "json",
+    "condition": "raw",
+    "run": 1,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "json",
+    "condition": "raw",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "json",
+    "condition": "class",
+    "run": 0,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "json",
+    "condition": "class",
+    "run": 1,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "json",
+    "condition": "class",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "svg",
+    "condition": "raw",
+    "run": 0,
+    "violations": 1,
+    "passed": false
+  },
+  {
+    "task": "svg",
+    "condition": "raw",
+    "run": 1,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "svg",
+    "condition": "raw",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "svg",
+    "condition": "class",
+    "run": 0,
+    "violations": 3,
+    "passed": false
+  },
+  {
+    "task": "svg",
+    "condition": "class",
+    "run": 1,
+    "violations": 2,
+    "passed": false
+  },
+  {
+    "task": "svg",
+    "condition": "class",
+    "run": 2,
+    "violations": 2,
+    "passed": false
+  },
+  {
+    "task": "markdown",
+    "condition": "raw",
+    "run": 0,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "markdown",
+    "condition": "raw",
+    "run": 1,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "markdown",
+    "condition": "raw",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  },
+  {
+    "task": "markdown",
+    "condition": "class",
+    "run": 0,
+    "violations": 1,
+    "passed": false
+  },
+  {
+    "task": "markdown",
+    "condition": "class",
+    "run": 1,
+    "violations": 1,
+    "passed": false
+  },
+  {
+    "task": "markdown",
+    "condition": "class",
+    "run": 2,
+    "violations": 0,
+    "passed": true
+  }
+]
