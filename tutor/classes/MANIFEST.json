@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "classes": [
+    {
+      "id": "brushes",
+      "version": "1.3",
+      "domain": "ui-ux",
+      "rules_count": 12,
+      "standards": ["WCAG 2.2"],
+      "description": "Accessible UI patterns — color contrast, focus order, ARIA landmarks"
+    },
+    {
+      "id": "code-review",
+      "version": "1.1",
+      "domain": "code-quality",
+      "rules_count": 22,
+      "standards": ["IEEE 1028", "OWASP Top 10 2025"],
+      "description": "Code review best practices — security, correctness, style"
+    },
+    {
+      "id": "prompt-design",
+      "version": "1.0",
+      "domain": "llm-safety",
+      "rules_count": 15,
+      "standards": ["OWASP LLM Top 10"],
+      "description": "Prompt injection defense, output sanitization, role confinement"
+    },
+    {
+      "id": "audit",
+      "version": "1.0",
+      "domain": "compliance",
+      "rules_count": 18,
+      "standards": ["NIST SP 800-53", "SOC2"],
+      "description": "Tamper-evident logging, retention, evidence collection"
+    },
+    {
+      "id": "security",
+      "version": "2.0",
+      "domain": "app-security",
+      "rules_count": 18,
+      "standards": ["OWASP Top 10 2025"],
+      "description": "Input validation, auth, session management, crypto"
+    },
+    {
+      "id": "architect",
+      "version": "1.0",
+      "domain": "architecture",
+      "rules_count": 10,
+      "standards": ["NIST SP 800-53"],
+      "description": "Threat modeling, data flow diagrams, trust boundaries"
+    },
+    {
+      "id": "defense",
+      "version": "0.5",
+      "domain": "app-security",
+      "rules_count": 8,
+      "standards": ["OWASP Top 10 2025"],
+      "description": "Defense-in-depth, WAF rules, rate limiting"
+    },
+    {
+      "id": "perf",
+      "version": "0.5",
+      "domain": "performance",
+      "rules_count": 6,
+      "standards": [],
+      "description": "Response time budgets, caching strategy, query optimization"
+    },
+    {
+      "id": "test",
+      "version": "0.5",
+      "domain": "code-quality",
+      "rules_count": 7,
+      "standards": [],
+      "description": "Test pyramid, property-based testing, mutation testing"
+    }
+  ]
+}
