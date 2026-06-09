@@ -1,0 +1,2 @@
+# No runtime dependencies beyond stdlib.
+# Grader uses Python re (stdlib) only.
