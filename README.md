@@ -25,10 +25,10 @@ result with a deterministic rules engine.
 
 ---
 
-> **43% fewer violations on broken training data — 0% on clean data.**
-> DeepSeek V4 Flash: HTML/WCAG (~14 raw → ~8 after `tutor learn` injection).
-> Python/PEP 8: already clean, no effect needed. Injection's impact is
-> proportional to how broken the training data is for the target domain.
+> **62% fewer violations on broken data — 0% on clean data.**
+> DeepSeek V4 Flash: HTML/WCAG (~16 raw → ~6 after `tutor learn` injection,
+> 5-run average). Python/PEP 8: already clean, no effect needed. Injection's
+> impact is proportional to how broken the training data is for the domain.
 > Full methodology at **[docs/benchmark-methodology.md](docs/benchmark-methodology.md)**.
 
 ---

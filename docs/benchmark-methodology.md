@@ -94,6 +94,18 @@ Graded via `tutor eval --class brushes` (deterministic, 38 rules).
 | **All tasks** | **2.8** | **2.4** | — |
 | **HTML only** | **14.0** | **8.0** | **-43%** |
 
+### Booster Comparison — DeepSeek V4 Flash HTML (5 runs)
+
+| Condition | Avg violations | vs Raw | vs Class |
+|-----------|---------------|--------|----------|
+| Raw | 15.8 | — | — |
+| Class | 6.0 | **-62%** | — |
+| Booster (class + scratchpad) | 5.4 | **-66%** | -10% |
+
+The `[RULE]` injection does the heavy lifting (62% reduction). The Booster's
+scratchpad reasoning adds a modest 10% improvement. For Phase 0, class alone
+is sufficient — Booster optimization is Phase 3 territory.
+
 ### Gemma 3 4B (~4B, HumanEval 72.1)
 
 | Task | Raw (avg) | Class (avg) | Delta |

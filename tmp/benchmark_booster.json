@@ -1,0 +1,92 @@
+[
+  {
+    "condition": "raw",
+    "run": 0,
+    "violations": 14,
+    "passed": false
+  },
+  {
+    "condition": "raw",
+    "run": 1,
+    "violations": 16,
+    "passed": false
+  },
+  {
+    "condition": "raw",
+    "run": 2,
+    "violations": 18,
+    "passed": false
+  },
+  {
+    "condition": "raw",
+    "run": 3,
+    "violations": 13,
+    "passed": false
+  },
+  {
+    "condition": "raw",
+    "run": 4,
+    "violations": 18,
+    "passed": false
+  },
+  {
+    "condition": "class",
+    "run": 0,
+    "violations": 6,
+    "passed": false
+  },
+  {
+    "condition": "class",
+    "run": 1,
+    "violations": 1,
+    "passed": false
+  },
+  {
+    "condition": "class",
+    "run": 2,
+    "violations": 6,
+    "passed": false
+  },
+  {
+    "condition": "class",
+    "run": 3,
+    "violations": 11,
+    "passed": false
+  },
+  {
+    "condition": "class",
+    "run": 4,
+    "violations": 6,
+    "passed": false
+  },
+  {
+    "condition": "booster",
+    "run": 0,
+    "violations": 12,
+    "passed": false
+  },
+  {
+    "condition": "booster",
+    "run": 1,
+    "violations": 1,
+    "passed": false
+  },
+  {
+    "condition": "booster",
+    "run": 2,
+    "violations": 2,
+    "passed": false
+  },
+  {
+    "condition": "booster",
+    "run": 3,
+    "violations": 7,
+    "passed": false
+  },
+  {
+    "condition": "booster",
+    "run": 4,
+    "violations": 5,
+    "passed": false
+  }
+]
