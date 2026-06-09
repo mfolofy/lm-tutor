@@ -22,11 +22,11 @@ correct pattern in the attention window, shifting the output distribution.
 
 | Model | Params | Tier | External Score |
 |-------|--------|------|----------------|
-| Claude Opus 4.8 | Frontier | Ultra | HumanEval ~92% |
-| Claude Sonnet 4.6 | ~200B | High | HumanEval ~89% |
-| DeepSeek Reasoner | ~200B? | Pro-tier | (reasoning model) |
-| DeepSeek V4 Flash | ~37B | Mid | HumanEval ~85%, MMLU ~78% |
-| Gemma 3 4B Instruct | ~4B | Edge | HumanEval 72.1% |
+| Claude Opus 4.8 | Undisclosed | Ultra | Frontier (Anthropic) |
+| Claude Sonnet 4.6 | Undisclosed | High | (Anthropic) |
+| DeepSeek V4 Pro | 1.6T total / 49B active | Pro | MoE (DeepSeek) |
+| DeepSeek V4 Flash | 284B total / 13B active | Mid | MoE (DeepSeek) |
+| Gemma 3 4B | 4B dense | Edge | Google |
 
 External scores sourced from model publishers and LMSys Chatbot Arena. These
 establish the **independent rating** — a measure of capability collected by
@@ -138,13 +138,13 @@ This is the inverse validation of the thesis: injection's effectiveness is
 
 ### Full Tier Comparison (HTML task)
 
-| Model | Tier | Raw | Class | Reduction |
-|-------|------|-----|-------|-----------|
-| Gemma 3 4B (4B) | Edge | 8.7 | 7.7 | **12%** |
-| DeepSeek V4 Flash (37B) | Mid | 14.0 | 5.0 | **64%** |
-| DeepSeek Reasoner (~200B?) | Pro-tier | 13.0 | 3.0 | **77%** |
-| Claude Sonnet 4.6 (~200B) | High | 6.0 | 1.0 | **83%** |
-| Claude Opus 4.8 (frontier) | Ultra | 8.0 | 3.0 | **63%** |
+| Model | Params | Tier | Raw | Class | Reduction |
+|-------|--------|------|-----|-------|-----------|
+| Gemma 3 4B | 4B dense | Edge | 8.7 | 7.7 | **12%** |
+| DeepSeek V4 Flash | 284B/13B MoE | Mid | 14.0 | 5.0 | **64%** |
+| Claude Sonnet 4.6 | Undisclosed | High | 6.0 | 1.0 | **83%** |
+| Claude Opus 4.8 | Undisclosed | Ultra | 8.0 | 3.0 | **63%** |
+| DeepSeek V4 Pro | 1.6T/49B MoE | Pro | 15.0 | 0.0 | **100%** |
 
 **Every model above the capability floor improves.** The effect is not
 limited to mid-tier models — it holds across all 5 tiers tested. The strongest
@@ -231,10 +231,10 @@ expensive).
 | Tier | Model | Training Data Quality | Predicted Reduction | Status |
 |------|-------|----------------------|--------------------|--------|
 | Edge | Gemma 3 4B (4B) | Low | 10-20% | ✅ 12% (confirmed) |
-| Mid | DeepSeek V4 Flash (37B) | Medium | 40-60% | ✅ 64% (confirmed) |
-| Pro | DeepSeek Reasoner (~200B) | High | — | ✅ 77% (confirmed) |
-| High | Claude Sonnet 4.6 (~200B) | Higher | — | ✅ 83% (confirmed) |
-| Ultra | Claude Opus 4.8 (frontier) | Highest | <15% | ✅ 63% (confirmed — higher than predicted) |
+| Mid | DeepSeek V4 Flash (284B/13B) | Medium | 40-60% | ✅ 64% (confirmed) |
+| High | Claude Sonnet 4.6 | Higher | — | ✅ 83% (confirmed) |
+| Ultra | Claude Opus 4.8 | Highest | <15% | ✅ 63% (higher than predicted) |
+| Pro | DeepSeek V4 Pro (1.6T/49B) | Highest | — | ✅ 100% (single run) |
 
 If Pro ≈ Flash: the effect is model-capability-driven, not training-data-driven.
 If Pro < Flash: training data quality is the dominant variable.

@@ -9,11 +9,11 @@ The model already knows how to write good code — it just needs steering.
 
 ```
 Tier     Model              Raw → Class   Reduction
-Edge     Gemma 3 4B         8.7 → 7.7     12%
-Mid      DeepSeek V4 Flash  14.0 → 5.0    64%
-Pro      DeepSeek Reasoner  13.0 → 3.0    77%
-High     Claude Sonnet 4.6  6.0 → 1.0     83%
-Ultra    Claude Opus 4.8    8.0 → 3.0     63%
+Edge     Gemma 3 4B (4B)             8.7 → 7.7   12%
+Mid      DeepSeek V4 Flash (284B/13B MoE)  14.0 → 5.0  64%
+High     Claude Sonnet 4.6 (undisclosed)  6.0 → 1.0   83%
+Ultra    Claude Opus 4.8 (undisclosed)    8.0 → 3.0   63%
+Pro      DeepSeek V4 Pro (1.6T/49B MoE)   15.0 → 0.0  100%
 ```
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
@@ -75,7 +75,7 @@ where training fails.
 |-------|------|-----------|
 | Gemma 3 4B | Edge (~72% HumanEval) | -12% |
 | DeepSeek V4 Flash | Mid (~85%) | -38% avg, -59% with Booster |
-| DeepSeek Reasoner | Pro | **-77%** |
+| DeepSeek V4 Pro | Pro | **-100%** (zero violations) |
 | Claude Sonnet 4.6 | High | **-83%** |
 | Claude Opus 4.8 | Frontier | **-63%** |
 
