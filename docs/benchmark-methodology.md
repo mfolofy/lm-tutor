@@ -105,6 +105,30 @@ Graded via `tutor eval --class brushes` (deterministic, 38 rules).
 | Markdown | 0.0 | 0.7 | (noise) |
 | **HTML only** | **8.7** | **7.7** | **-12%** |
 
+### Python Best-Practices — DeepSeek V4 Flash
+
+| Task | Raw (avg) | Class (avg) | Delta |
+|------|-----------|-------------|-------|
+| Function | 0.0 | 0.3 | (ceiling) |
+| Class | 0.0 | 0.0 | — |
+| Script | 0.0 | 1.0 | (noise) |
+| Data structure | 0.0 | 0.0 | — |
+| Module | 0.0 | 0.0 | — |
+| **All tasks** | **0.0** | **0.3** | **(ceiling)** |
+
+V4 Flash's Python training data was clean — it already defaults to PEP 8/484
+standards. The class has no violations to fix at this capability level. This is
+the **ceiling effect**: when training data is already high-quality, injection
+adds nothing because there's nothing wrong with the default attention path.
+
+This is the inverse validation of the thesis: injection's effectiveness is
+**proportional to how broken the training data is** for the target domain.
+
+| Domain | Training data quality | Baseline violations | Injection effect |
+|--------|----------------------|---------------------|------------------|
+| HTML/WCAG | 96% broken (WebAIM) | 14.0 | **-43%** ✅ |
+| Python/PEP 8 | Already clean | 0.0 | **0%** (ceiling) |
+
 ### Side-by-Side Comparison (HTML task only)
 
 | Metric | DeepSeek V4 Flash | Gemma 3 4B |

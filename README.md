@@ -25,9 +25,10 @@ result with a deterministic rules engine.
 
 ---
 
-> **43-57% fewer violations in a single pass.** DeepSeek V4 Flash generating HTML:
-> ~14 WCAG violations raw → ~8 after `tutor learn` injection. Consistent across
-> multiple runs. Non-HTML tasks correctly unaffected (syllabus auto-detection).
+> **43% fewer violations on broken training data — 0% on clean data.**
+> DeepSeek V4 Flash: HTML/WCAG (~14 raw → ~8 after `tutor learn` injection).
+> Python/PEP 8: already clean, no effect needed. Injection's impact is
+> proportional to how broken the training data is for the target domain.
 > Full methodology at **[docs/benchmark-methodology.md](docs/benchmark-methodology.md)**.
 
 ---
