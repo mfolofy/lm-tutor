@@ -187,6 +187,122 @@ determines how far above the floor the model performs. They're not competing —
 they're multiplicative. A model with good training (high floor) + good steering
 (high lift) outperforms either alone.
 
+## Test Plan by Model Tier
+
+The benchmark currently covers Flash (mid) and a small 4B model. To fully
+validate the thesis, every tier needs a test. Here's the plan:
+
+### Tier 1: Flash (tested ✅)
+
+**Model:** DeepSeek V4 Flash (~37B, HumanEval ~85%)
+**Access:** DeepSeek API (`deepseek-chat`)
+**Result:** 62% reduction on HTML (5-run avg). Python: ceiling (already clean).
+**Thesis prediction:** Moderate improvement — mid-tier model with decent
+training data. Latent capability exists but isn't buried deep.
+
+### Tier 2: Pro (needs testing)
+
+**Model:** DeepSeek V4 Pro (~200B+??, HumanEval ~90%)
+**Access:** DeepSeek API (`deepseek-pro`)
+**Thesis prediction:** Smaller improvement than Flash. Pro has cleaner training
+data and better attention allocation — less room for injection to improve.
+Expected: 20-40% reduction.
+**Counter-prediction (if thesis is wrong):** Pro shows MORE improvement than
+Flash, meaning the effect scales with model intelligence, not training data
+brokenness.
+**Protocol:** HTML task, raw vs class, 5 runs. ~$1-2 in API costs.
+
+### Tier 3: Opus (needs testing)
+
+**Model:** Claude Opus 4.8 (frontier, HumanEval ~92%)
+**Access:** OpenRouter (`anthropic/claude-opus-4-8`) or direct API
+**Thesis prediction:** Minimal improvement (<15%). Opus has the cleanest
+training data and the most sophisticated attention allocation. The model already
+defaults to correct output — injection has little to find.
+**Counter-prediction (if thesis is wrong):** Opus shows 30%+ improvement,
+meaning even frontier models have substantial latent capability that training
+data quality left buried.
+**Protocol:** HTML task, raw vs class, 5 runs. ~$5-15 in API costs (Opus is
+expensive).
+
+### Prediction Table
+
+| Tier | Model | Training Data Quality | Predicted Reduction | Status |
+|------|-------|----------------------|--------------------|--------|
+| Edge | Gemma 3 4B | Low | 10-20% | ✅ 12% (confirmed) |
+| Flash | DeepSeek V4 Flash | Medium | 40-60% | ✅ 62% (confirmed) |
+| Pro | DeepSeek V4 Pro | High | 20-40% | ⏳ needed |
+| Opus | Claude Opus 4.8 | Highest | <15% | ⏳ needed |
+
+If Pro ≈ Flash: the effect is model-capability-driven, not training-data-driven.
+If Pro < Flash: training data quality is the dominant variable.
+If Pro > Flash: the effect scales purely with intelligence — strongest thesis
+validation.
+
+**Recommended next test:** Pro tier. One API key, one afternoon, ~$2, tightens
+the thesis significantly.
+
+## Peer Review — Claude Opus 4.8
+
+We asked a frontier model (Claude Opus 4.8) to assess the thesis directly.
+Summary of its critique:
+
+### On novelty
+"The core thesis is not novel as stated — it's a repackaging of in-context
+learning and prompt/instruction steering. Activation steering / representation
+engineering does exactly the 'capability is latent, steer toward it' thing at
+the activation level. The claim that training sets a floor and inference-time
+conditioning determines realized performance is the premise behind the entire
+prompt-engineering literature."
+
+**Frame as:** "An efficient, measurable elicitation technique with a
+capability-floor characterization" — not as overturning the field's view.
+
+### On confounds
+Our three data points vary on three axes simultaneously (domain, task
+difficulty, model). The Python 0% could be ceiling — or it could mean the
+injection format doesn't transfer. WCAG may be a **uniquely easy case**:
+violations are shallow pattern substitutions that don't require reasoning.
+
+**Key question:** "WCAG compliance may be a uniquely easy case because the
+violations are checklist-like and the model genuinely 'knows' the rule but
+defaults to lazy output. That's not a deep finding about latent capability —
+it's a finding about surface-level omission."
+
+### Three experiments we must run
+
+1. **Placebo control injection**: Inject an equally long but irrelevant or
+   wrong `[RULE]` block. If placebo also helps (via attention reallocation),
+   the "steering toward correct pattern" story is wrong and it's just
+   "structured prompting helps." **This can kill the thesis — run it first.**
+
+2. **Difficulty ladder**: Same model, graded task difficulty within one domain.
+   Map the injection-benefit curve. Does it truly show floor -> rising ->
+   ceiling? Prove the inverted-U.
+
+3. **Explicit follow-up**: After generation, ask "did you follow WCAG?" If a
+   single prompt recovers most of the gain, injection is a reminder, not
+   steering.
+
+### On generalization
+Will transfer to **rule-enumerable, omission-based domains** (hardcoded
+secrets, missing input validation). Unlikely to transfer to reasoning-heavy
+domains (logic flaws, auth bypasses) where `[RULE]` reminders won't help and
+may produce false confidence.
+
+"We have a real, measurable applied result and a clean methodology hook
+(token efficiency, automated verifiability via WCAG checkers). That's
+publishable as an empirical elicitation paper. But three confounded data
+points cannot support an inverted-U capability model."
+
+### Action items
+- [ ] **HIGH PRIORITY: Run placebo control injection** — same protocol,
+      wrong rules. If it works, the thesis changes fundamentally.
+- [ ] Run difficulty ladder within HTML domain (simple page -> complex SPA)
+- [ ] Test explicit follow-up prompt on raw output
+- [ ] Test Pro and Opus tiers to disentangle model capability from
+      training data quality
+
 ## Known Limitations
 
 1. **Small sample per cell.** 3 runs per cell, not 20. Results are directional
