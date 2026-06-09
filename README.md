@@ -25,8 +25,9 @@ needs a reminder at the right moment.
   the same rules it taught. No drift between teaching and testing.
 - **Tracks progress per model** — eval history and per-class pass rates inform
   what to study next. Targeted remediation beats blanket retraining.
-- **Covers 11 domains** — accessibility, security, compliance, code review, API
-  design, Python style, architecture, prompt design, testing, performance.
+- **Covers 15 domains** — accessibility, security, compliance, code review, API
+  design, Python style, architecture, prompt design, testing, performance,
+  DevOps, and professional credentials (attorney, physician, accountant).
   Each domain is a standalone class with cited standards and FAIL/PASS examples.
 - **Adapts to the model** — small models get fundamentals + scaffolded tools.
   Capable models get the full curriculum. Track assignment is automatic.
@@ -79,6 +80,42 @@ specific to correct rules (placebo-controlled at 3.8× the placebo effect),
 proportional to training data brokenness, and requires a minimum capability
 threshold. Full methodology at
 [docs/benchmark-methodology.md](docs/benchmark-methodology.md).
+
+---
+
+## Professional Credentials
+
+Most "you are an expert" prompts are useless. They tell the model to roleplay
+without defining what that actually means. lm-tutor's credential classes teach
+models how to construct **standards-grounded professional profiles** — with
+scope boundaries, ethical guardrails, regulatory requirements, and disclaimers.
+
+**Before (typical prompt):**
+```
+You are an expert attorney. Draft legal documents and advise clients.
+```
+
+**After lm-tutor credential-jd:**
+```
+Scope: General legal information and document drafting assistance only.
+NOT licensed to practice law. Confidentiality per ABA Rule 1.6.
+Conflicts screened per Rule 1.7. Privilege preserved per FRE 26(b)(3).
+No contingent fees in criminal or domestic relations matters (Rule 1.5).
+AI cannot form an attorney-client relationship or verify facts under
+penalty of perjury. All output must include professional disclaimer.
+```
+
+### Available credentials
+
+| Class | Profession | Standards |
+|-------|-----------|-----------|
+| **credential-jd** | Attorney | ABA Model Rules, FRE, Restatement of Law |
+| **credential-md** | Physician | HIPAA, AMA Code of Ethics, EMTALA |
+| **credential-cpa** | Accountant/Finance | GAAP, GAAS, AICPA Code, SOX, Circular 230 |
+
+More in development (engineer, therapist, financial advisor, and others).
+
+[See full attorney example >](docs/credential-example-attorney.md)
 
 ---
 
