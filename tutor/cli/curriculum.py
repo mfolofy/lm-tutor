@@ -22,6 +22,7 @@ _TRACK_CURRICULUM = {
     "standard": [
         ("brushes", "UI/UX accessibility — WCAG 2.2"),
         ("python-best-practices", "Python coding standards — PEP 8/484"),
+        ("api-design", "API design — REST/GraphQL/gRPC standards"),
         ("code-review", "Code review patterns — House audit standards"),
         ("prompt-design", "Prompt engineering — Prompt Brush methodology"),
         ("audit", "Audit & compliance — evidence requirements"),
@@ -34,6 +35,7 @@ _TRACK_CURRICULUM = {
     "honors": [
         ("brushes", "UI/UX accessibility — WCAG 2.2"),
         ("python-best-practices", "Python coding standards — PEP 8/484"),
+        ("api-design", "API design — REST/GraphQL/gRPC standards"),
         ("code-review", "Code review patterns — House audit standards"),
         ("prompt-design", "Prompt engineering — Prompt Brush methodology"),
         ("audit", "Audit & compliance — evidence requirements"),

@@ -1,0 +1,871 @@
+# api-design — REST, GraphQL, and gRPC API Design Standards. Ninth class in the School.
+#
+# Source standards: Fielding REST Dissertation, Google API Design Guide, Microsoft REST
+# Guidelines, JSON:API spec, OpenAPI 3.1 spec, GraphQL spec (October 2021), gRPC spec.
+# See SOURCES.md for per-rule citations. Every rule is self-contained: it carries
+# teaching examples (framework_*) AND, where codifiable, a deterministic regex check
+# (check_regex) that the Layer 1 harness runs. No drift between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the Socratic
+# fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~280 tokens for checkable rules (rule lines only; framework examples
+# are not injected at generation time — they back the Socratic fix step).
+#
+# Rules marked with check_regex need a FAIL/PASS test pair in
+# tests/test_api_design.py. Teaching-only rules are tested for content presence only.
+
+class:
+  id: api-design
+  title: "API Design — REST, GraphQL, and gRPC Standards (Fielding, Google, Microsoft, JSON:API)"
+  version: 1.0.0
+  sources:
+    - "Fielding — Architectural Styles and the Design of Network-based Software Architectures (2000)"
+    - "Google API Design Guide (google.aip.dev)"
+    - "Microsoft REST API Guidelines (github.com/microsoft/api-guidelines)"
+    - "JSON:API 1.1 Specification (jsonapi.org)"
+    - "OpenAPI 3.1 Specification (openapis.org)"
+    - "GraphQL Specification (October 2021) (spec.graphql.org)"
+    - "gRPC Specification (grpc.io/docs/guides/)"
+  prerequisites: []
+  target_violations:
+    - "rest-resource-naming"    # Verbs in URLs, inconsistent casing, deep nesting
+    - "http-methods"            # GET mutating state, wrong method for operation
+    - "status-codes"            # Non-standard status codes, raw exceptions
+    - "error-format"            # Inconsistent error bodies, stack traces
+    - "versioning"              # Unversioned public APIs, breaking changes
+    - "idempotency"             # PUT/DELETE not idempotent, missing idempotency-key
+    - "pagination"              # Missing cursor, hardcoded limits, no limits
+    - "authentication"          # API keys in URL/body, non-revocable tokens
+    - "content-type"            # Missing Content-Type/Accept headers
+    - "rate-limiting"           # Missing Retry-After, undocumented limits
+    - "filtering-sorting"       # Inconsistent query param patterns
+    - "hateoas"                 # Missing self/next/prev links
+    - "graphql-naming"          # Wrong case conventions for types/fields
+    - "grpc-patterns"           # Wrong package naming, field numbering, error codes
+    - "api-documentation"       # Missing or stale OpenAPI docs
+    - "request-validation"      # Trusting client input without validation
+    - "deprecation-policy"      # Breaking changes without deprecation notice
+    - "cors-policy"             # Missing or overly permissive CORS
+  estimated_cost_tokens: 360
+  rule_count: 18
+
+rules:
+
+  # ── CORE REST DESIGN (5 rules) ────────────────────────────────────────────
+
+  - id: rest-resource-naming
+    severity: fundamental
+    rule: "Use plural nouns for resources (users, orders), never verbs in URLs (createUser, getOrders). Consistent casing throughout (snake_case or kebab-case). Avoid deep nesting beyond three levels (/a/b/c/d is a violation). Prefer query params for sub-resource filtering over nesting."
+    check_regex: |-
+      ['"/](?:create|get|set|update|delete|find|list)[A-Z][a-z]
+    framework_rest: |
+      # FAIL — verb in URL, camelCase, deep nesting
+      GET /api/v1/createUser
+      POST /api/v1/getOrders
+      GET /api/v1/users/123/orders/456/items/789/reviews
+      GET /api/v1/users/getUserById?id=5
+      # PASS — plural nouns, consistent kebab-case, shallow
+      GET /api/v1/users
+      POST /api/v1/orders
+      GET /api/v1/users/123/orders?status=active
+      GET /api/v1/users/123/orders/456/items
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/getUserDetails/{user_id}")
+      def get_user_details(user_id: int): ...
+      @router.post("/api/v1/createUserOrder")
+      def create_user_order(): ...
+      # PASS
+      @router.get("/api/v1/users/{user_id}")
+      def get_user(user_id: int): ...
+      @router.post("/api/v1/users/{user_id}/orders")
+      def create_order(user_id: int): ...
+    framework_json: |
+      // FAIL
+      { "path": "/api/v1/createUser", "method": "POST" }
+      // PASS
+      { "path": "/api/v1/users", "method": "POST" }
+    framework_config: |
+      # FAIL
+      routes = ["/api/v1/getUserProfile", "/api/v1/listOrders"]
+      # PASS
+      routes = ["/api/v1/users", "/api/v1/orders"]
+
+  - id: http-methods
+    severity: fundamental
+    rule: "Use the correct HTTP method for each operation: GET for read, POST for create, PUT for full replace, PATCH for partial update, DELETE for delete. Never use GET to mutate state. Never use POST for idempotent read-only queries that are semantically GET."
+    framework_rest: |
+      # FAIL — GET mutates state; POST for read; wrong methods
+      GET /api/v1/users/123/activate    # Activates user via GET!
+      POST /api/v1/users/search          # Should use GET /api/v1/users?q=...
+      GET /api/v1/users/delete/123       # Deletion via GET!
+      PUT /api/v1/users/123/email        # Partial update, should be PATCH
+      # PASS
+      POST /api/v1/users/123/activate    # State change via POST
+      GET /api/v1/users?q=term           # Read via GET
+      DELETE /api/v1/users/123           # Deletion via DELETE
+      PATCH /api/v1/users/123            # Partial update via PATCH
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/orders/{id}/cancel")
+      def cancel_order(id: int): ...
+      @router.post("/api/v1/orders/search")
+      def search_orders(): ...
+      # PASS
+      @router.post("/api/v1/orders/{id}/cancel")
+      def cancel_order(id: int): ...
+      @router.get("/api/v1/orders?q=term")
+      def search_orders(): ...
+    framework_json: |
+      // FAIL
+      { "operation": "GET", "path": "/orders/5/pay", "description": "Process payment" }
+      // PASS
+      { "operation": "POST", "path": "/orders/5/pay", "description": "Process payment" }
+    framework_generic: |
+      # FAIL: GET /users/deactivate — deactivates user via GET.
+      # PASS: POST /users/5/deactivate — deactivates user via POST.
+
+  - id: status-codes
+    severity: fundamental
+    rule: "Use standard HTTP status codes precisely: 200 for success, 201 for created, 204 for no content, 400 for bad request, 401 for unauthorized, 403 for forbidden, 404 for not found, 409 for conflict, 422 for validation, 429 for rate limit, 500 for server error. Never return 200 with an error body. Never return 500 for client errors."
+    check_regex: |-
+      (?i)(?:return\s+200|status_code\s*=\s*200|HTTP_200_OK).{0,60}(?:error|fail|invalid|not\s+found)
+    framework_rest: |
+      # FAIL — 200 with error body; 500 for validation; wrong codes
+      HTTP 200 {"error": "User not found"}
+      HTTP 500 {"error": "Missing required field: email"}
+      HTTP 403 {"error": "Invalid input format"}  # 403 is forbidden, not validation
+      HTTP 200 {"success": false, "error": "Rate limit exceeded"}
+      # PASS
+      HTTP 404 {"error": "User not found"}
+      HTTP 422 {"error": "Missing required field: email", "details": [...]}
+      HTTP 429 {"error": "Rate limit exceeded", "retry_after": 30}
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/users/{id}")
+      def get_user(id: int):
+          user = find_user(id)
+          if user is None:
+              return {"error": "not found"}, 200  # 200 with error
+      # PASS
+      @router.get("/api/v1/users/{id}")
+      def get_user(id: int):
+          user = find_user(id)
+          if user is None:
+              raise HTTPException(status_code=404, detail="User not found")
+          return user
+    framework_json: |
+      // FAIL
+      { "statusCode": 200, "body": { "error": "User not found" } }
+      // PASS
+      { "statusCode": 404, "body": { "error": "User not found" } }
+    framework_rest_curl: |
+      # FAIL
+      # $ curl http://api.example.com/v1/users/999
+      # {"status": 200, "error": "not found"}
+      # PASS
+      # $ curl http://api.example.com/v1/users/999
+      # {"status": 404, "error": "not found"}
+
+  - id: error-format
+    severity: fundamental
+    rule: "Return errors in a consistent format: error code (string), human-readable message, optional details array, request_id for correlation, and timestamp. Never return raw stack traces, server paths, database errors, or internal implementation details. Error bodies must be parseable by clients programmatically."
+    check_regex: |-
+      (?i)(?:Traceback|File\s+\"[^\"]+\",\s+line\s+\d+|Stacktrace|at\s+\S+\.\w+\(|Internal\s+Server\s+Error\s+#\d+)
+    framework_rest: |
+      # FAIL — stack trace, server path, inconsistent format
+      HTTP 500 Traceback (most recent call last):
+        File "/app/server/db.py", line 42, in query
+          raise DatabaseError("connection refused")
+      HTTP 400 {"message": "bad request"}  # No code, no request_id, no timestamp
+      HTTP 500 {"error_code": "DB_ERR", "message": "Server error"}  # Missing request_id
+      # PASS — consistent error body
+      HTTP 422 {
+        "error": "VALIDATION_ERROR",
+        "message": "Email format is invalid",
+        "details": [{"field": "email", "reason": "must be a valid email address"}],
+        "request_id": "req_abc123",
+        "timestamp": "2026-06-08T14:30:00Z"
+      }
+    framework_python: |
+      # FAIL
+      except Exception as e:
+          return {"error": str(e)}, 500  # Leaks internal error
+      # PASS
+      except DatabaseError:
+          return {
+              "error": "INTERNAL_ERROR",
+              "message": "An unexpected error occurred",
+              "request_id": request_id,
+              "timestamp": utcnow()
+          }, 500
+    framework_json: |
+      // FAIL
+      { "error": "TypeError: Cannot read property 'id' of undefined" }
+      // PASS
+      { "error": "NOT_FOUND", "message": "Resource not found",
+        "request_id": "req_xyz", "timestamp": "2026-06-08T14:30:00Z" }
+    framework_rest_curl: |
+      # FAIL
+      # $ curl https://api.example.com/v1/users/abc
+      # <html>ValueError: invalid literal for int()</html>
+      # PASS
+      # $ curl https://api.example.com/v1/users/abc
+      # {"error": "VALIDATION_ERROR", "message": "Invalid user ID format",
+      #  "details": [{"field": "user_id", "reason": "must be an integer"}],
+      #  "request_id": "req_abc123", "timestamp": "2026-06-08T14:30:00Z"}
+
+  - id: versioning
+    severity: fundamental
+    rule: "Every public API must include a version identifier, either in the URL path (/v1/, /v2/) or via the Accept header (Accept: application/vnd.api+json;version=1). Never release versionless public APIs. Never break backward compatibility without incrementing the major version. Deprecated versions must have a sunset date."
+    check_regex: |-
+      ['"]/api/(?!v\d[\d.]*/)
+    framework_rest: |
+      # FAIL — no version prefix
+      GET /api/users
+      POST /api/orders
+      GET /api/v1/users/123/comments   # Works, but mixed with unversioned
+      # PASS — versioned
+      GET /api/v1/users
+      POST /api/v2/orders
+      GET /api/v1/users/123
+    framework_python: |
+      # FAIL
+      @router.get("/api/users")
+      def list_users(): ...
+      @router.post("/api/orders")
+      def create_order(): ...
+      # PASS
+      @router.get("/api/v1/users")
+      def list_users(): ...
+      @router.post("/api/v2/orders")
+      def create_order(): ...
+    framework_json: |
+      // FAIL
+      { "routes": [{ "path": "/api/users", "method": "GET" }] }
+      // PASS
+      { "routes": [{ "path": "/api/v1/users", "method": "GET" }] }
+    framework_config: |
+      # FAIL
+      routes = ["/api/users", "/api/orders"]
+      # PASS
+      routes = ["/api/v1/users", "/api/v1/orders"]
+
+  # ── RELIABILITY & CONSISTENCY (4 rules) ────────────────────────────────────
+
+  - id: idempotency
+    severity: advanced
+    rule: "PUT (full replace) and DELETE must be idempotent: calling them multiple times produces the same result as one call. POST should support an Idempotency-Key header for sensitive operations (payments, order creation). The server must deduplicate by key and return the original response for retries."
+    framework_rest: |
+      # FAIL — PUT creates new resource each call; DELETE errors on retry
+      PUT /api/v1/users/123  # Creates user 124 on second call (not idempotent)
+      DELETE /api/v1/orders/456  # Returns 404 on second call
+      POST /api/v1/charges  # No idempotency key — retry causes double charge
+      # PASS — idempotent
+      PUT /api/v1/users/123  # Replaces resource, same result every time
+      DELETE /api/v1/orders/456  # Returns 204 on repeat calls
+      POST /api/v1/charges  # With Idempotency-Key header
+    framework_python: |
+      # FAIL — no idempotency check
+      @router.post("/api/v1/charges")
+      def create_charge(payload: ChargeCreate):
+          charge = Charge(**payload.dict())
+          db.session.add(charge)
+          db.session.commit()
+          return charge
+      # PASS — idempotency key
+      @router.post("/api/v1/charges")
+      def create_charge(payload: ChargeCreate, idempotency_key: str = Header(None)):
+          if idempotency_key and charge_repo.exists_by_key(idempotency_key):
+              return charge_repo.get_by_key(idempotency_key)
+          charge = Charge(**payload.dict(), idempotency_key=idempotency_key)
+          db.session.add(charge)
+          db.session.commit()
+          return charge
+    framework_json: |
+      // FAIL
+      { "endpoint": "POST /charges", "idempotent": false }
+      // PASS
+      { "endpoint": "POST /charges", "idempotent": true,
+        "idempotency_header": "Idempotency-Key", "key_ttl_seconds": 86400 }
+    framework_generic: |
+      # FAIL: POST /charges without idempotency — network retry creates duplicates.
+      # PASS: POST /charges checks Idempotency-Key; retry returns original response.
+
+  - id: pagination
+    severity: advanced
+    rule: "Use cursor-based pagination for list endpoints. Always return next_cursor in the response when more results exist. Accept a limit parameter with a documented default (20) and maximum (100). Never return unbounded result sets. Page-based pagination (?page=1&page=2) is acceptable for stable, small datasets but cursor-based is preferred."
+    framework_rest: |
+      # FAIL — no pagination; page-based for unstable data; no limit cap
+      GET /api/v1/orders  # Returns all orders, unbounded
+      GET /api/v1/orders?page=1  # Page-based on frequently changing data
+      GET /api/v1/orders?limit=100000  # No max cap
+      # PASS — cursor-based with sane limits
+      GET /api/v1/orders?limit=20&cursor=abc123
+      Response: {
+        "data": [...],
+        "next_cursor": "xyz789",
+        "has_more": true,
+        "limit": 20
+      }
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/orders")
+      def list_orders():
+          return Order.query.all()  # Unbounded
+      # PASS
+      @router.get("/api/v1/orders")
+      def list_orders(limit: int = 20, cursor: str = None):
+          limit = min(limit, 100)
+          orders, next_cursor = order_repo.paginate(limit=limit, cursor=cursor)
+          return {"data": orders, "next_cursor": next_cursor, "limit": limit}
+    framework_json: |
+      // FAIL
+      { "endpoint": "GET /orders", "pagination": null }
+      // PASS
+      { "endpoint": "GET /orders", "pagination": { "type": "cursor",
+        "default_limit": 20, "max_limit": 100 } }
+    framework_generic: |
+      # FAIL: GET /orders returns 50K records, no pagination params.
+      # PASS: GET /orders?limit=20&cursor=abc — returns 20 items
+      # with next_cursor for the next page.
+
+  - id: rate-limiting
+    severity: advanced
+    rule: "Always return Retry-After header with 429 Too Many Responses to tell clients when to retry. Include X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset headers on every response (not just 429) so clients can self-throttle. Document rate limits in your API reference (requests per minute/hour, burst vs sustained)."
+    framework_rest: |
+      # FAIL — 429 without retry info; no headers on normal responses
+      HTTP 429 Too Many Requests  # No Retry-After, no headers
+      GET /api/v1/users 200 OK   # No rate limit headers until limit hit
+      # PASS — full rate limit headers on every response
+      GET /api/v1/users
+      HTTP 200 OK
+      X-RateLimit-Limit: 100
+      X-RateLimit-Remaining: 87
+      X-RateLimit-Reset: 1686234000
+      ...
+      HTTP 429 Too Many Requests
+      Retry-After: 30
+      X-RateLimit-Limit: 100
+      X-RateLimit-Remaining: 0
+      X-RateLimit-Reset: 1686234000
+      Body: {"error": "RATE_LIMITED", "message": "Too many requests. Try again in 30s.",
+             "retry_after_seconds": 30, "request_id": "req_abc"}
+    framework_python: |
+      # FAIL — no rate limit enforcement or headers
+      @router.get("/api/v1/users")
+      def list_users():
+          return User.query.all()
+      # PASS — rate limited with headers on every response
+      @router.get("/api/v1/users")
+      def list_users(response: Response):
+          remaining = rate_limiter.remaining(request)
+          response.headers["X-RateLimit-Limit"] = str(rate_limiter.limit)
+          response.headers["X-RateLimit-Remaining"] = str(remaining)
+          response.headers["X-RateLimit-Reset"] = str(rate_limiter.reset_time)
+          if not rate_limiter.check(request):
+              response.headers["Retry-After"] = "30"
+              raise HTTPException(status_code=429, detail="Rate limit exceeded")
+          return User.query.all()
+    framework_config: |
+      # FAIL — no rate limit config, no headers
+      rate_limiting: {}
+      # PASS — documented limits with response headers
+      rate_limiting:
+        response_headers:
+          limit: X-RateLimit-Limit
+          remaining: X-RateLimit-Remaining
+          reset: X-RateLimit-Reset
+          retry_after: Retry-After
+        limits:
+          general: { limit: 100, window: 1m, burst: 200 }
+          sensitive: { limit: 10, window: 1m, burst: 20 }
+    framework_generic: |
+      # FAIL: 429 with no Retry-After — client doesn't know when to retry.
+      # FAIL: No X-RateLimit-* headers on 200 — client learns limits only on 429.
+      # PASS: Headers on every response — client backs off proactively.
+
+  - id: filtering-sorting
+    severity: advanced
+    rule: "Use consistent query parameter patterns for filtering and sorting. Filter with ?status=active&role=admin for equality, and documented operators for comparisons (eq, neq, gt, gte, lt, lte, in, like). Sort with ?sort=field for ascending and ?sort=-field for descending. Document all filterable and sortable fields."
+    framework_rest: |
+      # FAIL — inconsistent; no operator documentation; ad hoc patterns
+      GET /api/v1/users?status_is=active
+      GET /api/v1/orders?from=2026-01-01&to=2026-06-01
+      GET /api/v1/items?sort_by=name&order=asc
+      # PASS — consistent, documented operators
+      GET /api/v1/users?status=active&role=admin&sort=-created_at
+      GET /api/v1/orders?created_at[gte]=2026-01-01&created_at[lte]=2026-06-01
+      GET /api/v1/items?sort=name
+      GET /api/v1/products?category[in]=electronics,books&price[gt]=10
+    framework_python: |
+      # FAIL — ad hoc filter parsing
+      @router.get("/api/v1/orders")
+      def list_orders(status: str = None, from_date: str = None):
+          query = Order.query
+          if status:
+              query = query.filter(Order.status == status)
+          if from_date:
+              query = query.filter(Order.created_at >= from_date)
+          return query.all()
+      # PASS — documented filter operators
+      @router.get("/api/v1/orders")
+      def list_orders(filters: FilterParams = Depends()):
+          return order_service.search(filters.to_dict())
+    framework_json: |
+      // FAIL — undocumented filters
+      { "endpoint": "GET /users", "filterable_fields": [] }
+      // PASS — documented
+      { "endpoint": "GET /users", "filterable_fields": ["status", "role", "created_at"],
+        "sortable_fields": ["name", "created_at", "email"],
+        "operators": ["eq", "neq", "gt", "gte", "lt", "lte", "in", "like"] }
+    framework_generic: |
+      # FAIL: ?from=...&to=... — ad hoc, undocumented, not reusable.
+      # PASS: ?created_at[gte]=...&created_at[lte]=... — consistent operator syntax.
+
+  # ── SECURITY & HEADERS (3 rules) ─────────────────────────────────────────
+
+  - id: authentication
+    severity: fundamental
+    rule: "Use Bearer tokens in the Authorization header for authentication. Never accept API keys or tokens in URL query parameters, request bodies, or cookies. Tokens must be revocable (server-side invalidation) and time-limited (expiration). Use short-lived access tokens (15-60 min) with refresh tokens for sessions."
+    check_regex: |-
+      (?i)(?:api[_-]?key|token|apikey|secret)\s*=\s*['"]?\{?[^'"}>\s]{8,}['"]?\s*(?:&|$|\))
+    framework_rest: |
+      # FAIL — API key in URL; token in body; permanent token
+      GET /api/v1/users?api_key=abc123def456
+      POST /api/v1/orders { "token": "eyJhbGciOiJIUzI1NiIs..." }
+      Authorization: Token my-permanent-token-12345
+      # PASS — Bearer token in Authorization header
+      GET /api/v1/users
+      Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/users")
+      def list_users(api_key: str = Query(None)):
+          if not validate_api_key(api_key):
+              raise HTTPException(status_code=401)
+          return User.query.all()
+      # PASS
+      @router.get("/api/v1/users")
+      def list_users(authorization: str = Header(None)):
+          token = authorization.removeprefix("Bearer ")
+          user = verify_token(token)
+          return User.query.all()
+    framework_json: |
+      // FAIL
+      { "auth_method": "query_param", "param_name": "api_key" }
+      // PASS
+      { "auth_method": "bearer_token", "header": "Authorization",
+        "token_type": "JWT", "token_ttl_minutes": 15,
+        "refresh_enabled": true, "revocable": true }
+    framework_generic: |
+      # FAIL: https://api.example.com/v1/data?api_key=sk-abc123
+      # API key in URL: logged in server logs, leaked in referrer headers.
+      # PASS: Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+
+  - id: content-type
+    severity: fundamental
+    rule: "Always set Content-Type and Accept headers appropriately. REST APIs should prefer application/json. Never return HTML, plain text, or XML by default. Version via Accept header (application/vnd.api+json;version=1) or URL path. The Content-Type must match the actual response body format."
+    framework_rest: |
+      # FAIL — missing or wrong content types
+      GET /api/v1/users  # Returns HTML
+      Content-Type: text/html
+      POST /api/v1/orders  # No Content-Type header
+      GET /api/v1/users/1  # Content-Type: application/xml (API is JSON)
+      # PASS
+      GET /api/v1/users
+      Accept: application/json
+      Response: Content-Type: application/json
+      POST /api/v1/orders
+      Content-Type: application/json
+      Accept: application/json
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/users")
+      def list_users():
+          return "<ul><li>User</li></ul>"  # Returns HTML, not JSON
+      # PASS
+      @router.get("/api/v1/users")
+      def list_users():
+          return {"data": [user.to_dict() for user in User.query.all()]}
+    framework_config: |
+      # PASS — strict content type config
+      api:
+        default_content_type: application/json
+        default_accept: application/json
+        strict_content_type: true
+        version_header: Accept
+        version_format: application/vnd.api+json;version={version}
+    framework_generic: |
+      # FAIL: Response body is JSON but Content-Type is text/html.
+      # FAIL: Accept header is missing — server may return non-JSON.
+      # PASS: Content-Type: application/json; Accept: application/json.
+
+  - id: cors-policy
+    severity: advanced
+    rule: "Configure CORS explicitly per origin. Never use Access-Control-Allow-Origin: * when credentials are involved (cookies, Authorization headers). Restrict allowed methods and headers to the minimum needed. Document CORS policy in API reference. Preflight (OPTIONS) requests must be handled correctly."
+    framework_rest: |
+      # FAIL — wildcard with credentials; overly permissive
+      Access-Control-Allow-Origin: *
+      Access-Control-Allow-Credentials: true
+      Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD
+      Access-Control-Allow-Headers: *
+      # PASS — explicit, scoped
+      Access-Control-Allow-Origin: https://app.example.com
+      Access-Control-Allow-Credentials: true
+      Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+      Access-Control-Allow-Headers: Content-Type, Authorization, Idempotency-Key
+      Access-Control-Max-Age: 86400
+    framework_python: |
+      # FAIL
+      @app.middleware("http")
+      async def cors_middleware(request, call_next):
+          response = await call_next(request)
+          response.headers["Access-Control-Allow-Origin"] = "*"
+          return response
+      # PASS
+      @app.middleware("http")
+      async def cors_middleware(request, call_next):
+          response = await call_next(request)
+          origin = request.headers.get("origin", "")
+          if origin in ALLOWED_ORIGINS:
+              response.headers["Access-Control-Allow-Origin"] = origin
+          return response
+    framework_config: |
+      # FAIL
+      cors:
+        allowed_origins: ["*"]
+        allow_credentials: true
+      # PASS
+      cors:
+        allowed_origins: ["https://app.example.com", "https://admin.example.com"]
+        allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        allowed_headers: ["Content-Type", "Authorization", "Idempotency-Key"]
+        max_age: 86400
+        allow_credentials: true
+    framework_generic: |
+      # FAIL: Access-Control-Allow-Origin: * with credentials. Browsers reject this.
+      # PASS: Explicit origin list. Only trusted domains can make authenticated requests.
+
+  # ── DISCOVERABILITY & DOCUMENTATION (3 rules) ──────────────────────────────
+
+  - id: hateoas
+    severity: warning
+    rule: "Include self, next, prev, and related resource links in responses to make APIs discoverable (Hypermedia as the Engine of Application State). A resource response should tell the client what it can do next without out-of-band knowledge. Not required for internal APIs but strongly encouraged for public APIs."
+    framework_rest: |
+      # FAIL — bare data, no links
+      GET /api/v1/users/123
+      Response: {"id": 123, "name": "Alice", "email": "alice@example.com"}
+      # PASS — with HATEOAS links
+      GET /api/v1/users/123
+      Response: {
+        "data": {"id": 123, "name": "Alice", "email": "alice@example.com"},
+        "links": {
+          "self": "/api/v1/users/123",
+          "orders": "/api/v1/users/123/orders",
+          "profile": "/api/v1/users/123/profile"
+        }
+      }
+    framework_python: |
+      # FAIL
+      @router.get("/api/v1/users/{user_id}")
+      def get_user(user_id: int):
+          user = user_service.get(user_id)
+          return {"id": user.id, "name": user.name}
+      # PASS
+      @router.get("/api/v1/users/{user_id}")
+      def get_user(user_id: int):
+          user = user_service.get(user_id)
+          return {
+              "data": {"id": user.id, "name": user.name, "email": user.email},
+              "links": {
+                  "self": f"/api/v1/users/{user.id}",
+                  "orders": f"/api/v1/users/{user.id}/orders"
+              }
+          }
+    framework_json: |
+      // FAIL — no links
+      { "user": { "id": 5, "name": "Alice" } }
+      // PASS — discoverable
+      { "data": { "id": 5, "name": "Alice" },
+        "links": { "self": "/users/5", "orders": "/users/5/orders" } }
+    framework_generic: |
+      # FAIL: Response has no links — client must hardcode URLs.
+      # PASS: Response includes self/orders/profile links — client follows links.
+
+  - id: api-documentation
+    severity: fundamental
+    rule: "Every public API endpoint must have OpenAPI (Swagger) documentation that includes: summary, description, request/response schemas, parameter types, possible status codes, and authentication requirements. Keep docs in sync with implementation — stale documentation is as harmful as no documentation."
+    framework_rest: |
+      # FAIL — undocumented endpoint
+      POST /api/v1/charges
+      # No OpenAPI spec, no description, no schema
+      # PASS — documented
+      POST /api/v1/charges
+      OpenAPI:
+        summary: Create a one-time charge
+        description: Creates a charge for the given amount and payment method.
+        requestBody: ChargeCreate (ref: schemas/ChargeCreate.yaml)
+        responses:
+          201: Charge (ref: schemas/Charge.yaml)
+          400: ErrorBody
+          422: ErrorBody
+        security: [{ bearerAuth: [] }]
+    framework_python: |
+      # FAIL — no docstrings or schema
+      @router.post("/api/v1/charges")
+      def create_charge(amount: float, currency: str, source: str):
+          return charge_service.charge(amount, currency, source)
+      # PASS — full OpenAPI annotations
+      @router.post("/api/v1/charges", response_model=ChargeResponse,
+                   summary="Create a one-time charge",
+                   responses={400: {"model": ErrorBody}, 422: {"model": ErrorBody}})
+      def create_charge(payload: ChargeCreate):
+          """Create a one-time charge for the given amount and payment method."""
+          return charge_service.charge(payload)
+    framework_config: |
+      # PASS — OpenAPI config
+      openapi:
+        enabled: true
+        path: /docs
+        spec_version: "3.1.0"
+        auto_generate: true
+        authentication: required
+    framework_generic: |
+      # FAIL: POST /charges with no docs — clients must read source to integrate.
+      # PASS: POST /charges with OpenAPI spec — clients can auto-generate SDKs.
+
+  - id: deprecation-policy
+    severity: advanced
+    rule: "Deprecate API versions and fields with a clear policy. Include a Sunset header on deprecated endpoints specifying the removal date. Respond with a Deprecation header (Sunset, deprecation) on every call to a deprecated endpoint. Provide a migration guide and at minimum 6-month transition period for breaking changes."
+    framework_rest: |
+      # FAIL — breaking change with no notice
+      DELETE /api/v1/orders/status  # Removed endpoint, 404, no warning
+      PUT /api/v1/users/email  # Changed response format, no heads up
+      # PASS — deprecation headers
+      GET /api/v1/users
+      Deprecation: true
+      Sunset: Sat, 31 Jan 2027 00:00:00 GMT
+      Link: <https://docs.example.com/v2-migration>; rel="migration"
+      # Or per-version deprecation
+      GET /api/v1/orders
+      Warning: 299 - "v1 is deprecated. Migrate to v2 by 2027-01-31. See docs/api/v2-migration.md"
+    framework_python: |
+      # FAIL
+      @router.delete("/api/v1/old-endpoint")
+      def old_endpoint():
+          raise HTTPException(status_code=410, detail="Removed. No notice given.")
+      # PASS
+      @router.get("/api/v1/users")
+      def list_users(response: Response):
+          response.headers["Deprecation"] = "true"
+          response.headers["Sunset"] = "Sat, 31 Jan 2027 00:00:00 GMT"
+          response.headers["Link"] = '<https://docs.example.com/v2-migration>; rel="migration"'
+          return user_service.list()
+    framework_json: |
+      // FAIL
+      { "endpoint": "GET /v1/old-endpoint", "deprecated": false }
+      // PASS
+      { "endpoint": "GET /v1/old-endpoint", "deprecated": true,
+        "sunset": "2027-01-31", "migration_guide": "/docs/v2-migration" }
+    framework_generic: |
+      # FAIL: Endpoint removed with no warning. Clients break at runtime.
+      # PASS: Deprecation header on every response. Sunset date gives 6+ months.
+      # Migration link guides clients to the new version.
+
+  # ── GRAPHQL (2 rules) ──────────────────────────────────────────────────────
+
+  - id: graphql-naming
+    severity: fundamental
+    rule: "Use PascalCase for GraphQL type names (User, OrderItem, PaymentMethod), camelCase for field names (firstName, orderDate, isActive). Use singular names for single-return queries (user, order) and plural for list queries (users, orders). Enum values must be UPPERCASE (ACTIVE, PENDING, COMPLETED). Use input types for mutations (CreateUserInput) rather than flat argument lists. Implement pagination with the Relay Connection spec (edges/node/pageInfo). Use DataLoader for N+1 prevention."
+    check_regex: |-
+      type\s+[a-z]\w*\s*\{|field\s+\w+:\s*\[\s*[a-z]
+    framework_graphql: |
+      # FAIL — wrong casing, flat mutation args, no pagination
+      type user {            # Should be PascalCase: User
+        FirstName: String     # Should be camelCase: firstName
+        ID: Int               # Should be id
+      }
+      type Mutation {
+        createUser(name: String, email: String, password: String): User
+      }
+      type Query {
+        allUsers: [User]  # No pagination
+      }
+      enum status { active, pending }  # Should be UPPERCASE
+      # PASS — correct naming, input types, connection pagination
+      type User {
+        id: Int
+        firstName: String
+        lastName: String
+        email: String
+        isActive: Boolean
+      }
+      input CreateUserInput {
+        firstName: String!
+        email: String!
+      }
+      type Query {
+        user(id: Int): User
+        users(first: Int = 20, after: String): UserConnection
+      }
+      type Mutation {
+        createUser(input: CreateUserInput!): User
+      }
+      type UserConnection {
+        edges: [UserEdge]
+        pageInfo: PageInfo!
+      }
+      type UserEdge {
+        node: User
+        cursor: String!
+      }
+      type PageInfo {
+        hasNextPage: Boolean!
+        startCursor: String
+        endCursor: String
+      }
+      enum OrderStatus { ACTIVE PENDING COMPLETED CANCELLED }
+    framework_python: |
+      # FAIL — wrong case, no DataLoader
+      import strawberry
+      @strawberry.type
+      class user:           # Should be User
+          id: int
+          name: str
+      @strawberry.type
+      class Query:
+          @strawberry.field
+          def users(self) -> List[User]:
+              return User.query.all()  # N+1
+      # PASS — correct case, DataLoader
+      @strawberry.type
+      class User:
+          id: int
+          name: str
+      @strawberry.type
+      class Query:
+          @strawberry.field
+          def users(self, first: int = 20, after: str = None) -> UserConnection:
+              return user_service.paginate(first=min(first, 100), after=after)
+    framework_json: |
+      // FAIL
+      { "types": { "user": { "fields": { "FirstName": "String" } } },
+        "UserQuery": { "returns": "[User]", "pagination": false } }
+      // PASS
+      { "types": { "User": { "fields": { "firstName": "String" } } },
+        "UserQuery": { "returns": "UserConnection",
+          "pagination": { "type": "cursor", "spec": "relay_connection" } } }
+    framework_generic: |
+      # FAIL: type orderItem — should be OrderItem (PascalCase).
+      # FAIL: field user_id — should be userId (camelCase).
+      # FAIL: Mutation createUser(name, email) — flat args, not extensible.
+      # PASS: type OrderItem { id, price, userId }; input CreateUserInput { ... }.
+
+  # ── gRPC (2 rules) ────────────────────────────────────────────────────────
+
+  - id: grpc-patterns
+    severity: advanced
+    rule: "Use the package naming convention: {domain}.{service}.{version} (e.g., mycompany.users.v1). Reserve field numbers 1-15 for frequently used fields (they encode in 1 byte). Use 16-2047 for less frequent fields. Never reuse a deleted field number — mark it as reserved. Use singular for message names, PascalCase. Use streaming for large datasets, unary for single items. Use canonical gRPC status codes (google.rpc.Code): OK(0), INVALID_ARGUMENT(3), NOT_FOUND(5), PERMISSION_DENIED(7), UNAUTHENTICATED(16), RESOURCE_EXHAUSTED(8), UNIMPLEMENTED(12), INTERNAL(13), UNAVAILABLE(14). Include detailed error information in google.rpc.Status. Never return INTERNAL for client errors."
+    framework_protobuf: |
+      # FAIL — flat package, wrong field numbering, no reserved, wrong error codes
+      package users;  # Too generic, no version
+      message User {
+        string email = 1;
+        string name = 2;
+        string phone = 16;   # Frequently accessed, should be 4-15
+        string notes = 4;    # Rarely used, should be 16+
+      }
+      service UserActions {
+        rpc GetUser(GetUserRequest) returns (User);
+        // Returns INTERNAL(13) when user not found (should be NOT_FOUND(5))
+      }
+      # PASS — proper package, optimal field numbering, correct error codes
+      package mycompany.users.v1;
+      message User {
+        reserved 4, 7 to 10;
+        string email = 1;       # Frequently accessed — 1 byte
+        string display_name = 2;
+        string phone = 3;
+        string address_line_1 = 16;  # Less frequent — 2 bytes
+      }
+      service UserService {
+        rpc GetUser(GetUserRequest) returns (User);
+        rpc ListUsers(ListUsersRequest) returns (stream User);
+        rpc CreateUser(CreateUserRequest) returns (User);
+        rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
+      }
+      # Error: grpc-status: 5 (NOT_FOUND), grpc-message: "User 'abc' not found"
+      # With details: errorInfo { reason: "USER_NOT_FOUND", domain: "mycompany.users" }
+    framework_python: |
+      # FAIL — generic package, wrong status code
+      # File: users.proto
+      package users;
+      def GetUser(self, request, context):
+          user = find_user(request.user_id)
+          if user is None:
+              context.abort(grpc.StatusCode.INTERNAL, "user not found")
+      # PASS — standard naming, correct status code
+      # File: users/v1/users.proto
+      package mycompany.users.v1;
+      def GetUser(self, request, context):
+          user = find_user(request.user_id)
+          if user is None:
+              context.set_code(grpc.StatusCode.NOT_FOUND)
+              context.set_details(f"User '{request.user_id}' not found")
+              return Empty()
+    framework_generic: |
+      # FAIL: package users — no domain, no version. Name collision risk.
+      # FAIL: email at field 16 (frequently accessed, should be 1-15).
+      # FAIL: GetUser returns INTERNAL(13) when not found — client treats as server error.
+      # PASS: package mycompany.users.v1, email at field 1, NOT_FOUND(5) on miss.
+
+  # ── VALIDATION (1 rule) ──────────────────────────────────────────────────
+
+  - id: request-validation
+    severity: fundamental
+    rule: "Validate all request input at the API boundary: body schema validation, parameter type coercion, header validation, and query parameter format checks. Never trust client-sent data. Return 422 for schema violations and 400 for malformed syntax. Validate before any business logic executes."
+    framework_rest: |
+      # FAIL — no validation, trusts client data
+      POST /api/v1/orders { "user_id": "abc", "amount": -100, "items": null }
+      # Server processes without checking types or ranges
+      # PASS — validates at the boundary
+      POST /api/v1/orders
+      Content-Type: application/json
+      Body: { "user_id": 123, "amount": 5000, "currency": "USD", "items": [...] }
+      # Validation
+      # - user_id: required, integer
+      # - amount: required, integer, > 0
+      # - currency: required, string, ISO 4217, 3 chars
+      # - items: required, array, min 1 item
+      # If invalid: 422 { "error": "VALIDATION_ERROR", "details": [...] }
+    framework_python: |
+      # FAIL — no validation
+      @router.post("/api/v1/orders")
+      def create_order(user_id: int, amount: float):
+          order_service.create(user_id=user_id, amount=amount)
+      # PASS — Pydantic validation
+      from pydantic import BaseModel, Field
+      class OrderCreate(BaseModel):
+          user_id: int = Field(gt=0)
+          amount: int = Field(gt=0, le=1000000)
+          currency: str = Field(min_length=3, max_length=3)
+          items: list[OrderItem] = Field(min_length=1)
+      @router.post("/api/v1/orders")
+      def create_order(payload: OrderCreate):
+          return order_service.create(payload)
+    framework_json: |
+      // FAIL — no schema
+      { "endpoint": "POST /orders", "request_schema": null }
+      // PASS — schema defined
+      { "endpoint": "POST /orders",
+        "request_schema": { "$ref": "#/components/schemas/OrderCreate" },
+        "validation": { "on_boundary": true, "before_logic": true } }
+    framework_generic: |
+      # FAIL: POST /orders accepts user_id="abc" (string), never validates.
+      # Server crashes with type error. Data integrity compromised.
+      # PASS: Schema validates user_id is integer, amount > 0, items not empty.
+      # Returns 422 with field-level details for each violation.
+

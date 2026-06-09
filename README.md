@@ -47,7 +47,8 @@ result with a deterministic rules engine.
 | **perf** | 18 (4 check) | Web Vitals, Lighthouse, MDN Web Performance, HTTP Archive | 16 |
 | **prompt-design** | 16 (5 check) | DAIR.AI Guide, OpenAI Guide, Anthropic Guide, Wei et al., Zou et al. | 48 |
 | **python-best-practices** | 16 (6 check) | PEP 8, PEP 257, PEP 484, Flake8, Black | 33 |
-| **Total** | **167 rules** | **30+ standards cited** | **455 tests** |
+| **api-design** | 18 (6 check) | Fielding, Google AIP, Microsoft REST, OpenAPI, GraphQL, gRPC | 39 |
+| **Total** | **185 rules** | **35+ standards cited** | **494 tests** |
 
 ---
 
