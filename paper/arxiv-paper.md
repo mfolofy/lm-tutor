@@ -19,14 +19,14 @@ that steers model attention toward correct patterns at inference time without
 weight modification.
 
 We show that a single injection of token-efficient [RULE] checklists reduces
-WCAG violations by 68% on DeepSeek V4 Flash (37B) and 74% with scratchpad
-reasoning. A placebo control (same format, irrelevant rules) produces only 16%
-reduction, confirming the effect is driven by correct-pattern steering, not
-structured prompting alone. A weaker model (Gemma 3 4B, HumanEval 72.1%)
-shows only 12% improvement, identifying a capability floor (~70% HumanEval)
-below which injection falters. Python output (already clean training data)
-shows 0% effect, demonstrating that injection's impact is proportional to
-training data quality.
+WCAG violations by 54% on DeepSeek V4 Flash (37B). A placebo control (same
+[RULE] format, irrelevant gardening rules) produces only 14% reduction —
+the real injection produces 3.8× the placebo effect, confirming the mechanism
+is correct-pattern steering, not structured prompting alone. A weaker model
+(Gemma 3 4B, HumanEval 72.1%) shows only 12% improvement, identifying a
+capability floor (~70% HumanEval) below which injection falters. Python output
+(already clean training data) shows 0% effect, demonstrating that injection's
+impact is proportional to training data quality.
 
 Our findings challenge the assumption that output quality is primarily
 determined by model capability. We provide evidence that training data quality

@@ -2,14 +2,15 @@
 
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
-A single `tutor learn` injection reduces output violations by 68% on broken
-training data. The model already knows how to write good code — it just needs
-a reminder at the right moment.
+A single `tutor learn` injection reduces output violations by 54% on broken
+training data — 3.8× more than a placebo injection with the same format but
+irrelevant rules. The model already knows how to write good code — it just
+needs a reminder at the right moment.
 
 ```
-  Raw generation:  15.6 violations  (baseline)
-  After injection:   5.0 violations  (-68%)
-  + Booster tools:   4.0 violations  (-74%)
+  Raw generation:   15.6 violations  (baseline)
+  Placebo (wrong rules, same format):  13.4  (-14%)
+  After injection:   7.2 violations  (-54%)
 ```
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
@@ -42,20 +43,19 @@ deterministic 38-rule evaluator. 5-run averages. Placebo-controlled.
 | Condition | Violations | vs Raw |
 |-----------|-----------|--------|
 | Raw (no injection) | 15.6 | -- |
-| Placebo (wrong rules, same format) | 13.0 | -16% |
-| Class (correct [RULE] injection) | 5.0 | **-68%** |
-| + Booster (scratchpad reasoning) | 4.0 | **-74%** |
+| Placebo (gardening rules, same format) | 13.4 | -14% |
+| Class (correct [RULE] injection) | 7.2 | **-54%** |
 
-The placebo control (gardening rules in [RULE] format) produced only 16%
-reduction. The real injection produced 68% — 4.3x the placebo. The effect is
-from correct-pattern steering, not just "structured prompting helps."
+The placebo control (irrelevant gardening rules in identical `[RULE]` format)
+produced 14% reduction. The real injection produced 54% — 3.8× the placebo.
+The format alone is not the mechanism. The content is.
 
 ### The effect is proportional to training data quality
 
 | Domain | Training data | Raw | Injected | Delta |
 |--------|--------------|-----|----------|-------|
-| HTML/WCAG | 96% broken | 15.6 | 5.0 | **-68%** |
-| Python/PEP 8 | Already clean | 0.0 | 0.3 | **0%** (ceiling) |
+| HTML/WCAG | 96% broken | 15.6 | 7.2 | **-54%** |
+| Python/PEP 8 | Already clean | 0.0 | ~0 | **0%** (ceiling) |
 
 When training data is clean, there's nothing to fix — the model already
 defaults to correct output. When training data is broken, injection recovers
@@ -66,18 +66,18 @@ where training fails.
 
 | Model | Params | HumanEval | Reduction |
 |-------|--------|-----------|-----------|
-| DeepSeek V4 Flash | ~37B | ~85% | **-68%** |
+| DeepSeek V4 Flash | ~37B | ~85% | **-54%** |
 | Gemma 3 4B | ~4B | 72.1% | -12% |
 
 Below ~70% HumanEval equivalent, models can't reliably parse structured [RULE]
-instructions. The capability genuinely isn't there — not just buried. Above the
-floor, the effect scales with model intelligence.
+instructions. The capability genuinely isn't there — not just buried.
 
 ### Summary
 
 Injection fixes broken defaults without weight modification. Effect is
-specific to correct rules (placebo-controlled), proportional to training data
-brokenness, and requires a minimum capability threshold. Full methodology at
+specific to correct rules (placebo-controlled at 3.8× the placebo effect),
+proportional to training data brokenness, and requires a minimum capability
+threshold. Full methodology at
 [docs/benchmark-methodology.md](docs/benchmark-methodology.md).
 
 ---

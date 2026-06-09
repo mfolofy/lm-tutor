@@ -108,6 +108,34 @@ def _build_prompt(task: str, condition: str) -> str:
             f"Task: {task}"
         )
 
+    if condition == "placebo":
+        # Same [RULE] format as the real class, but irrelevant domain (gardening).
+        # If this produces similar reduction to the real class, the effect is
+        # from structured prompting alone, not correct-pattern steering.
+        # Placebo rules are chosen to be totally orthogonal to HTML/WCAG.
+        placebo_rules = [
+            ("water-frequency", "Water plants at the base, not the leaves, to prevent fungal disease."),
+            ("soil-drainage", "Ensure soil drains well; standing water causes root rot."),
+            ("pruning-timing", "Prune flowering shrubs immediately after blooming, not before."),
+            ("fertilizer-npk", "Apply a balanced N-P-K fertilizer during active growing season."),
+            ("companion-plant", "Plant marigolds near tomatoes to deter aphids naturally."),
+            ("mulch-depth", "Apply mulch 2-3 inches deep; deeper mulch can suffocate roots."),
+            ("seed-spacing", "Follow packet spacing — crowded seeds compete for nutrients."),
+            ("ph-level", "Test soil pH yearly; most vegetables prefer 6.0-7.0."),
+            ("deadheading", "Remove spent blooms to encourage continued flowering."),
+            ("watering-time", "Water early morning so foliage dries before nightfall."),
+        ]
+        rules_text = "\n".join(
+            f"  [RULE {rid}] {rule}"
+            for rid, rule in placebo_rules
+        )
+        return (
+            "# Gardening Best Practices\n"
+            "Apply these rules:\n"
+            f"{rules_text}\n\n"
+            f"Task: {task}"
+        )
+
     if condition == "class":
         cls = load_syllabus("brushes")
         rules_text = "\n".join(
@@ -162,7 +190,7 @@ def run_benchmark(
     results = []
 
     for i in range(runs):
-        prompt = _build_prompt(task, condition)
+        prompt = _build_prompt(TASKS[task], condition)
         cell_seed = seed + i
 
         # Inject seed into prompt for reproducibility
@@ -203,14 +231,14 @@ def main():
     parser = argparse.ArgumentParser(description="lm-tutor benchmark runner")
     parser.add_argument("--model", default="deepseek-chat", help="Model ID")
     parser.add_argument("--task", choices=list(TASKS.keys()) + ["all"], default="html")
-    parser.add_argument("--condition", choices=["raw", "prompt", "class", "booster", "all"], default="raw")
+    parser.add_argument("--condition", choices=["raw", "prompt", "placebo", "class", "booster", "all"], default="raw")
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--output", default=None, help="Output JSON path")
     args = parser.parse_args()
 
     tasks = list(TASKS.keys()) if args.task == "all" else [args.task]
-    conditions = ["raw", "prompt", "class", "booster"] if args.condition == "all" else [args.condition]
+    conditions = ["raw", "prompt", "placebo", "class", "booster"] if args.condition == "all" else [args.condition]
 
     all_results = []
     for task in tasks:

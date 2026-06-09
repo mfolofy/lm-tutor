@@ -77,34 +77,32 @@ Layer 1 rules engine that ships with the package. This means:
 
 ## Results
 
-### Full Benchmark — 2026-06-09
+### Placebo-Controlled Benchmark — 2026-06-09
 
-**Method:** 5 tasks × 2 conditions (raw, class) × 3 runs = 30 evals per model.
+**Method:** HTML task × 3 conditions (raw, placebo, class) × 5 runs = 15 evals.
 Graded via `tutor eval --class brushes` (deterministic, 38 rules).
+Bug fixed: prior runs passed task name `"html"` instead of the task prompt — those
+results were invalid. This is the corrected, reproducible benchmark.
 
-### DeepSeek V4 Flash (~37B, HumanEval ~85%)
+### DeepSeek V4 Flash (~37B, HumanEval ~85%) — Placebo Control
 
-| Task | Raw (avg) | Class (avg) | Delta |
-|------|-----------|-------------|-------|
-| HTML | 14.0 | 8.0 | **-43%** |
-| React | 0.0 | 0.7 | (noise) |
-| JSON | 0.0 | 0.0 | — |
-| SVG | 0.0 | 0.0 | — |
-| Markdown | 0.0 | 3.3 | (false positives) |
-| **All tasks** | **2.8** | **2.4** | — |
-| **HTML only** | **14.0** | **8.0** | **-43%** |
+| Condition | Avg violations | Per-run counts | vs Raw |
+|-----------|---------------|----------------|--------|
+| Raw | 15.6 | [15, 17, 18, 12, 16] | — |
+| Placebo (gardening rules, same format) | 13.4 | [14, 12, 14, 13, 14] | **-14%** |
+| Class (correct WCAG rules) | 7.2 | [2, 10, 6, 9, 9] | **-54%** |
 
-### Booster Comparison — DeepSeek V4 Flash HTML (5 runs)
+**Class effect is 3.8× the placebo effect.** The placebo establishes that
+structured prompting alone produces a 14% reduction. The real injection produces
+54% — the additional 40 points come from correct-pattern steering, not format.
 
-| Condition | Avg violations | vs Raw | vs Class |
-|-----------|---------------|--------|----------|
-| Raw | 15.8 | — | — |
-| Class | 6.0 | **-62%** | — |
-| Booster (class + scratchpad) | 5.4 | **-66%** | -10% |
+The `[RULE]` format itself is not the mechanism. The content is.
 
-The `[RULE]` injection does the heavy lifting (62% reduction). The Booster's
-scratchpad reasoning adds a modest 10% improvement. For Phase 0, class alone
-is sufficient — Booster optimization is Phase 3 territory.
+### Booster Comparison — DeepSeek V4 Flash HTML (pending re-run)
+
+Prior booster numbers (Raw 15.8, Class 6.0 = -62%, Booster 5.4 = -66%) were
+generated with the same task-name bug. Numbers above supersede them for the
+raw/class comparison. Booster re-run scheduled.
 
 ### Gemma 3 4B (~4B, HumanEval 72.1)
 
