@@ -71,6 +71,11 @@ def _build_parser() -> argparse.ArgumentParser:
     # tutor list
     sub.add_parser("list", help="List available classes.")
 
+    # tutor curriculum
+    p_curriculum = sub.add_parser("curriculum", help="Show ordered class list for a model's track.")
+    p_curriculum.add_argument("--model", required=True, help="Model id.")
+    p_curriculum.add_argument("--json", action="store_true", help="Emit JSON instead of text.")
+
     # tutor booster — 4 sub-tools
     p_booster = sub.add_parser("booster", help="Booster tools for small models.")
     booster_sub = p_booster.add_subparsers(
@@ -142,6 +147,9 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.command == "list":
         from tutor.cli.list import run
+        return run(args)
+    if args.command == "curriculum":
+        from tutor.cli.curriculum import run
         return run(args)
     if args.command == "booster":
         return _run_booster(args)

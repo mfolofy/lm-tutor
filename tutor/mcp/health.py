@@ -18,17 +18,33 @@ from tutor import __version__
 from tutor.mcp.metrics import metrics
 
 _START = datetime.now(timezone.utc)
+_REGISTRY_CACHE: dict | None = None
+_REGISTRY_CACHE_TTL = 60  # seconds
+_REGISTRY_CACHE_AT: float | None = None
 
 
 def health_snapshot() -> dict:
-    """Build the health document (used by both HTTP and the MCP tool)."""
-    from tutor.booster.sandbox import sandbox_manager
-    from tutor.registry import load_registry
+    """Build the health document (used by both HTTP and the MCP tool).
 
-    try:
-        registered = len([k for k in load_registry() if not k.startswith("_")])
-    except Exception:
-        registered = 0
+    Registry read is cached with a 60-second TTL — avoids JSON re-parse on
+    every Docker HEALTHCHECK (default 30s interval).
+    """
+    import time
+
+    from tutor.booster.sandbox import sandbox_manager
+
+    global _REGISTRY_CACHE, _REGISTRY_CACHE_AT
+
+    now = time.monotonic()
+    if _REGISTRY_CACHE is None or _REGISTRY_CACHE_AT is None or now - _REGISTRY_CACHE_AT > _REGISTRY_CACHE_TTL:
+        try:
+            from tutor.registry import load_registry
+            _REGISTRY_CACHE = len([k for k in load_registry() if not k.startswith("_")])
+        except Exception:
+            _REGISTRY_CACHE = 0
+        _REGISTRY_CACHE_AT = now
+
+    registered = _REGISTRY_CACHE
 
     uptime = (datetime.now(timezone.utc) - _START).total_seconds()
     snap = metrics.snapshot()

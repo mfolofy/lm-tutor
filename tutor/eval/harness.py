@@ -96,12 +96,17 @@ class _Collector(HTMLParser):
 
 
 def _parse_html(submission: str) -> list[_Element]:
+    import logging
+
     parser = _Collector()
     try:
         parser.feed(submission)
         parser.close()
-    except Exception:
-        pass  # tolerate malformed markup — grade what parsed
+    except Exception as exc:
+        # Malformed markup is common and non-fatal — grade what parsed.
+        logging.getLogger("tutor.eval").debug(
+            "HTML parse error (grading partial content): %s", exc
+        )
     return parser.elements
 
 

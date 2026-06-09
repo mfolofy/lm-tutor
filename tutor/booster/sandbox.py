@@ -30,15 +30,25 @@ SECURITY_BOUNDARY = (
 
 
 class ScratchpadError(Exception):
-    pass
+    """Base sandbox error. ``code`` is a machine-parseable error identifier."""
+
+    def __init__(self, message: str = "", code: str = "SANDBOX_ERROR"):
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        return f"[{self.code}] {self.message}"
 
 
 class ScratchpadTimeout(ScratchpadError):
-    pass
+    def __init__(self, message: str = ""):
+        super().__init__(message, code="SANDBOX_TIMEOUT")
 
 
 class ScratchpadQuotaExceeded(ScratchpadError):
-    pass
+    def __init__(self, message: str = ""):
+        super().__init__(message, code="SANDBOX_QUOTA_EXCEEDED")
 
 
 class ScratchpadSandbox:
