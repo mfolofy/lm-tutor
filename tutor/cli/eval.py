@@ -4,6 +4,9 @@ The guarantee:  ``echo "<div>" | tutor eval``  returns a valid result with zero
 additional arguments. The syllabus is inferred from the content when ``--class``
 is not given. Result JSON goes to **stdout**; nothing else is printed there.
 
+When ``--model`` is given, the result is also saved to the eval history
+(``~/.tutor/evals/<model_id>.jsonl``) for later profiling.
+
 Exit code is 0 on a successful grade regardless of pass/fail (violations found
 = a successful grade, not an error). A non-zero exit means the grade itself
 could not be performed.
@@ -75,6 +78,7 @@ def list_classes() -> list[dict]:
 
 def run(args) -> int:
     from tutor.eval import grade
+    from tutor.registrar.evals import EvalHistory
 
     submission = sys.stdin.read()
     syllabus = getattr(args, "class_name", None) or infer_syllabus(submission)
@@ -89,5 +93,15 @@ def run(args) -> int:
         payload["hint"] = result.hint or "Run with --class <name> to specify a syllabus."
 
     print(json.dumps(payload, indent=2, default=str))
+
+    # Save to eval history when model is known.
+    model_id = getattr(args, "model", None)
+    if model_id and result.error is None:
+        try:
+            history = EvalHistory()
+            history.record(model_id, payload)
+        except Exception:
+            pass  # Non-fatal — don't crash the eval for history write failure.
+
     # Successful grade => exit 0 even when violations are present.
     return 0 if result.error is None else 2

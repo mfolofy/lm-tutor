@@ -27,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version", action="version", version=_version_string()
     )
-    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster}")
+    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster,curriculum,profile}")
 
     # tutor enroll
     p_enroll = sub.add_parser("enroll", help="Identify a model, get its track.")
@@ -44,6 +44,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument(
         "--class", dest="class_name", default=None,
         help="Syllabus to grade against. If omitted, inferred from content.",
+    )
+    p_eval.add_argument(
+        "--model", default=None,
+        help="Model id. When set, saves the result to eval history.",
     )
 
     # tutor fix
@@ -75,6 +79,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_curriculum = sub.add_parser("curriculum", help="Show ordered class list for a model's track.")
     p_curriculum.add_argument("--model", required=True, help="Model id.")
     p_curriculum.add_argument("--json", action="store_true", help="Emit JSON instead of text.")
+
+    # tutor profile
+    p_profile = sub.add_parser("profile", help="Show eval history and pass rates for a model.")
+    p_profile.add_argument("--model", required=True, help="Model id.")
+    p_profile.add_argument("--json", action="store_true", help="Emit JSON instead of text.")
 
     # tutor booster — 4 sub-tools
     p_booster = sub.add_parser("booster", help="Booster tools for small models.")
@@ -153,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.command == "booster":
         return _run_booster(args)
+    if args.command == "profile":
+        from tutor.cli.profile import run
+        return run(args)
 
     parser.print_help()
     return 1
