@@ -36,10 +36,9 @@ exists without a source.
   duties (A.5.2), logging (A.8.15), and auditor access (A.5.9).
 - **NIST CSF** — Cybersecurity Framework (2018, updated 2024). Referenced for
   evidence collection and incident response patterns.
-- **Ghost Mesh Compliance Framework** — Reference implementation at
-  `projects/ghost_mesh/compliance/` covering SOC2 (8 controls), HIPAA
-  (6 controls), and CMMC 2.0 (8 controls) with automated checks and evidence
-  export. See `frameworks.py`, `check.py`, `exporter.py`.
+- **Compliance framework** — Reference implementation covering SOC2 (8 controls),
+  HIPAA (6 controls), and CMMC 2.0 (8 controls) with automated checks and
+  evidence export across multiple compliance domains.
 
 ## Per-rule citation table
 
@@ -62,22 +61,20 @@ exists without a source.
 | `cmmc-level2` | CMMC 2.0 | Multiple (110 controls) | Level 2 audit requirements |
 | `evidence-collection` | SOC2, HIPAA, CMMC | Cross-framework | Evidence bundle patterns |
 | `retention-policy` | SOC2, HIPAA, CMMC | A1.2, 164.308(a)(1)(ii)(D) | Evidence retention |
-| `common-audit-failures` | Cross-framework | — | Compiled from Ghost Mesh compliance audits |
+| `common-audit-failures` | Cross-framework | — | Compiled from compliance audit patterns |
 | `auditor-role` | SOC2, ISO 27001, CMMC | CC6.1, A.5.9, AU.L2-3.3.8 | Read-only auditor access |
 
 ## Reference implementation
 
-Ghost Mesh ships a complete compliance framework at `projects/ghost_mesh/compliance/`:
+A compliance framework ships with automated checks and evidence export:
 
-- **`frameworks.py`** — 22 control mappings across SOC2 (8), HIPAA (6), CMMC 2.0 (8)
-- **`check.py`** — Automated compliance checks: `_check_agents_have_certs()`,
-  `_check_heartbeats_recent()`, `_check_integrity()`, `_check_red_key_dual()`,
-  `_check_baa_template()`, and others. Each returns `(status, detail)`.
-- **`exporter.py`** — Evidence bundle ZIP generation with manifest, audit trail,
-  control mapping, agent inventory, PKI summary, NTP logs, red key log, chain
-  integrity report, and architecture overview.
+- **Framework mappings** — 22 control mappings across SOC2 (8), HIPAA (6), CMMC 2.0 (8)
+- **Automated checks** — Compliance checks for agent identity, heartbeats,
+  integrity verification, and more. Each returns `(status, detail)`.
+- **Evidence export** — Bundle generation with manifest, audit trail,
+  control mapping, agent inventory, PKI summary, and integrity reports.
 
-The Ghost Mesh implementation demonstrates how the rules in this class are
+The compliance implementation demonstrates how the rules in this class are
 applied: PKI enforcement for agent identity, WORM chain for audit integrity,
 dual-approval for break-glass access, and evidence export for auditor review.
 

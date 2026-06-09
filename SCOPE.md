@@ -27,7 +27,7 @@
 |----------|--------------|
 | SDK + CLI: `git clone && pip install -e . && echo "<div>" | tutor eval` works with no additional arguments | No PyPI for the package name |
 | MCP server: thin wrapper (~50 lines) around the same SDK | No Protocol Engine (UEP, Handoff, Twin) until core thesis is validated |
-| Curriculum tracks: remedial (fundamentals + Booster) / standard / honors | No Ghost Mesh runtime integration |
+| Curriculum tracks: remedial (fundamentals + Booster) / standard / honors | No external runtime dependencies |
 | Model registry: curated `models.json` with capability profiles | No modules without documented research sources in `SOURCES.md` |
 | Classes: YAML checklist format with rules, FAIL/PASS examples, check selectors | No pricing, GTM, or sales materials |
 | Eval harness: 3-layer hybrid (rules → LLM judge → adversarial verification). Phase 0 ships Layer 1 only. | No community infrastructure before v1 ships |
@@ -309,18 +309,12 @@ Every class must have `SOURCES.md` before any code is written. No "because I thi
 
 ---
 
-## Relationship to Ghost Stack
+## Relationship to Source Projects
 
-lm-tutor is the **canonical answer layer** for Ghost Stack. Every "how do I" gets a class here.
-
-| Ghost Stack Project | Tutor Class | Status |
-|--------------------|-------------|--------|
-| brush-stroke | `classes/brushes/` | Absorbs content in Phase 1. brush-stroke repo archives. |
-| House (everybody-lies) | `classes/code-review/` | Phase 1 — after research audit |
-| Prompt Brush / Studio | `classes/prompt-design/` | Phase 1 — after research audit |
-| Agentic Chain | `classes/audit/` | Phase 1 — after research audit |
-
-**Bidirectional sync:** When a standard evolves in a source project, the Tutor class updates in the same commit. When a new "how do I" is added to the Tutor, the source project's docs update in the same commit. No drift.
+lm-tutor classes are independent from any specific source project. Classes cite
+external standards only (WCAG, OWASP, IEEE, NIST). Content from external
+projects is absorbed during Phase 1 through research audit, with full attribution
+in each class's `SOURCES.md`.
 
 **Zero runtime dependency.** lm-tutor does not import code from any Ghost Stack project. Knowledge only.
 
@@ -345,7 +339,7 @@ lm-tutor is the **canonical answer layer** for Ghost Stack. Every "how do I" get
 
 ### Phase 1 — Classes (one at a time, each with SOURCES.md)
 
-1. `brushes` — UI/UX. Migrate brush-stroke content. Compatibility analysis first.
+1. `brushes` — UI/UX accessibility. Compatibility analysis first.
 2. `code-review` — House patterns. Research audit required.
 3. `prompt-design` — Prompt Brush pipeline. Research audit required.
 4. `audit` — Agentic Chain. Research audit required.
@@ -387,7 +381,7 @@ lm-tutor is the **canonical answer layer** for Ghost Stack. Every "how do I" get
 | Idea | Why |
 |------|-----|
 | Protocol Engine (UEP, Handoff, Twin) | Gated on core thesis validation |
-| Ghost Mesh integration | Different problem space |
+| External agent governance integration | Different problem space |
 | Go/Rust binary | Python SDK first |
 | Community infra | v1 first, v2 community |
 | Training / fine-tuning | Inference-side only |
@@ -400,7 +394,7 @@ lm-tutor is the **canonical answer layer** for Ghost Stack. Every "how do I" get
 - **lm-tutor does NOT depend on any Ghost Stack project** — it imports no Ghost Stack code, has no Ghost Stack runtime dependency. Classes cite external standards only (WCAG, OWASP, IEEE, NIST). Zero coupling.
 - **lm-tutor is NOT an evaluation platform** — the eval harness is a teaching feedback tool, not a certification engine. No grading board, no progression tracking, no human-facing audit dashboards.
 - **lm-tutor is NOT a linter or CI tool** — it does not run in CI pipelines, does not produce build-fail signals, does not replace axe-core, Lighthouse, or any human-facing audit tool. The eval harness is a model's feedback loop, not a human's QA gate.
-- **lm-tutor shares the monorepo with Ghost Stack projects** but is architecturally independent. The standalone repo (`github.com/mfolofy/lm-tutor`) is the canonical distribution.
+- **lm-tutor is architecturally independent** of any other project. The standalone repo (`github.com/mfolofy/lm-tutor`) is the canonical distribution.
 
 ## Locked Decisions
 

@@ -2,8 +2,8 @@
 #
 # Source standards: Fowler (Enterprise Patterns), Richards (Software Architecture
 # Fundamentals), Hohpe (Enterprise Integration Patterns), NIST SP 800-53,
-# AICPA SOC2 TSC, and the Ghost Mesh governance model (aegis_gate, risk_policy,
-# CP/CPS, SOD_ARCHITECTURE). See SOURCES.md for per-rule citations.
+# AICPA SOC2 TSC, and governance model patterns (role-based access, policy enforcement,
+# segregation of duties). See SOURCES.md for per-rule citations.
 #
 # Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
 # Teaching-only rules carry no check_regex — they inject knowledge for the
@@ -24,7 +24,7 @@ class:
     - "Richards & Ford — Fundamentals of Software Architecture"
     - "Hohpe & Woolf — Enterprise Integration Patterns"
     - "NIST SP 800-53 / SOC2 TSC / CMMC 2.0"
-    - "Ghost Mesh SOD_ARCHITECTURE.md, CP_CPS.md, risk_policy.py"
+    - "Governance model patterns (role-based access, policy enforcement, segregation of duties)"
   prerequisites: []
   target_violations:
     - "api-no-version"           # API routes missing version prefix

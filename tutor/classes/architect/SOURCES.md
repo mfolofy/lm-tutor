@@ -1,7 +1,7 @@
 # SOURCES — architect (System Architecture Design Patterns)
 
 All rules in `class.yaml` derive from established software architecture
-literature, industry standards, and the Ghost Mesh governance model. Every
+literature, industry standards, and governance model patterns. Every
 rule cites its architectural principle or source standard. No rule exists
 without a source.
 
@@ -70,16 +70,18 @@ without a source.
 - **Microsoft.** *REST API Guidelines*. — Versioning strategies, error
   responses, pagination standards.
 
-## Ghost Mesh source material (internal references)
+## Governance model references
 
-- `docs/ghost-mesh/SOD_ARCHITECTURE.md` — Segregation of duties: 4-role model,
-  dual approval matrix, enforcement points.
-- `docs/ghost-mesh/CP_CPS.md` — Certificate policy and certification practice
-  statement: two-tier CA hierarchy, certificate profiles, CRL distribution.
-- `projects/ghost_mesh/governance/aegis_gate.py` — Pre-execution policy gate:
-  protected resources, change request queue, approval workflow.
-- `projects/ghost_mesh/governance/risk_policy.py` — Risk evaluation engine:
-  4-level risk schema, resource-to-risk mapping, mtime-cached policy loading.
+The following governance patterns are referenced across multiple rules:
+
+- **Segregation of duties**: 4-role model (admin, operator, security officer,
+  auditor) with dual approval matrix and enforcement points.
+- **Certificate policy**: Two-tier CA hierarchy with offline root, certificate
+  profiles, and CRL distribution points.
+- **Policy enforcement gate**: Pre-execution policy gate protecting resources
+  with change request queue and approval workflow.
+- **Risk evaluation**: 4-level risk schema (low/medium/high/critical) with
+  resource-to-risk mapping and cached policy loading.
 
 ## Rule-to-source mapping
 
@@ -95,17 +97,17 @@ without a source.
 | `defense-in-depth` | NIST SP 800-53, NIST SP 800-171 | Layered security, mutually independent controls |
 | `credential-injection` | OWASP, SOC2 CC6.1 | Secret management, credential hygiene |
 | `trust-boundary` | NIST SP 800-53 (AC-4), Zero Trust | Validate at every boundary, never trust implicitly |
-| `sod-four-role` | Ghost Mesh SOD_ARCHITECTURE.md, SOC2 CC6.2 | Segregation of duties, no single control |
-| `dual-approval` | Ghost Mesh SOD_ARCHITECTURE.md, HIPAA 164.312(d) | Two-person integrity, break-glass controls |
-| `risk-classification` | Ghost Mesh risk_policy.py, NIST SP 800-53 | Risk-based approval, context-aware gating |
+| `sod-four-role` | SOC2 CC6.2, governance patterns | Segregation of duties, no single control |
+| `dual-approval` | HIPAA 164.312(d), governance patterns | Two-person integrity, break-glass controls |
+| `risk-classification` | NIST SP 800-53, governance patterns | Risk-based approval, context-aware gating |
 | `structured-observability` | Google SRE, AWS Well-Architected | Logs + metrics + traces, structured data |
 | `print-logging` | Google SRE, 12 Factor App | Structured logging, log as event stream |
 | `circuit-breaker` | Nygard (Release It!), AWS Well-Architected | Fail fast, graceful degradation, resilience |
 | `stateless-design` | AWS Well-Architected, 12 Factor App | Horizontal scalability, ephemeral instances |
-| `audit-chain-integrity` | NIST SP 800-53 (AU-9), Ghost Mesh | Tamper-evident logging, WORM storage |
+| `audit-chain-integrity` | NIST SP 800-53 (AU-9) | Tamper-evident logging, WORM storage |
 | `event-driven-async` | Hohpe & Woolf (EIP), Fowler | Loose coupling, independent deployability |
 | `idempotent-consumer` | Hohpe & Woolf (EIP), Microsoft Azure | At-least-once safety, deduplication |
-| `pki-hierarchy` | RFC 3647, Ghost Mesh CP_CPS.md, NIST SP 800-57 | Two-tier CA, offline root, short-lived certs |
+| `pki-hierarchy` | RFC 3647, NIST SP 800-57 | Two-tier CA, offline root, short-lived certs |
 
 ## Coverage honesty
 

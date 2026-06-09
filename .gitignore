@@ -55,3 +55,7 @@ tmp/
 
 # Local state (tutor writes here at runtime; never commit)
 track_state.json
+
+# Local lock files / scratch
+uv.lock
+wayback_paper.txt

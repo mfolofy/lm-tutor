@@ -1206,7 +1206,7 @@ pip install -e .
 echo "<div>" | school eval
 
 # ── Path B: Monorepo (for Ghost Stack developers) ──
-cd P:/AI_Code
+cd path/to/lm-tutor
 pip install -e projects/school-for-llms
 echo "<div>" | school eval
 ```

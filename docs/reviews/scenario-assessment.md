@@ -206,5 +206,4 @@ lm-tutor as a subprocess cannot invoke any Booster tool.
 2. **`tutor fix` scope** — Should it auto-iterate (eval → fix → eval → fix
    until pass) or one-shot (eval → print fix suggestions → exit)?
 3. **4B model selection** — Which specific model to add to registry?
-4. **Dual-home sync** — These changes land in the monorepo. When to push to
-   standalone `github.com/mfolofy/lm-tutor`?
+

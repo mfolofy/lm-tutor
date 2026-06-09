@@ -199,7 +199,7 @@ poor steering leaves capability on the table.
 3. Multi-class stacking -- does combining accessibility + security + API
    design rules compound the effect?
 4. Repeated exposure (myelination) tracking over multiple injection cycles.
-5. Integration with Ghost Mesh for continuous model improvement in multi-agent
+5. Integration with model governance systems for continuous improvement in multi-agent
    systems.
 
 ## 7. Conclusion

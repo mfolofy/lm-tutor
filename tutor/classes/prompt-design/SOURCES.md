@@ -72,10 +72,9 @@ rule cites the specific paper, guide, or standard it codifies.
   less reliably followed than pre-positioned constraints — the model has already
   begun its output distribution before reading the constraint.
 
-## Research sources from brush-stroke and kimi-filters
+## Research sources
 
-Migrated from `projects/brush-stroke/docs/SOURCES.md` (compiled 2026-06-07)
-and `projects/prompt-brush/docs/kimi-filters-research.md`.
+Compiled 2026-06-07 from prompt engineering research and filter-based analysis.
 
 ### Brush-stroke: LLM output quality research
 

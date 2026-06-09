@@ -1,6 +1,6 @@
 """Tests for the brushes class — proves each rule's FAIL/PASS behaviour.
 
-Extended from Phase 0 (10 rules) to v2.0.0 (24 brush-stroke rules).
+Extended from Phase 0 (10 rules) to v2.0.0 (24 accessibility rules).
 For each rule, a FAIL snippet MUST produce that rule's violation and a PASS
 snippet MUST NOT. Also tests the per-class grader.py for deep-check rules.
 

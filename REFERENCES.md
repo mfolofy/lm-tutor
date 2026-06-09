@@ -40,12 +40,12 @@ Every standard, framework, paper, and specification cited across all 9 classes.
 
 ## 2. code-review — Code Review Standards
 
-**Standards:** ITIL v4, arXiv 2603.25773, House/everybody-lies
+**Standards:** ITIL v4, arXiv 2603.25773
 
 ### Primary sources
 - **ITIL Foundation, ITIL 4 Edition** (AXELOS, 2019) — Change enablement, incident management, problem management, release management
 - **arXiv 2603.25773** — "The Specification as Quality Gate" (March 2026)
-- **House/everybody-lies** — Ghost Stack code review gatekeeper. `everybody-lies/src/everybody_lies/`
+- **House/everybody-lies** — Code review gatekeeper implementation.
 
 ### Research papers
 | Paper | Venue | Year |
@@ -82,7 +82,7 @@ Every standard, framework, paper, and specification cited across all 9 classes.
 | CMMC 2.0 | AC.L2-3.1.1, AC.L2-3.1.2, AC.L2-3.1.5, AU.L2-3.3.1, AU.L2-3.3.8, IA.L2-3.5.1, SC.L2-3.13.11, SC.L2-3.13.15 |
 
 ### Reference implementation
-Ghost Mesh `projects/ghost_mesh/compliance/` — `frameworks.py`, `check.py`, `exporter.py`
+Ghost Mesh — reference compliance implementation (SOC2, HIPAA, CMMC controls with automated checks and evidence export).
 
 ### Rules cited: 19
 11 teaching-only, 8 check_regex
@@ -167,11 +167,11 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 - **Google API Design Guide**
 - **Microsoft REST API Guidelines**
 
-### Ghost Mesh internal references
-- `docs/ghost-mesh/SOD_ARCHITECTURE.md` — 4-role segregation of duties
-- `docs/ghost-mesh/CP_CPS.md` — Two-tier CA hierarchy
-- `projects/ghost_mesh/governance/aegis_gate.py` — Pre-execution policy gate
-- `projects/ghost_mesh/governance/risk_policy.py` — 4-level risk scoring
+### Architecture governance references
+- Segregation of duties: 4-role model (admin, operator, security, audit)
+- Certificate policy: two-tier CA hierarchy with offline root
+- Pre-execution policy gate: protected resources, approval workflow
+- Risk evaluation: 4-level schema (low/medium/high/critical)
 
 ### Rules cited: 21
 17 teaching-only, 4 check_regex
@@ -205,7 +205,7 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 | "An Empirical Analysis of Flaky Tests" (Luo et al.) | FSE | 2014 |
 
 ### Ghost Stack internal
-`superpowers/skills/test-driven-development/` — testing anti-patterns
+Testing anti-patterns derived from industry literature and practice.
 
 ### Rules cited: 18
 14 teaching-only, 4 check_regex
@@ -289,7 +289,7 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 | Total unique standards/frameworks cited | 30+ |
 | Total unique research papers cited | 45+ |
 | Total unique RFCs/CWEs/controls | 50+ |
-| Total Ghost Mesh internal references | 8 |
+
 
 ## Standards by Category
 

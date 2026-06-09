@@ -2,7 +2,7 @@
 
 **Reviewer:** Mike (Claude Code / claude-sonnet-4-6)
 **Date:** 2026-06-08
-**Target:** `P:\AI_Code\projects\lm-tutor\SCOPE.md`
+**Target:** `SCOPE.md`
 **Focus:** Operational reality — deployability, runtime, dependencies, monitoring, infrastructure gaps
 
 ---
@@ -43,7 +43,7 @@ The SCOPE says "no server, no config" for the eval use case. Then it defines `sc
 
 - **A `requirements.txt` or pinned lock file.** `pip install -e .` installs the latest compatible versions of all dependencies. Six months from now, a new `mcp` release could break the School. A lock file (or at minimum an upper-bound pin in the dependencies) is needed for reproducible installs.
 - **Dockerfile.** The SCOPE lists Docker as a distribution method but provides no details. A multistage Docker build for the MCP server is table stakes.
-- **Environment variable reference.** The MCP server needs `BRUSH_STROKE_BRUSHES_DIR` (from brush-stroke). What env vars does the School need? `SCHOOL_REGISTRY_PATH`? `SCHOOL_CLASSES_DIR`? Not defined.
+- **Environment variable reference.** The MCP server needs external env vars. What env vars does the School need? `SCHOOL_REGISTRY_PATH`? `SCHOOL_CLASSES_DIR`? Not defined.
 - **CI/CD.** Zero mention of CI. No test runner config (pytest? unittest?). No linting. No type checking. For a project that claims reproducibility (baseline benchmarks), the absence of CI means every benchmark run is done by hand.
 
 ---
@@ -298,14 +298,9 @@ The SCOPE doesn't mention any of this. An unreproducible benchmark is not a benc
 
 ### 8.2 No Update Strategy for Classes
 
-Classes are static directories under version control. When a source project's standard evolves (e.g., brush-stroke adds a new anti-pattern):
+Classes are static directories under version control. When a source standard evolves (e.g., WCAG adds a new success criterion):
 
-1. Someone must update the class content
-2. The eval harness rubric must be updated
-3. Previous benchmark results are invalidated
-4. All enrolled models need re-evaluation
-
-The SCOPE says "bidirectional sync" — when brush-stroke updates, the School class updates in the same commit. This is good for code consistency but doesn't address the operational fall-out: benchmarks need rerunning, pass/fail history may change retroactively, and models that passed on the old rubric may now fail.
+The SCOPE says classes should stay in sync with source standards. This is good for code consistency but doesn't address the operational fall-out: benchmarks need rerunning, pass/fail history may change retroactively, and models that passed on the old rubric may now fail.
 
 ### 8.3 The `school mcp` Port and Protocol
 

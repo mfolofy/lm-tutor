@@ -19,9 +19,8 @@ Criterion (SC) it codifies. No rule exists without a source.
 
 ## Brush-stroke research sources
 
-Migrated from `projects/brush-stroke/docs/SOURCES.md` (compiled 2026-06-07 via
-5 parallel research agents covering accessibility, color/typography,
-layout/spacing, interaction/forms, visual hierarchy).
+Research compiled via 5 parallel research agents covering accessibility, color/typography,
+layout/spacing, interaction/forms, visual hierarchy (compiled 2026-06-07).
 
 ### Key 2026 papers supporting the thesis
 

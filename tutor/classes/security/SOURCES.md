@@ -32,8 +32,7 @@ a source.
   insecure deserialization (CWE-502), and cross-origin issues (CWE-942).
 - **CERT Secure Coding Standards** — SEI CERT C/C++, Java, and Perl Coding
   Standards. Referenced for input validation and injection prevention patterns.
-- **Ghost Mesh Security Framework** — Reference implementation at
-  `projects/ghost_mesh/compliance/` covering Ghost Stack agent identity,
+- **Security Framework** — Reference implementation covering agent identity,
   access control, and audit logging integration.
 
 ## Per-rule citation table
@@ -86,14 +85,6 @@ personnel security (PS), planning (PL), and system and services acquisition
 
 ## Reference implementation
 
-Ghost Mesh ships a security framework at `projects/ghost_mesh/compliance/`:
-
-- **`check.py`** — Automated security checks including agent certificate
-  verification, heartbeat monitoring, chain integrity, and dual-control
-  enforcement.
-- **`frameworks.py`** — Control mappings across SOC2, HIPAA, and CMMC 2.0.
-- **`exporter.py`** — Evidence bundle generation with security context.
-
-The Ghost Mesh implementation demonstrates how NIST SP 800-53 controls are
+A security framework implementation demonstrates how NIST SP 800-53 controls are
 applied: PKI for agent identity, WORM chain for audit integrity, dual-approval
 for break-glass access, and rate-limited authentication.

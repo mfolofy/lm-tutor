@@ -2,7 +2,7 @@
 
 **Reviewer:** Critiquer (adversarial design review)
 **Date:** 2026-06-08
-**Target:** `P:\AI_Code\projects\mcp-bridge\SCOPE.md`
+**Target:** `SCOPE.md`
 
 ---
 
@@ -125,7 +125,7 @@ The doc mentions none of this. No maintenance budget. No update cadence. No stal
 
 > "Option B: make bridge the canonical home and brush-stroke a historical artifact"
 
-brush-stroke (at `projects/brush-stroke/`) has:
+brush-stroke has:
 
 - Its own Python package structure (`brush_stroke/`)
 - Its own schemas (`brush_stroke/schemas.py` — 81 lines of Pydantic models)

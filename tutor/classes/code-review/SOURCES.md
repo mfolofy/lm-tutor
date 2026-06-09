@@ -38,40 +38,36 @@ without a foundation.
 
 ### House/everybody-lies -- Code Review Gatekeeper
 
-House is the Ghost Stack code review gatekeeper. The implementation lives in
-`everybody-lies/src/everybody_lies/`.
+House is a multi-model code review gatekeeper that routes changed files to
+domain-specialist models and applies deterministic pre-scanning before AI review.
 
 Key patterns codified into rules:
 
-- **Multi-specialist routing** (`gatekeeper.py`): Changed files are routed to
-  domain specialists (Foreman for backend, Cameron for frontend, Chase for
-  security, Taub for data, Thirteen for edge cases). Dynamic fellows auto-hired
+- **Multi-specialist routing**: Changed files routed to domain specialists
+  (backend, frontend, security, data, edge cases). Dynamic specialists auto-hired
   for uncovered domains.
-- **Cuddy differential diagnosis** (`gatekeeper.py`, lines 375-426): Pre-review
-  that rules out simpler alternatives before specialists examine code quality.
-- **Deterministic pre-scan** (`scanner.py`): Zero-cost pattern matching -- 50+
-  patterns (hardcoded secrets, SQL injection, debug configs, weak crypto). Runs
+- **Differential diagnosis**: Pre-review that rules out simpler alternatives
+  before specialists examine code quality.
+- **Deterministic pre-scan**: Zero-cost pattern matching -- 50+ patterns
+  (hardcoded secrets, SQL injection, debug configs, weak crypto). Runs
   before any AI review.
-- **P1 rejection rules** (`ITIL_SOP.md`, section 2): P1 findings are automatic
-  rejection. No override possible. Categories: credentials, injection, auth
-  bypass, data loss, infinite loops, config errors.
-- **Wilson appeal system** (`gatekeeper.py`, lines 1571-1803): Separation of
-  powers -- Wilson uses a DIFFERENT provider than the review board. P1 findings
-  cannot be appealed.
-- **Problem management** (`learning.py`): Same finding across 3+ reviews creates
-  a problem record. Recurring patterns trigger root cause analysis.
-- **Risk scoring** (`gatekeeper.py`, lines 537-561): Auto-calculated from lines
-  changed (20%), files changed (15%), domain risk (65%). High-risk patterns
-  include auth, trading, billing, database migrations.
-- **Dynamic fellow hiring** (`gatekeeper.py`, lines 52-212): When code touches
-  domains no existing specialist covers, House auto-hires a domain-specific
-  fellow with generated review prompts.
-- **Adversarial cross-checks** (`gatekeeper.py`, lines 1235-1256): For
-  adversarial-tier reviews, each specialist gets a cross-check from a different
-  model.
-- **Suppression learning** (`learning.py`): Dismissed findings auto-learn
-  suppression rules. If a finding type is repeatedly dismissed, the system
-  stops surfacing it.
+- **P1 rejection rules**: P1 findings are automatic rejection. No override
+  possible. Categories: credentials, injection, auth bypass, data loss,
+  infinite loops, config errors.
+- **Separation of powers for appeals**: Appeal reviewer uses a different
+  provider than the review board. P1 findings cannot be appealed.
+- **Problem management**: Same finding across 3+ reviews creates a problem
+  record. Recurring patterns trigger root cause analysis.
+- **Risk scoring**: Auto-calculated from lines changed (20%), files changed
+  (15%), domain risk (65%). High-risk patterns include auth, trading, billing,
+  database migrations.
+- **Dynamic specialist hiring**: When code touches domains no existing
+  specialist covers, system auto-hires a domain-specific specialist with
+  generated review prompts.
+- **Adversarial cross-checks**: For adversarial-tier reviews, each specialist
+  gets a cross-check from a different model.
+- **Suppression learning**: Dismissed findings auto-learn suppression rules.
+  If a finding type is repeatedly dismissed, the system stops surfacing it.
 
 ## Per-rule source map
 
