@@ -26,9 +26,10 @@ how to write good code — it just needs a reminder at the right moment.
   the same rules it taught. No drift between teaching and testing.
 - **Tracks progress per model** — eval history and per-class pass rates inform
   what to study next. Targeted remediation beats blanket retraining.
-- **Covers 15 domains** — accessibility, security, compliance, code review, API
+- **Covers 18 domains** — accessibility, security, compliance, code review, API
   design, Python style, architecture, prompt design, testing, performance,
-  DevOps, and professional credentials (attorney, physician, accountant).
+  DevOps, and professional credentials (attorney, physician, accountant,
+  engineer, therapist, journalist).
   Each domain is a standalone class with cited standards and FAIL/PASS examples.
 - **Adapts to the model** — small models get fundamentals + scaffolded tools.
   Capable models get the full curriculum. Track assignment is automatic.
@@ -116,8 +117,9 @@ penalty of perjury. All output must include professional disclaimer.
 | **credential-jd** | Attorney | ABA Model Rules, FRE, Restatement of Law |
 | **credential-md** | Physician | HIPAA, AMA Code of Ethics, EMTALA |
 | **credential-cpa** | Accountant/Finance | GAAP, GAAS, AICPA Code, SOX, Circular 230 |
-
-More in development (engineer, therapist, financial advisor, and others).
+| **credential-pe** | Engineer | NSPE Code of Ethics, IBC, ASCE, state licensure |
+| **credential-lcsw** | Therapist | NASW/APA Codes, HIPAA, Tarasoff |
+| **credential-journalist** | Journalist | SPJ Code of Ethics, AP Stylebook |
 
 [See full attorney example >](docs/credential-example-attorney.md)
 
@@ -157,7 +159,7 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 15 classes, 249 rules, 687 tests. Benchmarked across 2 model tiers
+**Beta.** 18 classes, 295 rules, 818 tests. Benchmarked across 2 model tiers
 (Flash and Gemma). Working in production at Ghost Stack.
 
 ---
