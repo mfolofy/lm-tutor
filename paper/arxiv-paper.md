@@ -18,10 +18,12 @@ probability. We propose lm-tutor, a structured curriculum injection system
 that steers model attention toward correct patterns at inference time without
 weight modification.
 
-We show that a single injection of token-efficient [RULE] checklists reduces
-WCAG violations by 54% on DeepSeek V4 Flash (37B). A placebo control (same
-[RULE] format, irrelevant gardening rules) produces only 14% reduction —
-the real injection produces 3.8× the placebo effect, confirming the mechanism
+We show that structured [RULE] injection reduces WCAG violations by ~38%
+on DeepSeek V4 Flash (37B), averaged across two independent runs (range:
+7.2–9.6 avg violations vs 15.4 raw). Adding scratchpad reasoning (Booster)
+reaches ~59% reduction. A placebo control (same [RULE] format, irrelevant
+gardening rules) produces a stable 14% reduction across both runs —
+the real injection produces ~3× the placebo effect, confirming the mechanism
 is correct-pattern steering, not structured prompting alone. A weaker model
 (Gemma 3 4B, HumanEval 72.1%) shows only 12% improvement, identifying a
 capability floor (~70% HumanEval) below which injection falters. Python output

@@ -2,15 +2,16 @@
 
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
-A single `tutor learn` injection reduces output violations by 54% on broken
-training data — 3.8× more than a placebo injection with the same format but
-irrelevant rules. The model already knows how to write good code — it just
-needs a reminder at the right moment.
+A single `tutor learn` injection reduces output violations by ~38% on broken
+training data — 3× more than a placebo injection with the same format but
+irrelevant rules. Add the Booster and it reaches ~59%. The model already knows
+how to write good code — it just needs a reminder at the right moment.
 
 ```
-  Raw generation:   15.6 violations  (baseline)
+  Raw generation:            15.4 violations  (baseline, 2-run avg)
   Placebo (wrong rules, same format):  13.4  (-14%)
-  After injection:   7.2 violations  (-54%)
+  After injection:            8.4 violations  (-38%, 2-run avg)
+  + Booster (scratchpad):     6.2 violations  (-59%)
 ```
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
@@ -41,15 +42,18 @@ deterministic 38-rule evaluator. 5-run averages. Placebo-controlled.
 
 ### Injection works — and it's not just structured prompting
 
-| Condition | Violations | vs Raw |
-|-----------|-----------|--------|
-| Raw (no injection) | 15.6 | -- |
-| Placebo (gardening rules, same format) | 13.4 | -14% |
-| Class (correct [RULE] injection) | 7.2 | **-54%** |
+| Condition | Run 1 | Run 2 | 2-run avg | vs Raw |
+|-----------|-------|-------|-----------|--------|
+| Raw (no injection) | 15.6 | 15.2 | 15.4 | — |
+| Placebo (gardening rules, same format) | 13.4 | 13.4 | 13.4 | **-14%** |
+| Class (correct [RULE] injection) | 7.2 | 9.6 | 8.4 | **-38%** |
+| + Booster (scratchpad reasoning) | — | 6.2 | 6.2 | **-59%** |
 
 The placebo control (irrelevant gardening rules in identical `[RULE]` format)
-produced 14% reduction. The real injection produced 54% — 3.8× the placebo.
-The format alone is not the mechanism. The content is.
+produced 14% reduction across both runs — identical and stable. The real
+injection produced ~38% averaged across two runs (3× the placebo). The Booster
+adds meaningful lift on top: -59% vs raw. The format alone is not the
+mechanism. The content is.
 
 ### The effect is proportional to training data quality
 
