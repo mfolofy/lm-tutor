@@ -2,16 +2,16 @@
 
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
-A single `tutor learn` injection reduces output violations by ~38% on broken
-training data — 3× more than a placebo injection with the same format but
-irrelevant rules. Add the Booster and it reaches ~59%. The model already knows
-how to write good code — it just needs a reminder at the right moment.
+A single `tutor learn` injection reduces output violations by 38–83% depending
+on model tier — placebo-controlled, 3× more than format effects alone. The model
+already knows how to write good code — it just needs a reminder at the right moment.
 
 ```
-  Raw generation:            15.4 violations  (baseline, 2-run avg)
-  Placebo (wrong rules, same format):  13.4  (-14%)
-  After injection:            8.4 violations  (-38%, 2-run avg)
-  + Booster (scratchpad):     6.2 violations  (-59%)
+  Raw generation:                      15.4 violations  (baseline)
+  Placebo (wrong rules, same format):  13.4             (-14%)
+  After injection (mid-tier):           8.4             (-38%, 2-run avg)
+  After injection (high-tier):          1.0             (-83%, Sonnet 4.6)
+  + Booster (scratchpad, mid-tier):     6.2             (-59%)
 ```
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
@@ -68,22 +68,25 @@ defaults to correct output. When training data is broken, injection recovers
 the latent correct patterns. This is inverse validation: the effect exists
 where training fails.
 
-### There's a capability floor
+### The effect holds across all capable model tiers
 
-| Model | Params | HumanEval | Reduction |
-|-------|--------|-----------|-----------|
-| DeepSeek V4 Flash | ~37B | ~85% | **-54%** |
-| Gemma 3 4B | ~4B | 72.1% | -12% |
+| Model | Tier | Reduction |
+|-------|------|-----------|
+| Gemma 3 4B | Edge (~72% HumanEval) | -12% |
+| DeepSeek V4 Flash | Mid (~85%) | -38% avg, -59% with Booster |
+| DeepSeek Reasoner | Pro | **-77%** |
+| Claude Sonnet 4.6 | High | **-83%** |
+| Claude Opus 4.8 | Frontier | **-63%** |
 
 Below ~70% HumanEval equivalent, models can't reliably parse structured [RULE]
-instructions. The capability genuinely isn't there — not just buried.
+instructions. Above that floor, injection works consistently — and the effect
+is substantial even at the frontier.
 
 ### Summary
 
 Injection fixes broken defaults without weight modification. Effect is
-specific to correct rules (placebo-controlled at 3.8× the placebo effect),
-proportional to training data brokenness, and requires a minimum capability
-threshold. Full methodology at
+placebo-controlled (3× the placebo), holds across 5 model tiers, and
+requires a minimum capability threshold (~70% HumanEval). Full methodology at
 [docs/benchmark-methodology.md](docs/benchmark-methodology.md).
 
 ---
@@ -159,8 +162,8 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 18 classes, 295 rules, 818 tests. Benchmarked across 2 model tiers
-(Flash and Gemma). Working in production at Ghost Stack.
+**Beta.** 18 classes, 295 rules, 818 tests. Benchmarked across 5 model tiers
+(Gemma 3 4B through Claude Opus 4.8). Working in production at Ghost Stack.
 
 ---
 
