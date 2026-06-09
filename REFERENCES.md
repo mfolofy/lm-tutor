@@ -1,6 +1,6 @@
 # lm-tutor — Master Reference Catalog
 
-Every standard, framework, paper, and specification cited across all 9 classes.
+Every standard, framework, paper, and specification cited across all 30 classes.
 
 ---
 
@@ -281,12 +281,12 @@ Testing anti-patterns derived from industry literature and practice.
 
 | Metric | Count |
 |--------|-------|
-| Total classes | 9 |
-| Total rules | 151 |
-| Total checkable rules (selector/regex) | 41 |
-| Total teaching-only rules | 110 |
-| Total tests | 422 |
-| Total unique standards/frameworks cited | 30+ |
+| Total classes | 30 |
+| Total rules | 487 |
+| Total checkable rules (selector/regex) | 130+ |
+| Total teaching-only rules | 350+ |
+| Total tests | 1,255+ |
+| Total unique standards/frameworks cited | 50+ |
 | Total unique research papers cited | 45+ |
 | Total unique RFCs/CWEs/controls | 50+ |
 
@@ -319,6 +319,9 @@ WCAG 2.2, ARIA 1.2, Section 508, EN 301 549, Apple HIG, Material Design
 
 ### Infrastructure/Cloud (cross-cutting)
 AWS Well-Architected, Google CAF/SRE, Azure CAF, 12-Factor App, CNCF
+
+### Professional Credentials (18 classes)
+ABA Model Rules, HIPAA, GAAP/GAAS/AICPA/SOX, NSPE Code, NASW/APA Codes, SPJ Code, FINRA/SEC, DEA/USP, AIA/IBC, ANA Code/NPA, FARs/FAA AIM, NAR Code/Fair Housing Act, PMBOK/PMP Code, ADA Code/CDC, NREMT/EMS, FLSA/FMLA/ADA/EEOC, ABA Judicial Code/FRE, AVMA Code/Animal Welfare Act
 
 ### PKI/Networking (cross-cutting)
 RFC 5280, RFC 3647, TLS 1.2/1.3
