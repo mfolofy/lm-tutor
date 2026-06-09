@@ -1,0 +1,2 @@
+# code-review — All checks are stdlib-only (regex Layer 1 plus teaching-only rules).
+# No extra packages needed.

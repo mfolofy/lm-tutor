@@ -1,0 +1,485 @@
+﻿# audit — Audit & Compliance Evidence Standards. Second class in the School.
+#
+# Source standards: SOC2 (AICPA TSC 2017), HIPAA Security Rule (45 CFR 164),
+# CMMC 2.0 (NIST SP 800-171), NIST SP 800-53. See SOURCES.md for per-rule
+# citations. Every rule is self-contained: it carries teaching examples AND
+# (where codifiable) a deterministic check_regex the Layer 1 harness runs.
+#
+# Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the
+# Socratic fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~140 tokens for checkable rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix step).
+#
+# Rules marked with check_regex: true need a FAIL/PASS test pair in
+# tests/test_audit.py. Teaching-only rules are tested for content presence.
+
+class:
+  id: audit
+  title: "Audit & Compliance — Evidence Standards and Controls"
+  version: 1.0.0
+  sources: ["SOC2", "HIPAA", "CMMC 2.0", "NIST SP 800-53"]
+  prerequisites: []
+  target_violations:
+    - "hardcoded-secrets"
+    - "audit-logging-disabled"
+    - "weak-crypto"
+    - "world-readable"
+    - "missing-encryption"
+    - "single-operator-mode"
+    - "chain-verification-off"
+    - "evidence-integrity"
+  estimated_cost_tokens: 280
+
+rules:
+
+  # ── CHECKABLE RULES (8, deterministic regex checks) ─────────────────────
+
+  - id: hardcoded-secrets
+    severity: fundamental
+    rule: "Never hardcode passwords, API keys, tokens, or secrets in configuration files or source code. Use environment variables, vaults, or secret managers. A hardcoded string value for any secret-related key is a violation."
+    check_regex: |-
+      (?i)(?:password|secret|api_key|api_secret|access_token|private_key)\s*[:=]\s*['"](?!\$\{)[^'"]+['"]
+    framework_yaml: |
+      # FAIL — secret literal in config
+      database:
+        password: "P@ssw0rd123!"
+      api:
+        api_key: "sk-abc123def456"
+      # PASS — vault reference
+      database:
+        password: "${DB_PASSWORD}"
+      api:
+        api_key: "${API_KEY}"
+    framework_json: |
+      // FAIL
+      { "db_password": "s3cret!", "api_key": "abc123" }
+      // PASS
+      { "db_password": "$DB_PASSWORD" }
+    framework_python: |
+      # FAIL
+      API_KEY = "sk-abc123def456"
+      # PASS
+      API_KEY = os.getenv("API_KEY")
+    framework_config: |
+      # FAIL
+      SECRET_KEY = "my-insecure-key"
+      # PASS
+      SECRET_KEY = @VAULT_REF@
+
+  - id: audit-logging-disabled
+    severity: fundamental
+    rule: "Audit logging must never be disabled in production environments. Turning logging off (false, off, 0, none) for security-relevant events breaks compliance with SOC2 CC7.1, HIPAA 164.312(b), and CMMC AU.L2-3.3.1."
+    check_regex: |-
+      (?i)(?:audit_enabled|audit_logging|audit\.enabled|logging\.audit)\s*[:=]\s*(?:false|off|0|none|disabled|no)\b
+    framework_yaml: |
+      # FAIL
+      audit:
+        enabled: false
+      logging:
+        audit: off
+      # PASS
+      audit:
+        enabled: true
+      logging:
+        audit: on
+    framework_json: |
+      // FAIL
+      { "audit_logging": false }
+      // PASS
+      { "audit_logging": true, "log_level": "info" }
+    framework_config: |
+      # FAIL
+      audit.enabled = false
+      # PASS
+      audit.enabled = true
+
+  - id: weak-crypto
+    severity: fundamental
+    rule: "Use only approved cryptographic algorithms: SHA-256/SHA-3 for hashing, AES-256-GCM for symmetric encryption, Ed25519 or ECDSA P-256 for signatures. MD5, SHA-1, DES, 3DES, RC4, and TLS 1.0/1.1 are forbidden in production."
+    check_regex: |-
+      (?i)(?:\bmd5\b|\bsha1\b(?!.*256)|\bdes\b(?!cription)|\brc4\b|\btls[ _]?1[._]0\b|\bssl[ _]?3[._]0\b)
+    framework_yaml: |
+      # FAIL
+      security:
+        hash_algorithm: md5
+        tls_version: "TLS 1.0"
+      # PASS
+      security:
+        hash_algorithm: sha256
+        tls_version: "TLS 1.3"
+    framework_json: |
+      // FAIL
+      { "cipher": "des", "hash": "sha1" }
+      // PASS
+      { "cipher": "aes256-gcm", "hash": "sha256" }
+    framework_python: |
+      # FAIL
+      import hashlib
+      h = hashlib.md5(data)
+      # PASS
+      h = hashlib.sha256(data)
+    framework_config: |
+      # FAIL
+      cipher = "rc4"
+      # PASS
+      cipher = "aes256-gcm"
+
+  - id: world-readable
+    severity: fundamental
+    rule: "Sensitive files (configuration, credentials, audit logs, key material) must not have world-readable permissions. 777, 0777, and a+rwx allow any user on the system to read or modify protected data."
+    check_regex: |-
+      (?i)(?:\bpermissions\b|\bperm\b|\bfile_mode\b|\bchmod\b|\bmode\b)\s*[:=]?\s*["']?0?[o]?777["']?\b
+    framework_yaml: |
+      # FAIL
+      config:
+        permissions: 0777
+      # PASS
+      config:
+        permissions: 0600
+      # PASS (audit log)
+      audit_log:
+        permissions: 0640
+    framework_json: |
+      // FAIL
+      { "file_mode": "0777" }
+      // PASS
+      { "file_mode": "0640" }
+    framework_python: |
+      # FAIL
+      os.chmod("/etc/app/config.ini", 0o777)
+      # PASS
+      os.chmod("/etc/app/config.ini", 0o600)
+
+  - id: missing-encryption
+    severity: fundamental
+    rule: "Sensitive data at rest and in transit must be encrypted. Configuration that sets encryption to none, false, off, or disabled is a compliance violation under HIPAA 164.312(a)(2)(iv) and SOC2 C1.1."
+    check_regex: |-
+      (?i)(?:encryption|encrypt)\s*[:=]?\s*(?:none|false|off|disabled)\b
+    framework_yaml: |
+      # FAIL
+      database:
+        encryption: none
+      # PASS
+      database:
+        encryption: aes256
+      # PASS
+      tls:
+        enabled: true
+    framework_json: |
+      // FAIL
+      { "encrypt": false }
+      // PASS
+      { "encrypt": true, "algorithm": "aes256-gcm" }
+    framework_config: |
+      # FAIL
+      encryption = off
+      # PASS
+      encryption = on
+
+  - id: single-operator-mode
+    severity: fundamental
+    rule: "Emergency (break-glass) access must require dual-operator approval. Single-operator mode bypasses segregation of duties and violates SOC2 CC6.6, HIPAA 164.312(d), and CMMC AC.L2-3.1.5."
+    check_regex: |-
+      (?i)single_operator\s*[:=]\s*["']?(?:true|yes|1)\b
+    framework_yaml: |
+      # FAIL
+      security:
+        single_operator: true
+      # PASS
+      security:
+        single_operator: false
+        dual_approval_timeout: 300
+    framework_json: |
+      // FAIL
+      { "single_operator_mode": true }
+      // PASS
+      { "single_operator_mode": false, "approval_required": true }
+    framework_config: |
+      # FAIL
+      single_operator = yes
+      # PASS
+      single_operator = no
+
+  - id: chain-verification-off
+    severity: fundamental
+    rule: "Chain integrity verification must remain enabled in production. Disabling verify_chain, integrity_check, or hash_verification makes tampering undetectable, violating HIPAA 164.312(c)(1) and CMMC AU.L2-3.3.8."
+    check_regex: |-
+      (?i)(?:verify_chain|integrity_check|hash_verification|chain_validation)\s*[:=]\s*(?:false|off|disabled)\b
+    framework_yaml: |
+      # FAIL
+      chain:
+        verify_chain: false
+      # PASS
+      chain:
+        verify_chain: true
+    framework_json: |
+      // FAIL
+      { "integrity_check": false }
+      // PASS
+      { "integrity_check": true, "interval_seconds": 3600 }
+    framework_python: |
+      # FAIL
+      worm_backend.verify_chain = lambda: ("disabled", "Verification bypassed")
+      # PASS
+      total, valid, errors = worm_backend.verify_chain()
+      assert total == valid, f"Chain integrity fail: {errors}"
+
+  # ── TEACHING-ONLY RULES (9, no check_regex — LLM judge/Socratic) ────────
+
+  - id: evidence-integrity
+    severity: fundamental
+    rule: "Audit evidence must be tamper-evident: cryptographically signed, stored in append-only (WORM) storage, and chain-verifiable through hash linking. Plain log files, SQL tables that allow UPDATE or DELETE, or any mutable storage without integrity proofs are not admissible evidence."
+    framework_yaml: |
+      # FAIL — mutable audit log
+      audit:
+        backend: sqlite
+        allow_delete: true
+      # PASS — WORM audit trail
+      audit:
+        backend: wormchain
+        signing: ed25519
+        storage: append-only
+        hash_witness: enabled
+    framework_json: |
+      // FAIL
+      { "audit_trail": { "type": "file", "signed": false } }
+      // PASS
+      { "audit_trail": { "type": "wormchain", "signed": true, "algorithm": "ed25519" } }
+    framework_python: |
+      # FAIL
+      def log_event(event):
+          with open("audit.log", "a") as f:
+              f.write(json.dumps(event) + "\\n")
+      # PASS
+      def log_event(event, signer):
+          entry = {**event, "signature": signer.sign(event), "hash": chain.head()}
+          chain.append(entry)
+
+  - id: sod-violation
+    severity: fundamental
+    rule: "No single person or agent should control all three of: (1) key generation / credential issuance, (2) approval of access requests, and (3) audit log review. A proper segregation of duties requires at minimum four roles: Operator, Approver, Auditor, and Administrator. Combining any two in one entity creates a control weakness (CMMC AC.L2-3.1.5, SOC2 CC6.1)."
+    framework_yaml: |
+      # FAIL — combined roles
+      roles:
+        admin:
+          permissions: [generate_keys, approve_access, review_audit, deploy]
+      # PASS — segregated roles
+      roles:
+        operator:
+          permissions: [execute_tasks]
+        approver:
+          permissions: [approve_access, approve_changes]
+        auditor:
+          permissions: [read_audit_log, generate_reports]
+        admin:
+          permissions: [manage_users, rotate_keys]
+    framework_json: |
+      // FAIL
+      { "user": "alice", "roles": ["admin", "auditor"] }
+      // PASS
+      { "user": "alice", "role": "operator" }
+    framework_python: |
+      # FAIL
+      class Admin:
+          def generate_key(self): ...
+          def approve_request(self): ...
+          def review_audit(self): ...
+      # PASS
+      class Operator:
+          def execute(self): ...
+      class Approver:
+          def approve(self): ...
+
+  - id: chain-of-custody
+    severity: fundamental
+    rule: "Every evidence artifact must carry provenance metadata: who collected it, when (UTC ISO 8601 timestamp), from which source, the collection method, and a cryptographic hash of the artifact. Missing or incomplete provenance makes evidence inadmissible in an audit."
+    framework_json: |
+      # FAIL — missing provenance fields
+      {
+        "evidence": "audit_trail.json",
+        "entries": [{"action": "login", "user": "alice"}]
+      }
+      # PASS — complete provenance
+      {
+        "evidence": "audit_trail.json",
+        "provenance": {
+          "collected_by": "compliance-exporter v1.0",
+          "collected_at": "2026-06-07T14:30:00Z",
+          "source": "wormchain",
+          "method": "get_range(start=0, count=10000)",
+          "hash": "sha256:e3b0c44298fc1c149afbf4c8996fb924"
+        },
+        "entries": [{"action": "login", "user": "alice", "timestamp": "2026-06-07T14:29:00Z"}]
+      }
+    framework_yaml: |
+      # FAIL
+      evidence:
+        file: audit_trail.json
+      # PASS
+      evidence:
+        file: audit_trail.json
+        provenance:
+          collector: compliance-exporter
+          timestamp: 2026-06-07T14:30:00Z
+          source: wormchain
+          artifact_hash: sha256:e3b0c44298fc1c149afbf4c8996fb924
+
+  - id: soc2-security
+    severity: fundamental
+    rule: "SOC2 Security principle requires: logical access controls (CC6.1-6.3) with unique user IDs, automated access revocation on termination, and monitoring for unauthorized access (CC7.1-7.2). Implement mTLS for inter-service auth, maintain a certificate inventory, and log every access attempt with its grant/deny outcome."
+    framework_yaml: |
+      # FAIL
+      access_control:
+        method: shared_credentials
+        termination:
+          manual_timeout_days: 90
+      # PASS
+      access_control:
+        method: pki_mtls
+        cert_authority: mesh_ca
+        termination:
+          auto_revoke: immediate
+          cert_revocation_list: ghost-revoked-certs
+    framework_python: |
+      # FAIL — no access logging
+      def handle_request(user, action):
+          execute(action)
+      # PASS — audited access
+      def handle_request(user, action):
+          allowed = check_permissions(user, action)
+          audit_log(user, action, "granted" if allowed else "denied")
+          if allowed:
+              execute(action)
+
+  - id: soc2-availability
+    severity: fundamental
+    rule: "SOC2 Availability requires system clock synchronization (NTP with drift <1s logged, <5s actionable), heartbeat monitoring with automated stale-detection, and documented uptime targets with measured SLAs."
+    framework_yaml: |
+      # FAIL — no time sync
+      monitoring:
+        ntp: false
+        heartbeat_interval: 0
+      # PASS
+      monitoring:
+        ntp: true
+        ntp_pool: pool.ntp.org
+        drift_threshold: 1
+        drift_critical: 5
+        heartbeat_interval: 60
+        heartbeat_timeout: 300
+
+  - id: soc2-confidentiality
+    severity: fundamental
+    rule: "SOC2 Confidentiality requires encryption at rest and in transit, data classification labels, and DLP controls that prevent sensitive data from being sent to unauthorized endpoints. Configure cloud LLM access as opt-in with explicit administrative acknowledgment."
+    framework_yaml: |
+      # FAIL — cloud LLM by default, no DLP
+      llm:
+        mode: cloud_allowed
+        dlp_filter: false
+      # PASS
+      llm:
+        mode: local_only
+        dlp_filter: true
+        cloud_access: require_ack
+
+  - id: hipaa-audit-controls
+    severity: fundamental
+    rule: "HIPAA Security Rule 164.312(b) requires hardware, software, and procedural mechanisms that record and examine activity in systems containing ePHI. Every access must log: who (user ID), what (action/operation), when (timestamp), what data (resource identifier), and outcome (success/failure). Silent access — no log entry for an action — is not compliant."
+    framework_python: |
+      # FAIL — no audit trail for read
+      def read_phi(patient_id, user):
+          return database.query(patient_id)
+      # PASS — audited read
+      def read_phi(patient_id, user):
+          result = database.query(patient_id)
+          audit_log({
+              "user": user.id,
+              "action": "read_phi",
+              "resource": f"patient/{patient_id}",
+              "timestamp": utc_now(),
+              "outcome": "success"
+          })
+          return result
+    framework_json: |
+      // FAIL — incomplete audit entry
+      { "audit": { "user": "alice", "action": "read" } }
+      // PASS — complete audit entry
+      { "audit": { "user": "alice", "action": "read_phi", "resource": "patient/42",
+                   "timestamp": "2026-06-07T14:29:00Z", "outcome": "success" } }
+
+  - id: cmmc-level2
+    severity: fundamental
+    rule: "CMMC 2.0 Level 2 aligns with NIST SP 800-171 (110 controls). Key audit-relevant requirements: AC.L2-3.1.1 (limit access to authorized users), AU.L2-3.3.1 (create and retain audit logs), AU.L2-3.3.8 (protect audit info from unauthorized modification/deletion), IA.L2-3.5.1 (identify users and processes), SC.L2-3.13.11 (protect CUI confidentiality). Implement WORM audit storage with cryptographic signing and per-agent identity."
+    framework_yaml: |
+      # FAIL — mutable log, no identity
+      cmmc:
+        audit: flat_file
+        identity: shared_user
+        protection: none
+      # PASS
+      cmmc:
+        audit: wormchain
+        identity: pki_certificates
+        protection: append_only
+        signing: ed25519
+
+  - id: evidence-collection
+    severity: advanced
+    rule: "An evidence bundle for an audit should contain: (1) a manifest with framework, period, and generation timestamp; (2) filtered audit trail entries for the period; (3) control-to-feature mapping showing which controls are satisfied by which system features; (4) agent/identity inventory; (5) PKI summary with certificate counts and revocation list; (6) time synchronization logs; (7) integrity verification report; (8) architecture overview."
+    framework_json: |
+      # FAIL — no manifest, no integrity
+      { "audit_trail": [...], "agents": [...] }
+      # PASS
+      {
+        "manifest": {"framework": "SOC2", "period": "Q2-2026", "generated_at": "2026-06-07T14:30:00Z"},
+        "audit_trail": [...],
+        "controls_map": [{"control": "CC6.1", "status": "pass"}],
+        "agent_inventory": [...],
+        "pki_summary": {"active_certs": 12, "revoked": 0},
+        "ntp_logs": [...],
+        "chain_integrity": {"valid": 5000, "total": 5000, "status": "PASS"},
+        "architecture": "ghost-mesh v1.0"
+      }
+
+  - id: retention-policy
+    severity: advanced
+    rule: "Audit evidence must be retained per documented policy: SOC2 recommends minimum 1 year (typically 3-7), HIPAA requires 6 years, CMMC requires the period specified in the System Security Plan. Configure automatic expiration enforcement on audit storage. Document the retention period and pruning process in your evidence procedures."
+    framework_yaml: |
+      # FAIL — no retention policy
+      audit:
+        retention: indefinite
+      # PASS
+      audit:
+        retention_days: 365
+        enforcement: auto_expire
+        policy_document: docs/retention-policy.md
+
+  - id: common-audit-failures
+    severity: advanced
+    rule: "The most common audit failures discovered in practice: (1) mutable audit logs that allow deletion or backdating; (2) missing or unsynchronized system clocks making timestamps unreliable; (3) shared credentials or no individual user identification; (4) audit logs that record activity but lack the outcome (granted/denied); (5) no independent verification of log integrity; (6) evidence collection that only captures happy-path scenarios."
+    framework_html: |
+      <!-- FAIL examples -->
+      <audit-failure type="mutable-logs">Database allows DELETE on audit table.</audit-failure>
+      <audit-failure type="clock-drift">All timestamps use local time, no NTP.</audit-failure>
+      <audit-failure type="shared-creds">team@example.com used by 12 people.</audit-failure>
+      <!-- PASS -->
+      <audit-control type="worm-storage">Append-only chain, no deletes.</audit-control>
+      <audit-control type="ntp-sync">NTP configured, drift logged.</audit-control>
+      <audit-control type="individual-ids">Each user has unique cert.</audit-control>
+
+  - id: auditor-role
+    severity: advanced
+    rule: "Auditor accounts must be read-only and time-scoped. An auditor should be able to review logs, verify chain integrity, and export evidence — but never modify system state, approve requests, or generate credentials. Auditor tokens must have explicit expiration and be revocable independently of user accounts."
+    framework_yaml: |
+      # FAIL — auditor has write access
+      roles:
+        auditor:
+          permissions: [read_audit, write_audit, export]
+      # PASS — auditor is read-only
+      roles:
+        auditor:
+          permissions: [read_audit, verify_chain, export_evidence]
+          access_token_ttl: 86400
+          read_only: true

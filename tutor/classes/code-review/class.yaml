@@ -1,0 +1,415 @@
+# code-review — Code Review Standards (ITIL v4 + House Multi-Specialist Pattern).
+#
+# Source standard: ITIL v4 Change Management + arXiv 2603.25773 + House/everybody-lies.
+# See SOURCES.md for per-rule citations. Every rule is self-contained: it carries
+# teaching examples AND the deterministic check (check_regex) the Layer 1 harness
+# runs. Teaching-only rules (no check_*) are still injected at generation time to
+# guide LLM reviewer behavior.
+#
+# Regex engine: standard Python re. A match = a VIOLATION.
+# Injected size: ~150 tokens for core rules (rule lines + severity only;
+# framework examples are not injected at generation time -- they back the
+# Socratic fix step).
+
+class:
+  id: code-review
+  title: "Code Review -- Multi-Specialist Peer Review Standards"
+  version: 1.0.0
+  sources:
+    - "ITIL v4 Service Management (Change Enablement, Incident Management)"
+    - "arXiv 2603.25773 -- The Specification as Quality Gate"
+    - "House/everybody-lies -- Deterministic Pre-scan + Multi-Specialist Adversarial Review"
+  prerequisites: []
+  target_violations:
+    - "review-scope"      # Undefined or drifting scope
+    - "rubber-stamping"   # Approval without substantive review
+    - "evidence-standards"# Findings without specific evidence
+    - "severity-abuse"    # Missing or inconsistent severity labels
+    - "p1-violation"      # P1 finding bypassed
+    - "governance-skip"   # Change type, rollback, or RFC not documented
+  estimated_cost_tokens: 200
+
+rules:
+
+  # ── CORE REVIEW STANDARDS (6 rules) ──────────────────────────────────────────
+
+  - id: review-scope
+    severity: fundamental
+    rule: "Each review must have a defined scope matching the change type (Standard / Normal / Emergency / Major). Scope creep -- adding feature requests or refactoring suggestions unrelated to the change -- is a violation."
+    framework_python: |
+      # FAIL -- scope creep
+      # Change: Fix SQL injection in user search endpoint
+      # Review adds: "Also, this module needs a full async rewrite"
+      # FAIL -- no scope
+      # Review: "Here are some issues I found"
+      # PASS
+      # Title: "Review: Fix SQL injection in user search (Normal Change)"
+      # Scope: verify parameterized queries, auth boundaries, error handling only
+    framework_typescript: |
+      // FAIL
+      /* PR: Upgrade axios to v2 */
+      /* Review: "Can we also migrate from REST to GraphQL?" */
+      // PASS
+      /* PR: Upgrade axios to v2 */
+      /* Review: Verify axios API changes, type exports, bundle size impact */
+    framework_generic: |
+      # FAIL
+      # Review of auth-token refresh:
+      # "The button color needs updating and we should add dark mode"
+      # PASS
+      # Review of auth-token refresh:
+      # Token storage, expiry handling, race condition on concurrent refresh
+
+  - id: evidence-citation
+    severity: fundamental
+    rule: "Every review finding must cite specific evidence: file path, line number, config value, or log line. 'This looks wrong' without evidence is a violation."
+    framework_python: |
+      # FAIL
+      #   "This function is unsafe."
+      # PASS
+      #   "user_service.py:142 -- user_input passed directly to eval(). Use a safe parser."
+    framework_typescript: |
+      // FAIL
+      //   "This component has an accessibility issue."
+      // PASS
+      //   "src/Header.tsx:23 -- <img> missing alt attribute. Add alt='Logo'."
+    framework_generic: |
+      # FAIL
+      #   "The config is wrong somehow."
+      # PASS
+      #   "config/prod.yaml:12 -- DEBUG=true in production. Set DEBUG=false."
+
+  - id: severity-classification
+    severity: fundamental
+    rule: "Every finding must carry a severity label (P1 / P2 / P3 / P4) matching the incident classification: P1=blocking, P2=should-fix, P3=recommendation, P4=suggestion. Unlabeled findings are a violation."
+    framework_python: |
+      # FAIL
+      #   "Issue: variable naming is inconsistent"
+      # PASS
+      #   "P4 -- style: variable naming at portfolio.py:88 uses camelCase instead of snake_case"
+    framework_typescript: |
+      // FAIL
+      //   "Finding: The button has no accessible name"
+      // PASS
+      //   "P3: Button.tsx:15 has no aria-label. Add aria-label='Close'."
+    framework_generic: |
+      # FAIL
+      #   "The rollback is not documented"
+      # PASS
+      #   "P2: Rollback plan missing. Major changes require documented rollback steps."
+
+  - id: rubber-stamping
+    severity: fundamental
+    check_regex: '^\s*(?:LGTM|Looks?\s+good(?:\s+to\s+me)?|Approved|Ship\s+it|:+1:)\s*$'
+    rule: "A review that only says 'LGTM', 'Looks good', or 'Approved' without any substantive findings or commentary is rubber-stamping. Every review must demonstrate that the code was actually read -- even if the only finding is 'clean with no issues'."
+    framework_python: |
+      # FAIL
+      #   "LGTM"
+      # PASS
+      #   "The approach is sound. Verified auth flow at auth_service.py:142 handles the race condition correctly. Clean with no issues."
+    framework_typescript: |
+      // FAIL
+      //   "Looks good to me."
+      // PASS
+      //   "Reviewed src/hooks/useAuth.ts: all token refresh paths handle expiry correctly. One P3: add an error toast on 401."
+    framework_generic: |
+      # FAIL
+      #   "Approved"
+      # PASS
+      #   "Approved after verifying: (1) parameterized queries at db.py:44-60, (2) config is environment-aware at config.py:12, (3) tests pass."
+
+  - id: over-scoping
+    severity: warning
+    rule: "Do not add out-of-scope feature suggestions, architecture rewrites, or unrelated improvements to a review. File a separate ticket or RFC for the improvement instead. Over-scoping dilutes focus and blocks genuine bug fixes."
+    framework_python: |
+      # FAIL -- adding unrelated feature request to a security fix review
+      # PR: Fix SQL injection in login endpoint
+      # Review: "Also, we should migrate the entire auth system to OAuth2"
+      # PASS
+      # PR: Fix SQL injection in login endpoint
+      # Review findings are strictly about: parameterized queries, input sanitization,
+      # and error handling. The OAuth2 suggestion goes in a separate ticket.
+    framework_typescript: |
+      // FAIL
+      // /* PR: Fix broken logout button */
+      // /* Review: "Can we switch from React Router to TanStack Router?" */
+      // PASS
+      // /* PR: Fix broken logout button */
+      // /* Review: verify onClick handler, session clearing, redirect logic */
+    framework_generic: |
+      # FAIL
+      # Change type: Standard (minor config update)
+      # Review: "This module needs a full rewrite with better patterns"
+      # PASS
+      # Review is scoped to the config change and nothing else
+
+  - id: drive-by-comments
+    severity: warning
+    rule: "Every review comment must include specific context from the code. A vague opinion -- 'this feels wrong', 'I don't like this approach', 'could be better' -- without a concrete alternative is a drive-by comment and a violation."
+    framework_python: |
+      # FAIL
+      #   "I don't like how this is structured."
+      # PASS
+      #   "trading.py:205 -- the nested if/elif chain for order types violates the Open/Closed principle. Consider a strategy pattern: each order type in its own class."
+    framework_typescript: |
+      // FAIL
+      //   "This component is hard to read."
+      // PASS
+      //   "src/OrderBook.tsx:88-120 -- the JSX nesting at 4 levels deep should be extracted into a helper component for readability."
+    framework_generic: |
+      # FAIL
+      #   "This could be done better."
+      # PASS
+      #   "config_loader.py:33-50 -- the file format detection is fragile. Use a registry pattern: each format registers its parser."
+
+  # ── REVIEW PROCESS (6 rules) ─────────────────────────────────────────────────
+
+  - id: deterministic-prescan
+    severity: fundamental
+    rule: "Run a deterministic pattern-based pre-scan BEFORE any AI or human review. Zero-cost pattern matching (hardcoded secrets, SQL injection patterns, debug configs) catches what AI reviewers consistently miss. Blocking findings from the pre-scan must be resolved before proceeding to deeper review."
+    framework_python: |
+      # FAIL -- skipping pre-scan
+      # Reviewer jumps straight to AI review without running pattern checks.
+      # FAIL -- ignoring pre-scan results
+      # Pre-scan found 3 P1 credentials, reviewer proceeds anyway.
+      # PASS
+      # 1. Run deterministic pre-scan (50+ patterns: credentials, SQLi, debug flags)
+      # 2. Address all P1 findings
+      # 3. Proceed to Cuddy differential diagnosis
+      # 4. Route remaining changes to domain specialists
+    framework_generic: |
+      # FAIL -- no pre-scan performed, reviewer misses hardcoded API key
+      # PASS -- pre-scan catches hardcoded API key at line 23, blocks commit
+      # Recommendation: integrate scanner into CI pre-commit hook
+
+  - id: cuddy-differential
+    severity: fundamental
+    rule: "Before evaluating code quality, rule out every simpler or more correct alternative approach. A differential diagnosis answers: 'Is this the right approach at all?' If a simpler alternative exists and is not ruled out, the code is a FAIL regardless of code quality."
+    framework_python: |
+      # FAIL
+      # Code uses a complex multi-threaded producer-consumer for a single queue.
+      # Reviewer only checks thread safety, never asks: "Do we need threads at all?"
+      # PASS
+      # 1. Asks: "Could this be a single-threaded asyncio queue instead?"
+      # 2. Checks if the author ruled it out (e.g., comment: "async not available on Python 3.6")
+      # 3. If not ruled out: P1 -- simpler approach exists, not justified
+    framework_typescript: |
+      // FAIL
+      // Code adds Redux for two shared values. Reviewer checks reducer patterns,
+      // never asks: "Could React Context or props lifting replace Redux here?"
+      // PASS
+      // 1. Asks: "Could this use React Context instead of adding Redux?"
+      // 2. Checks if author considered it
+      // 3. If it wasn't considered: flag as over-engineered for the use case
+    framework_generic: |
+      # FAIL
+      # Code adds a full microservice with REST API + database for a lookup table
+      # that changes yearly. Reviewer reviews API design, never asks: "Why not a
+      # config file?"
+      # PASS
+      # Differential asks: config file > JSON file > SQLite > full DB > microservice.
+      # Each alternative is ruled out with evidence.
+
+  - id: multi-specialist-routing
+    severity: advanced
+    rule: "Route changed files to domain specialists based on the file path and content. A security change must have a security specialist review. A frontend change must have an accessibility specialist review. A single reviewer covering all domains is insufficient for changes touching multiple domains."
+    framework_python: |
+      # FAIL
+      # One reviewer handles: auth rewrite, database migration, and UI changes.
+      # PASS
+      # Change touches: auth_service.py, db/migrations/, frontend/Login.tsx
+      # Routing:
+      #   - Chase (Security): auth_service.py
+      #   - Taub (Data): db/migrations/
+      #   - Cameron (Frontend): frontend/Login.tsx
+      #   - Foreman (Backend): all files for integration safety
+    framework_generic: |
+      # FAIL
+      # A single person reviews a change touching crypto, database, and UI.
+      # PASS
+      # Each domain gets a specialist:
+      # - Trading domain: quant specialist checks Kelly criterion math
+      # - Database: DBA checks migration safety
+      # - Frontend: a11y specialist checks WCAG compliance
+      # Dynamic fellows auto-hired for uncovered domains.
+
+  - id: change-type-label
+    severity: fundamental
+    rule: "Every review must explicitly label the change type: Standard (low-risk, pre-approved), Normal (medium-risk, standard feature), Emergency (high-risk, time-critical), or Major (critical-risk, multi-service). The review tier and depth depend on this classification."
+    framework_python: |
+      # FAIL
+      # Change title: "Update user profile endpoint"
+      # No change type specified. Reviewer can't determine required depth.
+      # PASS
+      # Change type: Normal
+      # Title: "Add avatar upload to user profile endpoint"
+      # Risk: 2.5/5 -> standard tier, rollback documented
+    framework_generic: |
+      # Change type labels determine review requirements:
+      # Standard -> fast tier, House-only approval
+      # Normal   -> standard tier, House + one specialist
+      # Emergency -> standard expedited, House + Miguel within 1h
+      # Major    -> adversarial tier, full board + Miguel
+      # FAIL: no label -> no tier -> no SLA -> wrong review depth
+      # PASS: "Change type: Normal" -> standard tier -> 15min SLA
+
+  - id: p1-autoreject
+    severity: fundamental
+    check_regex: '(?i)P1\s+(?:finding|issue|security|bug|vulnerability|critical|blocking)\b.{0,200}\b(?:approv\w*|merge|ship|land)\b'
+    rule: "A P1 finding (security vulnerability, data loss risk, credential leak) triggers automatic rejection of the review. No reviewer may approve a change with an unresolved P1. Not even a senior reviewer or manager can override -- P1 must be fixed before resubmission."
+    framework_python: |
+      # FAIL
+      # "There is a P1 security issue with credential storage but I'll approve since it's urgent."
+      # PASS
+      # "P1: credentials.py:15 stores API keys in plaintext. Fix before commit: use secrets manager."
+    framework_typescript: |
+      // FAIL
+      // "P1 finding: auth token exposed in client-side logs. Approving anyway to meet deadline."
+      // PASS
+      // "P1: auth.ts:87 logs token on error. Rejecting until this is fixed."
+    framework_generic: |
+      # FAIL
+      # P1: SQL injection in search endpoint. PR approved because "tests pass."
+      # PASS
+      # P1: SQL injection in search endpoint. REJECTED. Fix submitted and verified in round 2.
+
+  - id: rollback-plan
+    severity: advanced
+    rule: "High-risk and Major changes must document a rollback plan before review. The plan must specify: (1) the exact revert command or process, (2) data migration rollback if applicable, (3) verification steps post-rollback. Changes without documented rollback for risk score >= 3.0 are a violation."
+    framework_python: |
+      # FAIL -- Major change with no rollback
+      # Risk: 4.2/5 -- database migration + schema change
+      # Rollback: "None"
+      # PASS
+      # Risk: 4.2/5 -- database migration + schema change
+      # Rollback:
+      #   1. git revert <commit> + deploy previous tag
+      #   2. Migration rollback: ALTER TABLE users DROP COLUMN IF EXISTS sso_id;
+      #   3. Verify: /health endpoint returns 200, all users visible
+    framework_generic: |
+      # FAIL
+      # Risk 3.5/5 auth rewrite: "will revert if needed"
+      # PASS
+      # Risk 3.5/5 auth rewrite:
+      #   Rollback: git revert HEAD -- deploy previous auth container
+      #   Token invalidation: set TTL=5min, old tokens expire naturally
+      #   Verify: login flow passes integration tests
+
+  # ── GOVERNANCE & IMPROVEMENT (6 rules) ───────────────────────────────────────
+
+  - id: rfc-record
+    severity: advanced
+    rule: "Every review must generate a complete RFC record: RFC ID, change type, affected files (CIs), risk score, review tier, specialist verdicts, final verdict, timestamp, and reviewer signatures. Missing fields are a violation."
+    framework_python: |
+      # FAIL
+      # Review output: "Approved. Fix the indentation."
+      # PASS
+      # RFC-2026-06-08-001
+      #   Change: "Fix SQL injection in user search"
+      #   Type: Normal | Risk: 3.0/5 | Tier: standard
+      #   CIs affected: [user_service.py, config/sql_queries.yaml]
+      #   Specialists: Foreman: PASS, Chase: PASS (P2)
+      #   Verdict: APPROVED (P2 deferred)
+      #   Signed: House (Gatekeeper)
+    framework_generic: |
+      # FAIL: missing RFC ID, no CI traceability, no specialist attribution
+      # PASS: complete RFC with all fields populated
+      # Minimal fields: rfc_id, change_type, timestamp, affected_files,
+      # risk_score, review_tier, verdict, signed_by.
+
+  - id: separation-powers
+    severity: advanced
+    rule: "A reviewer who submits code cannot also approve its review. Appeals must be judged by a DIFFERENT model from a DIFFERENT provider than the original review board. Same-provider appeals are not independent -- separation of powers is required."
+    framework_python: |
+      # FAIL
+      # Original review: DeepSeek V4 Flash.
+      # Appeal judge: DeepSeek V4 Flash (same provider, same model family).
+      # PASS
+      # Original review: DeepSeek V4 Flash.
+      # Appeal judge: Gemini 2.5 Flash (different provider, different model).
+    framework_generic: |
+      # FAIL
+      # orch submits code, approves own review, submits appeal, judge is same LLM.
+      # PASS
+      # orch submits -> specialist A reviews -> house synthesizes -> wilson appeals
+      # Each role uses a different model tier. Wilson is never from DeepSeek.
+
+  - id: appeal-justification
+    severity: advanced
+    rule: "An appeal against a REJECTED review must include written justification that is specific and evidence-based. Vague appeals ('I disagree', 'The finding is too strict', 'Just approve it') are automatically denied."
+    framework_python: |
+      # FAIL -- vague, no specifics
+      # "I disagree with this rejection. The code is fine."
+      # PASS -- specific, evidence-based
+      # "The P2 finding about exception handling is factually incorrect:
+      #  db.py:204 uses try/except with logging, not bare except. See
+      #  documentation at line 200 explaining why broad except is correct here."
+    framework_generic: |
+      # Valid justifications:
+      # - The finding is factually incorrect (cite evidence)
+      # - The fix is deferred with a concrete deadline and ticket
+      # - The change is an emergency hotfix for a live P1 production incident
+      # Invalid (auto-denied):
+      # - "I disagree"
+      # - "It works on my machine"
+      # - Deadline pressure without follow-up plan
+
+  - id: compliance-checklist
+    severity: advanced
+    rule: "Before signing off on any review, verify: (1) all affected CIs identified, (2) risk score matches review tier, (3) required specialists reviewed, (4) no P1 findings unresolved, (5) P2 findings fixed or deferred with justification, (6) rollback plan documented for risk >= 3.0, (7) RFC record complete. Missing any check is a violation."
+    framework_python: |
+      # FAIL
+      # "Looks good, approved."
+      # No checklist verification.
+      # PASS
+      # Pre-approval checklist:
+      # [x] All affected CIs documented
+      # [x] Risk score 2.5 -> standard tier (appropriate)
+      # [x] Foreman, Chase reviewed
+      # [x] No P1 findings
+      # [x] P2 findings: deferred with ticket PROJ-42
+      # [x] Rollback plan: git revert + deploy previous tag
+      # [x] RFC record complete
+    framework_generic: |
+      # Seven gates before approval:
+      # 1. CIs identified
+      # 2. Risk/tier match
+      # 3. Specialists assigned
+      # 4. No P1s
+      # 5. P2s justified
+      # 6. Rollback planned
+      # 7. RFC complete
+
+  - id: problem-management
+    severity: warning
+    rule: "When the same finding type appears across 3+ reviews, it is no longer an incident -- it is a Problem. Create a Problem Record, perform root cause analysis, and propose a permanent fix (linting rule, CI check, architecture change, training). Treating recurring findings as independent incidents is a violation."
+    framework_python: |
+      # FAIL
+      # Same review repeatedly flags hardcoded API keys but never asks:
+      # "Why does this keep happening? Should we add a pre-commit hook?"
+      # PASS
+      # Finding: hardcoded API key (3rd occurrence in 2 weeks)
+      # Problem record: PROB-2026-06-08-001
+      # Root cause: no pre-commit secret scanner
+      # Permanent fix: install git-secrets pre-commit hook
+      # Status: OPEN, assigned to team lead
+    framework_generic: |
+      # FAIL: "You hardcoded a password again" x3, no systemic fix
+      # PASS: After 3rd occurrence, create Problem Record, RCA, propose
+      # permanent fix (CI check, lint rule, or secrets training)
+
+  - id: adversarial-crosscheck
+    severity: warning
+    rule: "Major changes (risk >= 3.6, adversarial tier) require a second-pass cross-check using a different model than the primary review. The cross-check is adversarial: it tries to find what the primary reviewer missed. Same-model cross-check is a violation."
+    framework_python: |
+      # FAIL
+      # Primary review and cross-check both use deepseek-v4-flash.
+      # Cross-check finds nothing because it's the same model blind spot.
+      # PASS
+      # Primary review: deepseek-v4-flash (domain specialists)
+      # Cross-check: gemini-2.5-flash or claude-sonnet (different architecture)
+      # Cross-check finds 2 edge cases the primary missed.
+    framework_generic: |
+      # FAIL: high-risk deploy with single-model review
+      # PASS: adversarial cross-check with different model catches blind spots
+      # High-value cross-checks: security (Chase), edge cases (Thirteen)
