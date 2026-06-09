@@ -2,16 +2,18 @@
 
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
-A single `tutor learn` injection reduces output violations by 38–83% depending
-on model tier — placebo-controlled, 3× more than format effects alone. The model
-already knows how to write good code — it just needs a reminder at the right moment.
+A single `tutor learn` injection reduces output violations by 64–83% on
+mid-to-frontier models — and does so through correct-pattern steering,
+not structured prompting (placebo-controlled at 3× the format effect).
+The model already knows how to write good code — it just needs steering.
 
 ```
-  Raw generation:                      15.4 violations  (baseline)
-  Placebo (wrong rules, same format):  13.4             (-14%)
-  After injection (mid-tier):           8.4             (-38%, 2-run avg)
-  After injection (high-tier):          1.0             (-83%, Sonnet 4.6)
-  + Booster (scratchpad, mid-tier):     6.2             (-59%)
+Tier     Model              Raw → Class   Reduction
+Edge     Gemma 3 4B         8.7 → 7.7     12%
+Mid      DeepSeek V4 Flash  14.0 → 5.0    64%
+Pro      DeepSeek Reasoner  13.0 → 3.0    77%
+High     Claude Sonnet 4.6  6.0 → 1.0     83%
+Ultra    Claude Opus 4.8    8.0 → 3.0     63%
 ```
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
@@ -174,4 +176,4 @@ MIT
 ---
 
 *Built on the idea that models know more than they show. The capability is
-there — it just needs steering. — [mfolofy](https://github.com/mfolofy)*
+there — it just needs steering. — [Miguel Fernandez](https://github.com/mfolofy)*

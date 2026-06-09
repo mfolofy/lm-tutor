@@ -19,7 +19,7 @@ to this repository, you agree to the following terms.
 - **"You"** means the individual or entity submitting the Contribution.
 - **"Contribution"** means any code, documentation, or other material
   you submit to this project.
-- **"Project Owner"** means Miguel Folofy and any future maintainers
+- **"Project Owner"** means Miguel Fernandez and any future maintainers
   designated by the Project Owner.
 
 ## 2. Grant of Copyright License

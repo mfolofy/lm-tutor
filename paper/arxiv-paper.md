@@ -1,7 +1,7 @@
 ---
 title: "lm-tutor: Attention Steering via Structured Curriculum Injection Improves LLM Output Quality Without Weight Modification"
 authors:
-  - name: Miguel Folofy
+  - name: Miguel Fernandez
     affiliation: Ghost Stack
   - name: Claude Opus 4.8
     affiliation: Anthropic (peer reviewer)
