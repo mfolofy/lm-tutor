@@ -28,10 +28,9 @@ Ultra    Claude Opus 4.8    8.0 → 3.0     63%
   the same rules it taught. No drift between teaching and testing.
 - **Tracks progress per model** — eval history and per-class pass rates inform
   what to study next. Targeted remediation beats blanket retraining.
-- **Covers 18 domains** — accessibility, security, compliance, code review, API
+- **Covers 30 domains** — accessibility, security, compliance, code review, API
   design, Python style, architecture, prompt design, testing, performance,
-  DevOps, and professional credentials (attorney, physician, accountant,
-  engineer, therapist, journalist).
+  DevOps, and 18 professional credentials (attorney through paramedic).
   Each domain is a standalone class with cited standards and FAIL/PASS examples.
 - **Adapts to the model** — small models get fundamentals + scaffolded tools.
   Capable models get the full curriculum. Track assignment is automatic.
@@ -125,6 +124,15 @@ penalty of perjury. All output must include professional disclaimer.
 | **credential-pe** | Engineer | NSPE Code of Ethics, IBC, ASCE, state licensure |
 | **credential-lcsw** | Therapist | NASW/APA Codes, HIPAA, Tarasoff |
 | **credential-journalist** | Journalist | SPJ Code of Ethics, AP Stylebook |
+| **credential-finra** | Financial Advisor | SEC, FINRA, Investment Advisers Act |
+| **credential-pharmacist** | Pharmacist | DEA, USP 795/797, OBRA '90 |
+| **credential-ra** | Architect | AIA Code of Ethics, IBC, ADA |
+| **credential-rn** | Registered Nurse | ANA Code of Ethics, NPA, NPSG |
+| **credential-pilot** | Pilot | FARs (14 CFR), FAA AIM, PHAK |
+| **credential-realtor** | Real Estate Agent | NAR Code of Ethics, Fair Housing Act |
+| **credential-pm** | Project Manager | PMBOK 7th Ed, PMP Code, PMI |
+| **credential-dentist** | Dentist | ADA Code, CDC/OSHA, DEA |
+| **credential-paramedic** | Paramedic/EMT | NREMT, NHTSA EMS Agenda |
 
 [See full attorney example >](docs/credential-example-attorney.md)
 
@@ -164,7 +172,7 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 18 classes, 295 rules, 818 tests. Benchmarked across 5 model tiers
+**Beta.** 30 classes, 487 rules, 1,255+ tests. Benchmarked across 5 model tiers
 (Gemma 3 4B through Claude Opus 4.8). Working in production at Ghost Stack.
 
 ---
