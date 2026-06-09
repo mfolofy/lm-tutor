@@ -25,10 +25,10 @@ result with a deterministic rules engine.
 
 ---
 
-> **57% fewer violations in a single pass.** DeepSeek V4 Flash generating HTML:
-> 14 WCAG violations raw → 6 after `tutor learn` injection. No fine-tuning.
-> No prompt engineering. One class, one injection. Full methodology at
-> **[docs/benchmark-methodology.md](docs/benchmark-methodology.md)**.
+> **43-57% fewer violations in a single pass.** DeepSeek V4 Flash generating HTML:
+> ~14 WCAG violations raw → ~8 after `tutor learn` injection. Consistent across
+> multiple runs. Non-HTML tasks correctly unaffected (syllabus auto-detection).
+> Full methodology at **[docs/benchmark-methodology.md](docs/benchmark-methodology.md)**.
 
 ---
 
@@ -45,7 +45,8 @@ result with a deterministic rules engine.
 | **test** | 18 (4 check) | xUnit Test Patterns (Meszaros), FIRST Principles, TDD by Example | 23 |
 | **perf** | 18 (4 check) | Web Vitals, Lighthouse, MDN Web Performance, HTTP Archive | 16 |
 | **prompt-design** | 16 (5 check) | DAIR.AI Guide, OpenAI Guide, Anthropic Guide, Wei et al., Zou et al. | 48 |
-| **Total** | **151 rules** | **30+ standards cited** | **422 tests** |
+| **python-best-practices** | 16 (6 check) | PEP 8, PEP 257, PEP 484, Flake8, Black | 33 |
+| **Total** | **167 rules** | **30+ standards cited** | **455 tests** |
 
 ---
 
