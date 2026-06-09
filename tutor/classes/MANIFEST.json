@@ -72,6 +72,33 @@
       "rules_count": 7,
       "standards": [],
       "description": "Test pyramid, property-based testing, mutation testing"
+    },
+    {
+      "id": "credential-adjuster",
+      "version": "1.0.0",
+      "domain": "insurance-claims",
+      "rules_count": 16,
+      "standards": [
+        "NAIC UCSPA",
+        "State Fair Claims Practices Acts",
+        "Common Law Bad Faith",
+        "HIPAA Privacy Rule"
+      ],
+      "description": "Insurance claims adjuster standards — good faith, investigation, coverage analysis, settlement, fraud handling, confidentiality"
+    },
+    {
+      "id": "credential-electrician",
+      "version": "1.0.0",
+      "domain": "electrical-standards",
+      "rules_count": 16,
+      "standards": [
+        "NEC (NFPA 70)",
+        "OSHA 1926 Subpart K",
+        "NFPA 70E",
+        "NECA Standards",
+        "State Licensing Boards"
+      ],
+      "description": "Licensed electrician standards — NEC compliance, grounding/bonding, overcurrent protection, wiring methods, GFCI/AFCI, load calculations, working clearance, lockout/tagout, arc flash PPE, labeling"
     }
   ]
 }
