@@ -25,6 +25,13 @@ result with a deterministic rules engine.
 
 ---
 
+> **57% fewer violations in a single pass.** DeepSeek V4 Flash generating HTML:
+> 14 WCAG violations raw → 6 after `tutor learn` injection. No fine-tuning.
+> No prompt engineering. One class, one injection. Full methodology at
+> **[docs/benchmark-methodology.md](docs/benchmark-methodology.md)**.
+
+---
+
 ## The Classes
 
 | Class | Rules | Standard | Tests |
