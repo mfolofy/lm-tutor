@@ -1,7 +1,7 @@
 # lm-tutor — The School for LLMs
 
 > Structured AI education for any model. Enrollment → curriculum track → classes → graduation.
-> **Status:** Phase 0 (skeleton + Layer 1 rules engine). MIT licensed.
+> **Status:** Phase 1 — 9 classes live (151 rules, 160 checkable + teaching). MIT licensed.
 
 Most web data is full of bad practices. Models trained on it reproduce those
 patterns — not because they *can't* do better, but because the broken pattern is
@@ -70,8 +70,11 @@ class).
 | `tutor enroll --model <id>` | Look the model up in the registry and print its curriculum track + Booster status. |
 | `tutor learn --model <id> --class <name>` | Render the class's token-efficient injection prefix; checkpoint progress. |
 | `tutor eval [--class <name>]` | Grade a submission read from **stdin** with the Layer 1 rules engine. |
+| `tutor fix [--class <name>]` | Eval → fix → re-eval correction loop with `--once` or `--auto`. |
 | `tutor mcp [--no-health]` | Launch the MCP server (stdio) + HTTP health on `:9090`. |
 | `tutor list` | List available classes. |
+| `tutor curriculum --model <id>` | Show ordered class list for the model's track. |
+| `tutor booster {scratchpad,verify,exemplars,foresee}` | Booster tools for small models. |
 
 ```bash
 $ tutor enroll --model claude-opus-4-8

@@ -1,0 +1,524 @@
+# prompt-design — Prompt Engineering Standards for LLMs. Fourth class in the School.
+#
+# Source standards: DAIR.AI Prompt Engineering Guide, OpenAI/Anthropic best
+# practices, arXiv research on meta-prompting, chain-of-thought, and prompt
+# robustness. See SOURCES.md for per-rule citations.
+#
+# Every rule is self-contained: it carries teaching examples AND (where
+# codifiable) a deterministic check_regex the Layer 1 harness runs.
+#
+# Regex dialect (Layer 1, stdlib): Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the
+# Socratic fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~200 tokens for checkable rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix step).
+#
+# This class wraps prompt-design from brush-stroke + kimi-filters research and
+# extends it with meta-prompting patterns for LLM self-improvement.
+
+class:
+  id: prompt-design
+  title: "Prompt Design — Engineering Standards for LLM Prompts"
+  version: 1.0.0
+  sources:
+    - "DAIR.AI Prompt Engineering Guide"
+    - "OpenAI Prompt Engineering Guide"
+    - "Anthropic Prompt Engineering Guide"
+    - "Meta-Prompting (arXiv 2311.12055)"
+    - "Chain-of-Thought Prompting (arXiv 2201.11903)"
+    - "Constitutional AI (Anthropic, arXiv 2212.08073)"
+    - "kimi-filters research — brush-stroke prompt patterns catalog"
+  prerequisites: []
+  target_violations:
+    - "temperature-range"
+    - "verbose-prompting"
+    - "instruction-leak"
+    - "prompt-injection"
+    - "constraint-placement"
+    - "system-prompt-order"
+    - "few-shot-design"
+    - "chain-of-thought"
+    - "structured-output"
+    - "context-window-priority"
+    - "role-prompting"
+    - "iteration-pattern"
+    - "persona-consistency"
+    - "meta-prompting"
+    - "output-priming"
+    - "negative-instructions"
+    - "evidence-grounding"
+  estimated_cost_tokens: 250
+
+rules:
+
+  # ── CHECKABLE RULES (5, deterministic regex checks) ──────────────────────
+
+  - id: temperature-range
+    severity: fundamental
+    rule: "Code generation: temperature 0.0-0.2. Creative writing: 0.7-0.9. Factual Q&A: 0.0. The range 0.3-0.6 is a 'wasteland' — too hot for precision, too cold for creativity. Setting temperature to 0.3-0.6 without task justification is a violation."
+    check_regex: '(?i)temperature[":=\s]+["\x27]?0\.[3-6]'
+    framework_generic: |
+      # FAIL — wasteland range, neither precise nor creative
+      temperature: 0.4
+      # FAIL — also wasteland
+      "temperature": 0.5
+      # PASS — code gen
+      temperature: 0.1
+      # PASS — creative writing
+      temperature: 0.8
+      # PASS — factual Q&A
+      temperature: 0.0
+    framework_python: |
+      # FAIL
+      generation_config = {"temperature": 0.4}
+      # PASS
+      generation_config = {"temperature": 0.1}  # code gen
+    framework_yaml: |
+      # FAIL
+      model:
+        temperature: 0.35
+      # PASS
+      model:
+        temperature: 0.0  # factual
+
+  - id: verbose-prompting
+    severity: warning
+    rule: "Avoid verbose filler phrases. Use concise instructions with [RULE] landmarks and checklists over prose. Phrases like 'it is important to note that', 'kindly', and 'please be sure to' add token cost without signal. Each [RULE] marker saves ~15 tokens vs natural-language equivalents."
+    check_regex: '(?i)\b(?:it\b(?:''s\s+| is\s+)(?:important|worth|essential|crucial|critical|vital)\s+(?:to note|to remember|that|to understand)|kindly|please be sure to)\b'
+    framework_generic: |
+      # FAIL
+      It is important to note that you should validate all user inputs before processing.
+      # FAIL
+      Kindly review the following code and ensure it is correct.
+      # FAIL
+      Please be sure to include comprehensive error handling.
+      # PASS
+      [RULE] Validate all user inputs server-side before processing.
+      # PASS
+      [RULE] Include error handling for: network failures, auth errors, rate limits.
+    framework_python: |
+      # FAIL
+      # "It is worth noting that this function should handle None values"
+      def process(data):
+      # PASS
+      # [RULE] handle None values in process()
+      def process(data):
+          if data is None: return []
+
+  - id: instruction-leak
+    severity: fundamental
+    rule: "Do not let meta-instructions leak into the generated output. Phrases like 'remember that you are' or 'don't forget you should' inside the prompt cause the model to echo compliance boilerplate in its response instead of executing the task. Instructions belong in the system prompt only."
+    check_regex: '(?i)\b(?:remember|don''t forget|keep in mind|please note)\s+(?:that\s+)?(?:you are|you''re|you should|you can)\b'
+    framework_generic: |
+      # FAIL — instruction leak, model will echo this
+      Remember that you are a helpful assistant. Generate a summary of the text.
+      # FAIL
+      Don't forget you should respond in valid JSON format.
+      # FAIL
+      Please note that you are expected to provide citations.
+      # PASS
+      You are a helpful assistant. Generate a summary of the text.
+      # PASS
+      Respond in valid JSON format with keys: title, summary, confidence.
+    framework_python: |
+      # FAIL
+      prompt = "Remember that you are an expert Python developer. Review this code:"
+      # PASS
+      prompt = "You are an expert Python developer. Review this code for bugs only."
+
+  - id: prompt-injection
+    severity: fundamental
+    rule: "Never interpolate user input directly into system prompt instructions. Separate instructions from data using distinct message roles (system vs user). User-controlled variables inside the instruction context can override or leak the system prompt — treat all user input as untrusted."
+    check_regex: |-
+      (?i)(?:you are|your task|you will|system:)[^"]{0,150}\{[^}]{2,}\}
+    framework_generic: |
+      # FAIL — user input bleeds into system instruction
+      f"You are a helpful assistant. The user says: {user_input}. Respond helpfully."
+      # FAIL
+      f"Your task is to answer the following: {question}"
+      # PASS — instructions and data are separated
+      system_prompt = "You are a helpful assistant. Keep responses concise."
+      user_message = user_input
+      # PASS — data in separate user message, not system prompt
+      system_prompt = "You are a classifier. Classify the sentiment."
+      user_message = f"Text to classify: {user_text}"
+    framework_python: |
+      # FAIL
+      system = f"You are a code reviewer. The code to review is: {code_snippet}"
+      # PASS
+      system = "You are a code reviewer. Identify bugs and security issues only."
+      user = f"Review this code:\n{code_snippet}"
+
+  - id: constraint-placement
+    severity: fundamental
+    rule: "Put constraints BEFORE the generation task, not after. Post-hoc constraints ('Do not use X') that appear after the generation instruction are less effective — the model has already begun generating in the wrong direction. Constraints must precede the verb that triggers generation."
+    check_regex: '(?i)(?:generate|write|create|implement|build|produce|output|return)\b[\s\S]{40,}(?:do not|make sure|ensure|avoid|always|never)\b'
+    framework_generic: |
+      # FAIL — "Write" comes before "Do not", constraint is post-hoc
+      Write a Python function to sort a list. Please include comprehensive type hints, error handling, and edge case coverage. Do not use any built-in sort functions.
+      # FAIL
+      Create a React component that renders a data table. Make sure it handles loading and empty states. Ensure all columns are sortable. Avoid using any external table libraries. Always handle edge cases.
+      # PASS — constraint before generation verb
+      Do not use built-in sort functions. Write a Python function to sort a list.
+      # PASS
+      Avoid external table libraries. Always handle edge cases. Create a React component that renders a sortable data table.
+    framework_python: |
+      # FAIL
+      # "Implement a search endpoint. Make sure to add rate limiting."
+      # PASS
+      # "Make sure to add rate limiting. Implement a search endpoint."
+
+  # ── TEACHING-ONLY RULES (11, no check_regex — LLM judge / Socratic) ──────
+
+  - id: system-prompt-order
+    severity: fundamental
+    rule: "System prompts must establish role, context, and constraints BEFORE the task instructions. Opening with the task ('Write a function that...') skips the framing that governs HOW the model should approach the work. Order: role > audience > constraints > task > output format > examples."
+    framework_generic: |
+      # FAIL — jumps straight to task, no role or context
+      Write a Python function to validate email addresses. It should handle edge cases.
+      # FAIL — examples before rules/context
+      Example: "user@example.com" is valid. Now write a validation function.
+      # PASS — role first, then context, then task
+      You are a senior security engineer auditing authentication code.
+      Audience: junior developers who need clear error messages.
+      Constraints: OWASP validation rules, no regex DoS.
+      Write a Python function to validate email addresses. Return (is_valid, message) tuple.
+    framework_python: |
+      # FAIL
+      system_prompt = "Write tests for the user service module."
+      # PASS
+      system_prompt = (
+          "You are a QA engineer specializing in Python backend services. "
+          "Audience: CI pipeline — tests must be deterministic and fast. "
+          "Constraints: use pytest, no external APIs. "
+          "Write tests for the user service module."
+      )
+
+  - id: few-shot-design
+    severity: advanced
+    rule: "Provide FAIL (do NOT do this) alongside PASS (do this) examples. 3-5 examples is optimal — fewer under-specifies, more causes the model to pattern-match noise. Each example must be cleanly separated with a consistent delimiter (--- or ###). FAIL examples are more informative than PASS examples alone for preventing errors."
+    framework_generic: |
+      # FAIL — PASS examples only, no FAIL
+      Example good output 1: {"name": "Alice", "age": 30}
+      Example good output 2: {"name": "Bob", "age": 25}
+      # FAIL — 20 examples, too many
+      # PASS — 3 examples with FAIL + PASS
+      ### Example 1
+      Input: "user@example.com"
+      FAIL: {"valid": false, "reason": ""}  # empty reason
+      PASS: {"valid": true, "reason": "valid format"}
+      ### Example 2
+      Input: "not-an-email"
+      FAIL: {"valid": true}  # false positive
+      PASS: {"valid": false, "reason": "missing @ symbol"}
+      ### Example 3
+      Input: ""
+      FAIL: {"valid": false}  # no reason given
+      PASS: {"valid": false, "reason": "empty input"}
+    framework_python: |
+      # FAIL — one-shot with PASS only
+      # Example: parse_date("2024-01-15") -> datetime(2024, 1, 15)
+      # PASS — three-shot with FAIL + PASS
+      # Example 1: parse_date("not-a-date") -> FAIL: None, PASS: ValueError
+      # Example 2: parse_date("") -> FAIL: None, PASS: ValueError
+      # Example 3: parse_date("2024-01-15") -> PASS: datetime(2024, 1, 15)
+
+  - id: chain-of-thought
+    severity: advanced
+    rule: "Decompose complex tasks into explicit reasoning steps. Request the model to 'show your work' or 'reason step by step' with numbered steps. COT prompting improves accuracy on multi-step reasoning by ~15-30% across diverse tasks. For code generation, steps typically: (1) parse requirements, (2) identify edge cases, (3) select algorithm, (4) implement, (5) self-check."
+    framework_generic: |
+      # FAIL — no reasoning structure for a complex task
+      Build a rate limiter that handles 10K requests/second.
+      # PASS — decomposed into reasoning steps
+      Build a rate limiter that handles 10K requests/second.
+      Think step by step:
+      1. Analyze the traffic patterns: burst vs steady-state?
+      2. Choose algorithm: token bucket vs sliding window vs fixed window.
+      3. Design data structures: what's the key and TTL for each counter?
+      4. Consider concurrency: lock-free increments or atomic ops?
+      5. Implement the chosen approach.
+      6. Self-check: does it handle 10K RPS with <1ms overhead?
+    framework_python: |
+      # FAIL
+      "Implement merge sort with O(n log n) complexity."
+      # PASS
+      "Implement merge sort. Think step by step: "
+      "1. Base case: what stops recursion? "
+      "2. Divide: how to split the array? "
+      "3. Conquer: how to merge two sorted halves? "
+      "4. Self-check: does the result maintain O(n log n)?"
+
+  - id: structured-output
+    severity: advanced
+    rule: "Request structured output (JSON, YAML) with an explicit schema. Provide the exact keys, types, and allowed values. Without a schema, the model invents its own format — keys drift, nesting varies, and parsing breaks. Include the schema AFTER instructions but BEFORE examples."
+    framework_generic: |
+      # FAIL — vague JSON request, no schema
+      Return the analysis as JSON.
+      # FAIL — schema too loose (just "JSON")
+      Output the results in JSON format.
+      # PASS — explicit schema
+      Return a JSON object with these exact keys:
+      {
+        "sentiment": "positive | negative | neutral",
+        "confidence": number  # 0.0 to 1.0
+        "key_phrases": string[]
+      }
+      Do not include any other keys. Do not wrap in markdown code blocks.
+    framework_python: |
+      # FAIL
+      prompt = "Return a JSON object with the analysis."
+      # PASS
+      prompt = (
+          "Return JSON with schema:\n"
+          "{\n"
+          '  "vulnerabilities": [{"type": str, "severity": str, "line": int}],\n'
+          '  "summary": str\n'
+          "}\n"
+          "No other keys. No markdown."
+      )
+    framework_yaml: |
+      # FAIL
+      prompt: "Output the config as YAML."
+      # PASS
+      prompt: |
+        Output YAML matching this schema:
+        ```yaml
+        server:
+          host: str
+          port: int (1024-65535)
+          tls: bool
+        ```
+
+  - id: context-window-priority
+    severity: advanced
+    rule: "Place the most important information first in the prompt (system > user > examples > document). Models attend more strongly to early tokens — instructions near the end of a long context window are less reliably followed. If the task is critical, repeat key constraints at the end (primacy + recency sandwich)."
+    framework_generic: |
+      # FAIL — task is buried after the document
+      Here is a 50-page API specification...
+      ...
+      ...finally, translate this to Python code.
+      # FAIL — document before instructions
+      The user's code: [200 lines] ... Now review it for bugs.
+      # PASS — task first, document second
+      Translate the following API spec to Python code using httpx.
+      Constraints: async only, type hints required, 2.0s timeout.
+      [API specification follows]
+      # PASS — primacy + recency sandwich
+      Task: Review this code for SQL injection vulnerabilities.
+      [code body]
+      Reminder: Focus only on SQL injection. Ignore style issues.
+    framework_python: |
+      # FAIL — document before instruction
+      full_prompt = docs + "\n\nReview the above code for security issues."
+      # PASS — instruction before document
+      full_prompt = (
+          "Review the following code for security issues only.\n"
+          "Ignore style, performance, and documentation gaps.\n"
+          + docs
+      )
+
+  - id: role-prompting
+    severity: advanced
+    rule: "Assign a specific expertise role to the model ('You are a senior security engineer reviewing authentication code') rather than a generic one ('You are a helpful assistant'). Specify the audience too ('Explain this to a junior developer'). Role-prompting activates domain-specific knowledge and adjusts tone, depth, and vocabulary."
+    framework_generic: |
+      # FAIL — generic, no expertise signal
+      Review this code for bugs.
+      # FAIL — role but no audience
+      You are a senior engineer. Review this code.
+      # PASS — role + audience + task
+      You are a senior security engineer specializing in OAuth 2.0.
+      Your audience is the platform team — focus on protocol compliance and
+      token handling vulnerabilities.
+      Review the following authorization flow implementation.
+    framework_python: |
+      # FAIL
+      system = "You are a code reviewer. Find bugs in this code:"
+      # PASS
+      system = (
+          "You are a senior distributed systems engineer at Stripe. "
+          "Audience: the on-call SRE team. Identify exactly which failures "
+          "this system WILL encounter under production load."
+      )
+
+  - id: iteration-pattern
+    severity: advanced
+    rule: "Use a generate -> evaluate -> refine cycle. First pass: generate an initial solution. Second pass: evaluate the solution against specific criteria (correctness, performance, safety). Third pass: refine based on evaluation results. Each pass should feed results into the next prompt. This three-pass pattern catches ~40% more errors than single-pass generation."
+    framework_generic: |
+      # FAIL — single pass, no iteration
+      Write a Python function that parses CSV files.
+      # PASS — three-pass iteration pattern
+      # Pass 1 — Generate
+      Write an initial implementation of a CSV parser:
+      Focus on: basic functionality, standard RFC 4180 format.
+      ---
+      # Pass 2 — Evaluate (uses Pass 1 output)
+      Evaluate the above CSV parser against these criteria:
+      1. Does it handle quoted fields with commas?
+      2. Does it handle newlines within quoted fields?
+      3. Does it handle empty fields?
+      4. Is memory usage O(n) or O(1) per row?
+      List specific failures found.
+      ---
+      # Pass 3 — Refine (uses Pass 1 + Pass 2)
+      Fix all failures found in the evaluation pass.
+      Preserve working functionality from the initial implementation.
+    framework_python: |
+      # FAIL
+      prompt = "Write a balanced binary search tree implementation."
+      # PASS — iterative
+      prompts = [
+          "# Pass 1: Write an initial BST with insert and search",
+          "# Pass 2: Evaluate the BST — check balance, edge cases, None handling",
+          "# Pass 3: Refine: fix all issues, add delete and rebalance",
+      ]
+
+  - id: persona-consistency
+    severity: warning
+    rule: "Maintain a consistent persona throughout the entire conversation. Each message should reinforce the same role, tone, and constraints. Allowing the persona to drift — switching from 'senior engineer' to 'friendly tutor' mid-conversation — confuses the model's output distribution. If the task changes, explicitly state the persona shift."
+    framework_generic: |
+      # FAIL — persona drift mid-conversation
+      User: "Senior security engineer, audit this authentication code."
+      Assistant: [auth audit]
+      User: "Now rewrite this as a bedtime story for my daughter."
+      # PASS — explicit transition
+      User: "Senior security engineer, audit this authentication code."
+      Assistant: [auth audit]
+      User: "Now switch roles. You are a children's storyteller. "
+            "Rewrite the authentication flow as a bedtime story about "
+            "a locked castle. Keep it age-appropriate for a 6-year-old."
+      # PASS — consistent persona throughout multi-turn
+      Turn 1: "You are a senior security engineer. Audit this OAuth flow."
+      Turn 2: "As the same security engineer, now audit the token refresh path."
+      Turn 3: "Still as security engineer, write a test for the race condition."
+    framework_python: |
+      # FAIL — system prompt doesn't set a stable persona
+      system = "You are helpful. Now write code. Now explain it. Now fix it."
+      # PASS — stable persona with clear scope
+      system = (
+          "You are a senior Python backend engineer reviewing a PR. "
+          "Every response must identify: (1) the file, (2) line number, "
+          "(3) severity, (4) the specific issue. Stay in this role."
+      )
+
+  - id: meta-prompting
+    severity: advanced
+    rule: "Meta-prompts are prompts that generate or improve other prompts. When writing a meta-prompt, include: (1) the user's raw goal, (2) a checklist of prompt quality criteria (system-prompt-order, few-shot-design, constraint-placement, etc.), (3) examples of prompt transformations. The LLM must evaluate its own prompt against these criteria before outputting."
+    framework_generic: |
+      # FAIL — meta-prompt without quality criteria
+      Given the user's request, write a system prompt for a code reviewer.
+      # PASS — meta-prompt with self-evaluation
+      Transform the user's raw request into a high-quality system prompt.
+
+      Quality checklist your prompt must pass:
+      [x] Role and context stated before task instructions
+      [x] Constraints placed before the generation verb
+      [x] Temperature specified for the task type
+      [x] Output format explicitly defined
+      [x] FAIL examples alongside PASS examples (few-shot rules)
+      [x] No instruction leak (no "remember that you are")
+      [x] No prompt injection vectors (user input isolated)
+
+      User's raw request: "Review my Python code for bugs."
+
+      Before outputting, evaluate: does your prompt meet ALL criteria?
+    framework_python: |
+      # FAIL
+      meta = "Given this bug report, write a prompt for an LLM to fix it."
+      # PASS
+      meta = (
+          "Given this bug report, write a system prompt for an LLM code fixer.\n"
+          "The prompt must:\n"
+          "1. Set role: senior engineer fixing a production bug\n"
+          "2. State constraint: fix must be minimal, no refactoring\n"
+          "3. Define output: exact code diff with explanation\n"
+          "4. Self-check: does it meet all 3 criteria?\n"
+          f"Bug report: {bug_report}"
+      )
+
+  - id: output-priming
+    severity: advanced
+    rule: "Guide the model's first output token(s) by providing a prefix or starting structure. The first token strongly biases the entire generation — 'Yes,' vs 'No,' vs 'Here is' vs '{' all steer toward different output distributions. Priming is especially important for structured output where the first token determines parseability."
+    framework_generic: |
+      # FAIL — no output priming for JSON
+      Classify the sentiment of this text and return JSON.
+      # PASS — prime the JSON output
+      Classify the sentiment of this text. Return JSON:
+      {"sentiment":
+      # FAIL — no priming for yes/no decision
+      Is this email suspicious? Analyze and decide.
+      # PASS — prime the decision
+      Is this email suspicious? Answer with exactly "PASS" or "FLAG" first,
+      then explain your reasoning.
+      PASS:
+      # FAIL — open-ended, no structure guidance
+      Rewrite this function to be more Pythonic.
+      # PASS — prime the structure
+      Rewrite this function to be more Pythonic.
+      Here is the improved version:
+      with open("function.py", "w") as f:
+    framework_python: |
+      # FAIL
+      prompt = "Refactor this code to use async/await. Return the diff."
+      # PASS — prime the start of the diff output
+      prompt = (
+          "Refactor this code to use async/await.\n"
+          "--- a/sync_version.py\n"
+          "+++ b/async_version.py\n"
+      )
+
+  - id: negative-instructions
+    severity: warning
+    rule: "Tell the model what NOT to do explicitly, not just what TO do. Negative instructions ('Do not use eval', 'Never log secrets', 'Avoid regex for parsing') are more effective than positive-only guidance ('Use safe execution methods'). Combine negative and positive: 'Use parameterized queries. Never use string interpolation in SQL.'"
+    framework_generic: |
+      # FAIL — positive only, no negative boundary
+      Use safe methods to execute user commands.
+      # FAIL — negative only, no positive direction
+      Do not use eval. Do not use exec. Do not use os.system.
+      # PASS — positive + negative combined
+      Execute user commands through subprocess with explicit argument lists.
+      Never use eval(), exec(), or os.system() — these bypass argument safety.
+      Validate that the command binary exists before execution.
+      # PASS — specific negative with positive alternative
+      Do not log passwords or tokens. Instead, log "authentication succeeded"
+      or "authentication failed" with the user ID only.
+    framework_python: |
+      # FAIL
+      prompt = "Handle errors gracefully in the payment processing function."
+      # PASS
+      prompt = (
+          "Handle errors gracefully in the payment processing function.\n"
+          "Do NOT catch bare Exception — always catch specific exceptions.\n"
+          "Do NOT suppress errors silently — always log the error.\n"
+          "Do NOT expose stack traces to the client.\n"
+          "DO: catch specific exceptions, log, return user-safe error messages."
+      )
+
+  - id: evidence-grounding
+    severity: advanced
+    rule: "When the model must produce factual or analytical output, demand explicit grounding: citations, source references, confidence levels, and uncertainty markers. Require the model to distinguish between what it knows from context vs what it infers. Unmarked speculation that reads as fact is a violation."
+    framework_generic: |
+      # FAIL — no grounding, reads speculation as fact
+      Analyze this log file and identify the root cause of the outage.
+      # PASS — demands explicit evidence
+      Analyze this log file and identify the root cause of the outage.
+      For each finding:
+      1. Cite exact log line(s) with timestamp (e.g., "2026-06-08T14:32:01Z line 142")
+      2. State your confidence: HIGH (direct evidence) | MEDIUM (inferred) | LOW (speculative)
+      3. If inferring, state what evidence supports the inference
+      4. Acknowledge alternative explanations
+      Do NOT state findings without evidence.
+      When uncertain, say "I am not sure" rather than guessing.
+    framework_python: |
+      # FAIL
+      prompt = "Given the test output, identify which tests failed and why."
+      # PASS
+      prompt = (
+          "Given the test output, identify which tests failed and why.\n"
+          "For each failure:\n"
+          "- Cite the exact assertion line that failed\n"
+          "- Show actual vs expected values\n"
+          "- If root cause is speculative, state: [INFERRED]\n"
+          "- If multiple causes possible, list all with confidence levels\n"
+          "Format: test_name | result | evidence | confidence\n"
+      )

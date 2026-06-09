@@ -1,0 +1,717 @@
+# security — Secure Coding & System Security Controls (NIST SP 800-53 Rev 5).
+#
+# Source standard: NIST SP 800-53 Rev 5 (Security and Privacy Controls for
+# Information Systems and Organizations). See SOURCES.md for per-rule citations.
+# Every rule is self-contained: it carries teaching examples AND (where
+# codifiable) a deterministic check_regex the Layer 1 harness runs.
+#
+# Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the
+# Socratic fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~200 tokens for checkable rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix
+# step).
+#
+# Rules marked with check_regex need a FAIL/PASS test pair in
+# tests/test_security.py. Teaching-only rules are tested for content presence.
+
+class:
+  id: security
+  title: "Security — Secure Coding & System Security Controls (NIST SP 800-53)"
+  version: 1.0.0
+  sources: ["NIST SP 800-53 Rev 5"]
+  prerequisites: ["audit"]
+  target_violations:
+    - "ac-permissive-cors"
+    - "ac-debug-enabled"
+    - "ia-weak-password-policy"
+    - "si-sql-injection"
+    - "si-shell-injection"
+    - "si-insecure-deserialization"
+  estimated_cost_tokens: 300
+
+rules:
+
+  # ── ACCESS CONTROL — AC FAMILY ───────────────────────────────────────────────
+
+  - id: ac-permissive-cors
+    severity: fundamental
+    rule: >-
+      CORS must not allow all origins when credentials (cookies, auth headers)
+      are included. `Access-Control-Allow-Origin: *` with credentials is a
+      security violation exposing sensitive data cross-origin. Use explicit
+      origin allowlists, not wildcards, on authenticated endpoints.
+      Corresponds to NIST SP 800-53 AC-3 (Access Enforcement) and SC-7
+      (Boundary Protection).
+    check_regex: |-
+      (?i)(?:Access-Control-Allow-Origin|access_control_allow_origin|allow_origins|allowed_origins|cors_origin)\s*[:=]\s*(?:\[?\s*["']?\*["']?\s*\]?)
+    framework_python: |
+      # FAIL — wildcard CORS with credentials
+      app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True)
+      # PASS — explicit origin allowlist
+      app.add_middleware(CORSMiddleware, allow_origins=["https://app.example.com"])
+    framework_javascript: |
+      // FAIL — wildcard
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      // PASS — explicit origin
+      res.setHeader('Access-Control-Allow-Origin', 'https://app.example.com');
+    framework_yaml: |
+      # FAIL
+      cors:
+        allowed_origins: "*"
+      # PASS
+      cors:
+        allowed_origins: ["https://app.example.com", "https://admin.example.com"]
+    framework_generic: |
+      # FAIL
+      Access-Control-Allow-Origin: *
+      # PASS
+      Access-Control-Allow-Origin: https://trusted-frontend.example.com
+
+  - id: ac-debug-enabled
+    severity: fundamental
+    rule: >-
+      Debug mode, verbose error reporting, or stack-trace exposure must be
+      disabled in production. Enabled debug mode reveals internals (source
+      paths, config values, dependency versions) that aid attackers.
+      Corresponds to NIST SP 800-53 AC-3 (Access Enforcement) and CM-7 (Least
+      Functionality).
+    check_regex: |-
+      (?i)(?:debug|DEBUG|debug_mode|verbose_errors)\s*[:=]\s*(?:True|true|1|yes)\b
+    framework_python: |
+      # FAIL
+      app = FastAPI(debug=True)
+      DEBUG = True
+      # PASS
+      app = FastAPI(debug=False)
+      DEBUG = False
+    framework_javascript: |
+      // FAIL — debug on in production config
+      const DEBUG = true;
+      // PASS
+      const DEBUG = process.env.NODE_ENV !== 'production';
+    framework_yaml: |
+      # FAIL
+      server:
+        debug: true
+      # PASS
+      server:
+        debug: false
+    framework_generic: |
+      # FAIL
+      DEBUG = True
+      # PASS
+      DEBUG = False
+
+  - id: ac-least-privilege
+    severity: fundamental
+    rule: >-
+      Every user, process, and service must operate with the minimum
+      permissions needed to function. Granting broad roles (admin, root,
+      superuser) to regular operations is a violation of the least-privilege
+      principle. Create specific roles with scoped permissions. Corresponds to
+      NIST SP 800-53 AC-6 (Least Privilege).
+    framework_python: |
+      # FAIL — service running as root
+      docker_container.run(image="app", user="root")
+      # FAIL — blanket admin role
+      @roles_required("admin")
+      def list_products(): ...
+      # PASS — scoped role
+      docker_container.run(image="app", user="appuser")
+      @roles_required("inventory.reader")
+      def list_products(): ...
+    framework_javascript: |
+      // FAIL — all users get admin
+      user.role = 'admin';
+      // PASS — specific role
+      user.role = 'inventory.reader';
+    framework_yaml: |
+      # FAIL
+      roles:
+        api:
+          permissions: ["*"]
+      # PASS
+      roles:
+        api:
+          permissions: ["read:products", "read:orders"]
+    framework_generic: |
+      # FAIL: grants wildcard permission
+      permission: "*"
+      # PASS: grants scoped permission
+      permission: "read:users"
+
+  - id: ac-separation-duties
+    severity: fundamental
+    rule: >-
+      No single entity should control two or more conflicting operations such
+      as creating an account and approving its access, or deploying code and
+      reviewing its security. Separate critical functions across distinct
+      roles or agents. Corresponds to NIST SP 800-53 AC-5 (Separation of
+      Duties).
+    framework_python: |
+      # FAIL — single function does everything
+      def handle_user_lifecycle(user_id):
+          create_account(user_id)
+          approve_access(user_id)
+          return audit_log(user_id)
+      # PASS — separated responsibilities
+      class UserProvisioner:
+          def create(self, user_id): ...
+      class AccessApprover:
+          def approve(self, user_id): ...
+    framework_yaml: |
+      # FAIL — one role has both creation and approval
+      operator:
+          permissions: [create_user, approve_user, deploy]
+      # PASS — separated
+      provisioner:
+          permissions: [create_user]
+      approver:
+          permissions: [approve_user]
+    framework_generic: |
+      # FAIL: same entity creates and approves access
+      role: "super-admin"
+      permissions: ["*"]
+      # PASS: distinct roles for distinct functions
+      role: "provisioner"
+      permissions: ["create_user"]
+
+  - id: ac-session-security
+    severity: advanced
+    rule: >-
+      Session tokens must use secure, httpOnly, SameSite cookies with a
+      reasonable max-age. Never expose session tokens in URLs, store them in
+      localStorage, or omit the Secure flag. Corresponds to NIST SP 800-53
+      AC-12 (Session Termination).
+    framework_python: |
+      # FAIL — insecure cookie, no flags
+      response.set_cookie("session", token)
+      # PASS — secure cookie
+      response.set_cookie("session", token, httponly=True, secure=True, samesite="lax")
+    framework_javascript: |
+      // FAIL — storing token in localStorage
+      localStorage.setItem("auth_token", token);
+      // PASS — httpOnly cookie set by server
+    framework_yaml: |
+      # FAIL
+      session:
+        cookie_secure: false
+        cookie_httponly: false
+      # PASS
+      session:
+        cookie_secure: true
+        cookie_httponly: true
+        cookie_samesite: lax
+        max_age_seconds: 3600
+
+  # ── IDENTIFICATION AND AUTHENTICATION — IA FAMILY ────────────────────────────
+
+  - id: ia-weak-password-policy
+    severity: fundamental
+    rule: >-
+      Password policies must require a minimum length of 8 characters (NIST
+      SP 800-63B recommends 12+), no trivial patterns, and support for all
+      ASCII printable characters. Maximum length must be at least 64.
+      Policies allowing lengths below 8 or omitting complexity requirements
+      are a violation. Corresponds to NIST SP 800-53 IA-5 (Authenticator
+      Management).
+    check_regex: |-
+      (?i)(?:password.*(?:min.?len|min_length|minimum)|min.*password.*(?:len|length)|password_min_length|min_pass_length)\s*[:=]\s*[0-7]\b
+    framework_python: |
+      # FAIL
+      PASSWORD_MIN_LENGTH = 6
+      # PASS
+      PASSWORD_MIN_LENGTH = 12
+    framework_yaml: |
+      # FAIL
+      auth:
+        password_min_length: 6
+        complexity: none
+      # PASS
+      auth:
+        password_min_length: 12
+        complexity: required
+    framework_json: |
+      // FAIL
+      { "password_policy": { "min_length": 4 } }
+      // PASS
+      { "password_policy": { "min_length": 12, "max_length": 128 } }
+    framework_generic: |
+      # FAIL
+      password_min_length = 6
+      # PASS
+      password_min_length = 12
+
+  - id: ia-mfa
+    severity: fundamental
+    rule: >-
+      Privileged access (admin panels, sensitive data, deployment) must
+      require multi-factor authentication. Password-only authentication for
+      administrative functions is a violation. Implement TOTP, WebAuthn, or
+      hardware security keys. Corresponds to NIST SP 800-53 IA-2
+      (Identification and Authentication) and IA-6 (Authenticator Feedback).
+    framework_python: |
+      # FAIL — password-only for admin
+      @app.post("/admin/panel")
+      def admin_panel(username: str, password: str): ...
+      # PASS — MFA required
+      @app.post("/admin/panel")
+      @mfa_required
+      def admin_panel(username: str, password: str, otp: str): ...
+    framework_yaml: |
+      # FAIL
+      admin:
+        auth_method: password_only
+      # PASS
+      admin:
+        auth_method: mfa_required
+        mfa_providers: [totp, webauthn]
+    framework_javascript: |
+      // FAIL — no MFA check on admin route
+      app.post('/admin', (req, res) => {
+          const user = authenticate(req.body.password);
+      });
+      // PASS — MFA enforced
+      app.post('/admin', (req, res) => {
+          const user = authenticate(req.body.password);
+          verifyMfa(req.body.otp, user);
+      });
+
+  - id: ia-credential-lifecycle
+    severity: advanced
+    rule: >-
+      Credentials (API keys, service accounts, certificates) must have a
+      defined lifetime: creation timestamp, expiration, rotation schedule,
+      and revocation procedure. Hardcoded or permanent credentials without
+      expiry are a violation. Never embed credentials in source code — use a
+      secrets manager. Corresponds to NIST SP 800-53 IA-5 (Authenticator
+      Management).
+    framework_yaml: |
+      # FAIL — no expiration, no rotation
+      service_accounts:
+        - name: api-worker
+          key: "sk-abc123"
+      # PASS — managed lifecycle
+      service_accounts:
+        - name: api-worker
+          key_vault_ref: "vault://api-worker/key"
+          rotation_days: 90
+          expires_at: "2027-01-01T00:00:00Z"
+          auto_rotate: true
+    framework_python: |
+      # FAIL — API key with no expiry
+      API_KEY = "sk-abc123def456"
+      # PASS — vault reference with rotation
+      API_KEY = vault.get("api-worker/key", ttl=86400)
+    framework_javascript: |
+      // FAIL — hardcoded service account
+      const SERVICE_KEY = 'svc-abc-123';
+      // PASS — secrets manager
+      const SERVICE_KEY = await secrets.get('service/api-key');
+
+  - id: ia-session-timeout
+    severity: advanced
+    rule: >-
+      Sessions must have an idle timeout (15-30 minutes recommended) and an
+      absolute maximum lifetime. Sessions that never expire expose the system
+      to replay attacks. Terminate inactive sessions and require
+      re-authentication after timeout. Corresponds to NIST SP 800-53 AC-12
+      (Session Termination) and IA-5.
+    framework_python: |
+      # FAIL — no session timeout
+      session.permanent = False
+      # PASS — explicit timeout
+      session.permanent = True
+      session.permanent_session_lifetime = timedelta(minutes=30)
+    framework_yaml: |
+      # FAIL
+      session:
+        timeout: never
+      # PASS
+      session:
+        idle_timeout_seconds: 900
+        absolute_max_seconds: 28800
+        renew_on_activity: true
+    framework_javascript: |
+      // FAIL — no expiry on JWT
+      jwt.sign(payload, secret);
+      // PASS — short expiry
+      jwt.sign(payload, secret, { expiresIn: '30m' });
+
+  # ── SYSTEM AND COMMUNICATIONS PROTECTION — SC FAMILY ────────────────────────
+
+  - id: sc-encryption-transit
+    severity: fundamental
+    rule: >-
+      All data in transit must use TLS 1.2 minimum (TLS 1.3 preferred).
+      Disabling TLS, using TLS 1.0/1.1, or allowing unencrypted HTTP for
+      sensitive data is a violation. Enforce HSTS and secure cipher suites.
+      Corresponds to NIST SP 800-53 SC-8 (Transmission Confidentiality and
+      Integrity) and SC-13 (Cryptographic Protection).
+    framework_yaml: |
+      # FAIL — no TLS
+      server:
+        tls: false
+        protocol: http
+      # PASS — TLS 1.3
+      server:
+        tls: true
+        protocol: https
+        min_version: "TLS 1.2"
+        hsts: true
+    framework_python: |
+      # FAIL — HTTP without redirect
+      app = FastAPI()
+      # PASS — HTTPS enforced
+      app = FastAPI()
+      app.add_middleware(HTTPSRedirectMiddleware)
+    framework_javascript: |
+      // FAIL — no HSTS
+      // PASS — HSTS enabled
+      res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    framework_generic: |
+      # FAIL
+      protocol: http
+      # PASS
+      protocol: https
+      tls_min_version: "1.2"
+
+  - id: sc-encryption-rest
+    severity: advanced
+    rule: >-
+      Sensitive data at rest (PII, credentials, financial records, health
+      data) must be encrypted using AES-256 or equivalent. Plaintext storage
+      of sensitive fields in databases, files, or backups is a violation.
+      Encryption keys must be managed separately from the data. Corresponds
+      to NIST SP 800-53 SC-28 (Protection of Information at Rest).
+    framework_yaml: |
+      # FAIL — no encryption at rest
+      database:
+        encryption_at_rest: false
+      # PASS — encrypted
+      database:
+        encryption_at_rest: true
+        encryption_algorithm: aes256
+        key_manager: aws-kms
+    framework_python: |
+      # FAIL — storing PII in plaintext
+      db.execute("INSERT INTO users VALUES (?, ?, ?)", user.ssn, user.name, user.email)
+      # PASS — encrypt sensitive fields
+      db.execute("INSERT INTO users VALUES (?, ?, ?)", encrypt(user.ssn), user.name, user.email)
+    framework_json: |
+      // FAIL
+      { "ssn": "123-45-6789", "encrypted": false }
+      // PASS
+      { "ssn": "AES256:b3B0aW9uYWw...", "encrypted": true }
+
+  # ── SYSTEM AND INFORMATION INTEGRITY — SI FAMILY ─────────────────────────────
+
+  - id: si-sql-injection
+    severity: fundamental
+    rule: >-
+      SQL queries must use parameterized statements or prepared statements.
+      String interpolation or concatenation of user input into SQL is a
+      critical vulnerability. Never use f-strings, format(), or + in SQL
+      query construction. Corresponds to NIST SP 800-53 SI-10 (Information
+      Input Validation).
+    check_regex: |-
+      (?i)(?:\.execute\s*\(|\.raw\s*\(|\.query\s*\().*\bf?['\"].*\b(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\b
+    framework_python: |
+      # FAIL — f-string in query
+      cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+      # PASS — parameterized
+      cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    framework_javascript: |
+      // FAIL — string interpolation
+      db.query(`SELECT * FROM users WHERE id = ${userId}`);
+      // PASS — parameterized
+      db.query('SELECT * FROM users WHERE id = $1', [userId]);
+    framework_generic: |
+      # FAIL
+      execute("SELECT * FROM users WHERE id = " + user_input)
+      # PASS
+      execute("SELECT * FROM users WHERE id = $1", params=[user_input])
+
+  - id: si-shell-injection
+    severity: fundamental
+    rule: >-
+      User input must never be interpolated into shell commands or passed to
+      os.system(), subprocess.run() with shell=True, or eval(). Use safe APIs
+      with parameterized arguments instead. Shell injection leads to
+      arbitrary command execution. Corresponds to NIST SP 800-53 SI-10
+      (Information Input Validation).
+    check_regex: |-
+      (?i)(?:os\.system|subprocess\.(?:run|call|Popen|check_output|check_call))\s*\(.*\bf['\"]
+    framework_python: |
+      # FAIL — user input in shell command
+      os.system(f"rm -rf {user_input}")
+      # PASS — safe API with arguments list
+      subprocess.run(["rm", "-rf", safe_path])
+    framework_javascript: |
+      // FAIL — user input in exec
+      exec(`rm -rf ${userInput}`, (err, stdout) => { ... });
+      // PASS — safe API
+      fs.unlinkSync(safePath);
+    framework_generic: |
+      # FAIL
+      os.system("rm -rf " + user_path)
+      # PASS
+      subprocess.run(["rm", "-rf", safe_path])
+
+  - id: si-insecure-deserialization
+    severity: fundamental
+    rule: >-
+      Never deserialize untrusted data with pickle, yaml.load(), or
+      marshal.load(). These formats execute arbitrary code during
+      deserialization. Use safe alternatives: JSON, safe_load, or structured
+      validation. Corresponds to NIST SP 800-53 SI-10 (Information Input
+      Validation).
+    check_regex: |-
+      (?i)(?:pickle\.loads?|yaml\.load\s*\(|marshal\.loads?\s*\()
+    framework_python: |
+      # FAIL — unsafe deserialization
+      data = pickle.loads(user_bytes)
+      config = yaml.load(user_input)
+      # PASS — safe alternatives
+      data = json.loads(user_json)
+      config = yaml.safe_load(user_input)
+    framework_javascript: |
+      // FAIL — unsafe eval-based parsing
+      const data = eval('(' + userInput + ')');
+      // PASS — safe parser
+      const data = JSON.parse(userInput);
+    framework_generic: |
+      # FAIL
+      result = pickle.loads(untrusted_data)
+      # PASS
+      result = json.loads(safe_data)
+
+  - id: si-dependency-scanning
+    severity: advanced
+    rule: >-
+      Dependencies must be regularly scanned for known vulnerabilities
+      (CVEs). Using a library with a known critical vulnerability without a
+      documented exception is a violation. Pin major versions and use
+      lockfiles, but update patch versions promptly. Corresponds to NIST SP
+      800-53 SI-2 (Flaw Remediation).
+    framework_yaml: |
+      # FAIL — no scanning, unpinned version
+      dependencies:
+        flask: "*"
+      # PASS — scanned, pinned
+      dependencies:
+        flask: "3.0.0"
+      vulnerability_scanning:
+        enabled: true
+        schedule: daily
+        exception_policy: documented_required
+    framework_json: |
+      // FAIL — outdated with known CVE, no exception
+      { "package": "lodash", "version": "4.17.19" }
+      // PASS — patched or exception filed
+      { "package": "lodash", "version": "4.17.21" }
+    framework_python: |
+      # FAIL — no lockfile, unpinned
+      # requirements.txt: flask>=2.0
+      # PASS — lockfile, pinned
+      # requirements.txt: flask==3.0.0
+    framework_generic: |
+      # FAIL
+      dependency: "log4j:2.14.0"  # known critical CVE
+      # PASS
+      dependency: "log4j:2.17.2"  # patched version
+
+  - id: si-input-validation
+    severity: advanced
+    rule: >-
+      All external input must be validated against an allowlist (known good)
+      with type checking, length limits, and format constraints. Missing
+      validation on user-supplied data — including headers, query parameters,
+      and file uploads — is a violation. Corresponds to NIST SP 800-53 SI-10
+      (Information Input Validation).
+    framework_python: |
+      # FAIL — no validation
+      @app.post("/search")
+      def search(q: str): ...
+      # PASS — validated
+      @app.post("/search")
+      def search(q: str = Query(..., min_length=1, max_length=200, pattern="^[a-zA-Z0-9 ]+$")): ...
+    framework_javascript: |
+      // FAIL — no validation on user input
+      app.get('/search', (req, res) => {
+          const q = req.query.q;
+      });
+      // PASS — validated
+      app.get('/search', (req, res) => {
+          const q = sanitize(req.query.q, { maxLength: 200, allow: /^[a-zA-Z0-9 ]+$/ });
+      });
+    framework_generic: |
+      # FAIL
+      def process_user_input(data):
+          db.execute("INSERT INTO logs VALUES (?)", data)
+      # PASS
+      def process_user_input(data):
+          validate(data, type=str, max_length=200, pattern="^\\w+$")
+          db.execute("INSERT INTO logs VALUES (?)", data)
+
+  # ── AUDIT AND ACCOUNTABILITY — AU FAMILY ─────────────────────────────────────
+
+  - id: au-security-logging
+    severity: fundamental
+    rule: >-
+      Security-relevant events (authentication success/failure, access
+      denials, privilege changes, data modifications) must be logged with
+      timestamp, user ID, action, resource, and outcome. Any security
+      operation without logging is a violation. Logs must be append-only and
+      protected from modification. Corresponds to NIST SP 800-53 AU-3 (Audit
+      Record Content) and AU-6 (Audit Review, Analysis, and Reporting).
+    framework_python: |
+      # FAIL — silent failure handling
+      def login(username, password):
+          if not authenticate(username, password):
+              return "Access denied"
+          return "OK"
+      # PASS — audited
+      def login(username, password):
+          if not authenticate(username, password):
+              audit_log(user=username, action="login", result="denied")
+              return "Access denied"
+          audit_log(user=username, action="login", result="granted")
+          return "OK"
+    framework_yaml: |
+      # FAIL — no audit config
+      logging:
+        level: info
+      # PASS — security audit configured
+      logging:
+        security_events: [login, access_denied, role_change, data_export]
+        audit_backend: wormchain
+        audit_fields: [user, action, resource, timestamp, outcome]
+    framework_javascript: |
+      // FAIL — silent 401
+      if (!authenticated) {
+          return res.status(401).send('Unauthorized');
+      }
+      // PASS — audited 401
+      if (!authenticated) {
+          auditLog({ user, action: 'access', resource: req.path, outcome: 'denied' });
+          return res.status(401).send('Unauthorized');
+      }
+
+  # ── CONFIGURATION MANAGEMENT — CM FAMILY ─────────────────────────────────────
+
+  - id: cm-secure-config
+    severity: advanced
+    rule: >-
+      Configuration management requires secure baselines: disable unused
+      ports and services, remove default credentials, enable security
+      headers, and scan for misconfiguration. Production configs must differ
+      from development (no debug, no test keys). Corresponds to NIST SP
+      800-53 CM-6 (Configuration Settings) and CM-7 (Least Functionality).
+    framework_yaml: |
+      # FAIL — default creds, no config
+      database:
+        user: admin
+        password: admin
+      services:
+        debug_api: enabled
+      # PASS — hardened config
+      database:
+        user: service_account
+        password: ${DB_PASSWORD}
+        ssl: required
+        allowed_ips: [10.0.0.0/8]
+      services:
+        debug_api: disabled
+    framework_python: |
+      # FAIL — default credentials
+      db = Database("localhost", user="admin", password="admin")
+      # PASS — env-based configuration
+      db = Database(host=os.getenv("DB_HOST"), user=os.getenv("DB_USER"), password=os.getenv("DB_PASS"))
+    framework_javascript: |
+      // FAIL — hardcoded dev config in production
+      const config = { apiUrl: 'http://localhost:3000', debug: true };
+      // PASS — environment-aware config
+      const config = { apiUrl: process.env.API_URL, debug: false };
+
+  # ── CONTINGENCY PLANNING — CP FAMILY ─────────────────────────────────────────
+
+  - id: cp-backup-recovery
+    severity: advanced
+    rule: >-
+      Production systems require regular automated backups, tested recovery
+      procedures, and off-site storage for critical data. Backups must be
+      encrypted and integrity-verified. No backup strategy, or backups that
+      have never been tested for restore, is a violation. Corresponds to NIST
+      SP 800-53 CP-9 (System Backup) and CP-10 (System Recovery and
+      Reconstitution).
+    framework_yaml: |
+      # FAIL — no backup configuration
+      backup:
+        enabled: false
+      # PASS — documented backup policy
+      backup:
+        enabled: true
+        schedule: daily
+        retention_days: 90
+        encryption: aes256
+        offsite: s3://backups/
+        test_restore_interval_days: 30
+    framework_python: |
+      # FAIL — no backup for critical data
+      def delete_user(user_id):
+          db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+      # PASS — backup before destructive operation
+      def delete_user(user_id):
+          backup_service.snapshot("users")
+          db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    framework_json: |
+      // FAIL
+      { "backup_policy": { "enabled": false } }
+      // PASS
+      { "backup_policy": { "enabled": true, "schedule": "0 2 * * *", "retention_days": 90 } }
+
+  # ── INCIDENT RESPONSE — IR FAMILY ────────────────────────────────────────────
+
+  - id: ir-detection
+    severity: advanced
+    rule: >-
+      Systems must have automated detection for security events: failed
+      authentication bursts, unusual access patterns, large data transfers,
+      and configuration changes. Alerts must route to a response team within
+      defined SLAs. Absence of monitoring is a violation. Corresponds to NIST
+      SP 800-53 IR-4 (Incident Handling) and IR-6 (Incident Reporting).
+    framework_yaml: |
+      # FAIL — no monitoring configured
+      monitoring:
+        enabled: false
+      # PASS — detection and alerting
+      monitoring:
+        enabled: true
+        rules:
+          - name: brute-force
+            trigger: "5 failed logins in 60s"
+            action: block_ip + alert_security
+          - name: data-export
+            trigger: ">100MB outbound in 5min"
+            action: alert_security
+      alerting:
+        slack_channel: "#security-alerts"
+        sla_response_minutes: 15
+    framework_python: |
+      # FAIL — no anomaly detection
+      @app.post("/login")
+      def login(username, password):
+          return authenticate(username, password)
+      # PASS — monitored login with rate limiting
+      @app.post("/login")
+      @rate_limit(max_attempts=5, window_seconds=60)
+      def login(username, password):
+          return authenticate(username, password)
+    framework_javascript: |
+      // FAIL — no rate limiting on auth
+      app.post('/login', (req, res) => { ... });
+      // PASS — rate-limited, monitored
+      app.post('/login', rateLimit({ windowMs: 60000, max: 5 }), (req, res) => { ... });

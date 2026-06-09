@@ -1,0 +1,785 @@
+# architect — System Architecture Design Patterns. Fourth class in the School.
+#
+# Source standards: Fowler (Enterprise Patterns), Richards (Software Architecture
+# Fundamentals), Hohpe (Enterprise Integration Patterns), NIST SP 800-53,
+# AICPA SOC2 TSC, and the Ghost Mesh governance model (aegis_gate, risk_policy,
+# CP/CPS, SOD_ARCHITECTURE). See SOURCES.md for per-rule citations.
+#
+# Regex dialect (Layer 1, stdlib): standard Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the
+# Socratic fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~200 tokens for checkable rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix step).
+#
+# Rules marked with check_regex need a FAIL/PASS test pair in
+# tests/test_architect.py. Teaching-only rules are tested for content presence.
+
+class:
+  id: architect
+  title: "Architect — System Architecture Design Patterns"
+  version: 1.0.0
+  sources:
+    - "Fowler — Patterns of Enterprise Application Architecture"
+    - "Richards & Ford — Fundamentals of Software Architecture"
+    - "Hohpe & Woolf — Enterprise Integration Patterns"
+    - "NIST SP 800-53 / SOC2 TSC / CMMC 2.0"
+    - "Ghost Mesh SOD_ARCHITECTURE.md, CP_CPS.md, risk_policy.py"
+  prerequisites: []
+  target_violations:
+    - "api-no-version"           # API routes missing version prefix
+    - "credential-injection"     # Credential literals in configuration
+    - "single-operator-mode"     # Single operator bypassing SoD
+    - "print-logging"            # print() instead of structured logging
+  estimated_cost_tokens: 300
+
+rules:
+
+  # ── CORE ARCHITECTURE PATTERNS (8 rules) ────────────────────────────────
+
+  - id: single-responsibility
+    severity: fundamental
+    rule: "Each component or service must own exactly one domain concern. A component that handles HTTP, business logic, database access, and email sending violates separation of concerns. Single-responsibility components have one reason to change."
+    framework_python: |
+      # FAIL — god class handling multiple concerns
+      class UserHandler:
+          def handle_request(self, req):
+              user = self.db.query(User).get(req["id"])
+              self.send_email(user.email, "Welcome")
+              return {"status": "ok"}
+      # PASS — separated concerns
+      class UserController:
+          def __init__(self, user_service: UserService):
+              self.service = user_service
+          def get(self, user_id: int) -> UserDTO:
+              return self.service.get_user(user_id)
+    framework_yaml: |
+      # FAIL — one service does everything
+      services:
+        monolith:
+          responsibilities: [http, auth, db, email, payments, analytics]
+      # PASS — each service owns one concern
+      services:
+        api-gateway:
+          responsibility: routing_and_auth
+        user-service:
+          responsibility: user_management
+        payment-service:
+          responsibility: payment_processing
+    framework_json: |
+      // FAIL — monolithic component spec
+      { "component": "order-system", "handles": ["http", "db", "email", "inventory"] }
+      // PASS — single-responsibility component
+      { "component": "order-service", "handles": ["order_lifecycle"] }
+
+  - id: bounded-context
+    severity: fundamental
+    rule: "Define explicit bounded contexts with well-defined contracts (interfaces, schemas, protocols) between them. Two services sharing a database or referencing each other's internal types are not properly bounded. Each context owns its data and exposes it only through its API."
+    framework_python: |
+      # FAIL — context leak: order service reads user DB directly
+      class OrderService:
+          def get_orders_for_user(self, user_id):
+              user_db = Database("users_connection_string")
+              return user_db.query("SELECT * FROM orders WHERE user_id = ?", user_id)
+      # PASS — bounded: order service calls user service API
+      class OrderService:
+          def __init__(self, user_client: UserServiceClient):
+              self.users = user_client
+          def get_orders_for_user(self, user_id):
+              user = self.users.get_user_profile(user_id)
+              return self.order_repo.find_by_user(user.id)
+    framework_yaml: |
+      # FAIL — shared database between contexts
+      bounded_contexts:
+        orders:
+          database: shared_db
+        inventory:
+          database: shared_db
+      # PASS — each context owns its store
+      bounded_contexts:
+        orders:
+          database: orders_db
+          api: orders-api:8080
+        inventory:
+          database: inventory_db
+          api: inventory-api:8080
+    framework_generic: |
+      # FAIL: OrderService reads from UserService's database table.
+      # PASS: OrderService calls UserService.getUserProfile() API.
+
+  - id: layer-isolation
+    severity: fundamental
+    rule: "Dependencies must point inward: presentation → application → domain → infrastructure. The presentation layer must never access infrastructure directly. If a route handler imports from db/, cache/, or queue/, it violates layer isolation."
+    framework_python: |
+      # FAIL — handler imports data layer directly
+      from db.users import UserRepository  # presentation → infrastructure
+      def get_user(request):
+          return UserRepository().find(request.params["id"])
+      # PASS — handler goes through service layer
+      from services.user_service import UserService
+      def get_user(request):
+          return UserService().get_user(request.params["id"])
+    framework_yaml: |
+      # FAIL — presentation layer configured with infra access
+      presentation:
+        allowed_dependencies: [db, cache, queue]
+      # PASS — presentation only talks to application services
+      presentation:
+        allowed_dependencies: [application_services]
+      application:
+        allowed_dependencies: [domain, infrastructure_abstractions]
+    framework_generic: |
+      # FAIL: UserController imports Database directly.
+      # PASS: UserController injects UserService, which injects UserRepository.
+
+  - id: api-no-version
+    severity: fundamental
+    check_regex: |-
+      ['"]/api/(?!v\d[\d.]*/)[a-z]
+    rule: "Every public API endpoint must include a version prefix in its URL path. Unversioned APIs ('/api/users') create tight coupling: clients cannot safely upgrade when the contract changes. Use '/api/v1/users' and route by version."
+    framework_python: |
+      # FAIL — no version prefix
+      @router.get("/api/users")
+      def list_users(): ...
+      @router.post("/api/orders")
+      def create_order(): ...
+      # PASS — versioned
+      @router.get("/api/v1/users")
+      def list_users(): ...
+      @router.post("/api/v2/orders")
+      def create_order(): ...
+    framework_json: |
+      // FAIL — unversioned routes
+      { "routes": [{ "path": "/api/users", "method": "GET" }] }
+      // PASS — versioned routes
+      { "routes": [{ "path": "/api/v1/users", "method": "GET" }] }
+    framework_config: |
+      # FAIL
+      routes = ["/api/users", "/api/orders"]
+      # PASS
+      routes = ["/api/v1/users", "/api/v1/orders"]
+
+  - id: cqrs-separation
+    severity: advanced
+    rule: "Separate read models from write models when the read and write workloads have different shapes, frequencies, or consistency requirements. Using the same entity model for both queries and commands couples the read path to write-path invariants and prevents independent optimization."
+    framework_python: |
+      # FAIL — single model for read and write
+      class Order:
+          def __init__(self):
+              self.status = "pending"
+          def approve(self): self.status = "approved"
+          def to_dict(self): return {"status": self.status}
+      # PASS — separate read/write models
+      class CreateOrderCommand:
+          def execute(self, items): ...
+      class OrderQuery:
+          def get_summary(self, order_id) -> OrderSummaryDTO: ...
+    framework_yaml: |
+      # FAIL — single model
+      models:
+        Order:
+          read_path: same_model
+          write_path: same_model
+      # PASS — separate models
+      models:
+        OrderCommand:
+          path: commands/order.py
+          fields: [id, items, customer_id]
+        OrderQuery:
+          path: queries/order_summary.py
+          fields: [id, status, total, item_count]
+    framework_generic: |
+      # FAIL: getOrder() and updateOrder() share the same data model.
+      # PASS: OrderReadModel (denormalized, cached) and OrderWriteModel
+      # (normalized, transactional) are separate classes with separate stores.
+
+  - id: api-idempotency
+    severity: advanced
+    rule: "All mutating endpoints (POST, PUT, PATCH, DELETE) must support idempotency keys. Clients should be able to retry safely without creating duplicate resources. Idempotency is achieved through idempotency-key headers, idempotent consumers, or upsert semantics."
+    framework_python: |
+      # FAIL — no idempotency
+      @router.post("/api/v1/orders")
+      def create_order(payload: OrderCreate):
+          order = Order(**payload.dict())
+          db.session.add(order)
+          db.session.commit()
+          return order
+      # PASS — idempotency key
+      @router.post("/api/v1/orders")
+      def create_order(payload: OrderCreate, idempotency_key: str = Header(None)):
+          if idempotency_key and order_repo.exists_by_key(idempotency_key):
+              return order_repo.get_by_key(idempotency_key)
+          order = Order(**payload.dict(), idempotency_key=idempotency_key)
+          db.session.add(order)
+          db.session.commit()
+          return order
+    framework_json: |
+      // FAIL — no idempotency contract
+      { "endpoint": "POST /orders", "idempotent": false }
+      // PASS
+      { "endpoint": "POST /orders", "idempotent": true, "idempotency_header": "Idempotency-Key" }
+    framework_generic: |
+      # FAIL: POST /orders creates a new record every call — retry causes duplicates.
+      # PASS: POST /orders checks Idempotency-Key header first; retry returns cached result.
+
+  - id: no-single-point-of-failure
+    severity: advanced
+    rule: "Every component critical to system operation must have at least one redundant peer. A single process, single network path, or single database that brings down the whole system when it fails is a single point of failure. Design for: multiple replicas, health-checked load balancers, and circuit breakers on all dependencies."
+    framework_yaml: |
+      # FAIL — single replica, no redundancy
+      deployment:
+        api_service:
+          replicas: 1
+          strategy: Recreate
+        database:
+          mode: standalone
+      # PASS — redundant deployment
+      deployment:
+        api_service:
+          replicas: 3
+          strategy: RollingUpdate
+          max_unavailable: 1
+          health_check:
+            path: /health
+            interval: 15s
+        database:
+          mode: primary_replica
+          replicas: 2
+          failover: auto
+    framework_json: |
+      // FAIL
+      { "api": { "instances": 1, "load_balancer": false } }
+      // PASS
+      { "api": { "instances": 3, "load_balancer": true, "health_checks": true } }
+    framework_generic: |
+      # FAIL: Single database instance with no replica. If it goes down, the
+      # entire application is offline until manual recovery.
+      # PASS: Database primary with two read replicas and automated failover.
+      # API runs 3+ replicas behind a load balancer with health checks.
+
+  # ── SECURITY & COMPLIANCE ARCHITECTURE (6 rules) ────────────────────────
+
+  - id: defense-in-depth
+    severity: fundamental
+    rule: "Security must be enforced at multiple independent layers, not at a single perimeter. A network firewall alone is insufficient — also enforce: mTLS between services, input validation at every boundary, least-privilege RBAC, and runtime policy gates (AEGIS). Each layer assumes the layer below it has been compromised."
+    framework_python: |
+      # FAIL — single layer (app-level auth only)
+      def handle_request(request):
+          user = authenticate(request.token)
+          return process(request.data)
+      # PASS — multiple layers
+      def handle_request(request):
+          if not validate_tls(request): return 403
+          if not rate_limiter.allow(request.ip): return 429
+          user = authenticate(request.token)
+          if not policy_gate.check("access", user, request.path):
+              return 403
+          sanitized = input_validator.clean(request.data)
+          return process(sanitized)
+    framework_yaml: |
+      # FAIL — perimeter-only security
+      security:
+        network:
+          firewall: true
+        service_mesh: false
+        pki: false
+        policy_gate: false
+      # PASS — layered security
+      security:
+        network:
+          firewall: true
+          segmentation: true
+        service_mesh:
+          mTLS: strict
+          authorization: per_service
+        pki:
+          ca: internal
+          cert_rotation_days: 90
+        policy_gate:
+          aegis: enabled
+          risk_evaluation: enabled
+    framework_generic: |
+      # FAIL: Security relies entirely on the network firewall.
+      # PASS: Firewall + mTLS + application auth + input validation + runtime
+      # policy gate — each layer is independent and assumes the next is breached.
+
+  - id: credential-injection
+    severity: fundamental
+    check_regex: |-
+      (?i)(?:password|secret|api[_-]?key|token|credential)\s*[:=]\s*['"](?!\$|\{\{)[^'"]{4,}['"]
+    rule: "Secrets (passwords, API keys, tokens, credentials) must never appear as literals in source code or configuration files. Inject them through environment variables, vault references, or secret managers. A hardcoded string value for any secret-related key is a security violation."
+    framework_yaml: |
+      # FAIL — literal secrets in config
+      database:
+        password: "P@ssw0rd123!"
+      api:
+        api_key: "sk-abc123def456"
+      # PASS — vault references
+      database:
+        password: "${DB_PASSWORD}"
+      api:
+        api_key: "${API_KEY}"
+    framework_json: |
+      // FAIL
+      { "db_password": "s3cret!", "api_key": "abc123" }
+      // PASS
+      { "db_password": "${DB_PASSWORD}", "api_key": "$API_KEY" }
+    framework_python: |
+      # FAIL
+      DB_PASSWORD = "P@ssw0rd123!"
+      API_KEY = "sk-abc123def456"
+      # PASS
+      DB_PASSWORD = os.environ["DB_PASSWORD"]
+      API_KEY = os.getenv("API_KEY")
+    framework_config: |
+      # FAIL
+      password = "hunter2"
+      secret_key = "my-insecure-key"
+      # PASS
+      password = @VAULT_REF@
+      secret_key = $SECRET_KEY
+
+  - id: trust-boundary
+    severity: fundamental
+    rule: "Every trust boundary — service-to-service, public-to-private, user-to-system — must validate input, authenticate identity, and authorize the action. Data crossing a boundary without validation, or an action taken without re-authorization, is a trust boundary violation."
+    framework_python: |
+      # FAIL — no input validation at boundary
+      def process_order(data):
+          # data comes from public API but is trusted without validation
+          db.session.execute("UPDATE orders SET status = ?", data["status"])
+      # PASS — validate at boundary
+      def process_order(data, user):
+          validate_input(data, OrderSchema)
+          authorize(user, "order:update", data["order_id"])
+          sanitized = OrderSchema(**data)
+          order_service.update_status(sanitized.order_id, sanitized.status)
+    framework_generic: |
+      # FAIL: Service A trusts HTTP headers from Service B without verifying
+      # the caller's identity. Any service on the mesh can impersonate Service B.
+      # PASS: Service A verifies Service B's mTLS certificate, validates the
+      # payload schema, and re-authorizes the action against the end-user's token.
+
+  - id: sod-four-role
+    severity: fundamental
+    rule: "Segregation of duties requires at minimum four distinct roles with mutually exclusive permissions: Mesh Admin (configuration, CA operations), Infra Admin (deployments, infrastructure, no PKI access), Security Officer (monitoring, cert revocation, audit review, no config changes), and Auditor (read-only chain verification, compliance reports). No single role has complete system control."
+    framework_yaml: |
+      # FAIL — combined, overlapping roles
+      roles:
+        admin:
+          permissions: [deploy, configure, issue_certs, review_audit, approve_changes]
+      # PASS — four-role segregation
+      roles:
+        mesh_admin:
+          permissions: [configure_mesh, ca_operations, risk_policy_manage]
+          cannot: [modify_audit_chain, deploy_code]
+        infra_admin:
+          permissions: [deploy, restart, manage_network]
+          cannot: [issue_certs, modify_risk_policy, access_audit_chain]
+        security_officer:
+          permissions: [view_audit_chain, revoke_certs, trigger_red_key]
+          cannot: [modify_mesh_config, deploy, issue_certs]
+        auditor:
+          permissions: [export_audit_snapshot, verify_chain, generate_reports]
+          cannot: [write]
+    framework_json: |
+      // FAIL — single admin role controls everything
+      { "roles": { "admin": { "scope": "all" } } }
+      // PASS — segregated roles
+      {
+        "roles": {
+          "mesh_admin": { "permissions": ["configure", "ca_ops"], "deny": ["audit_write", "deploy"] },
+          "security_officer": { "permissions": ["audit_read", "revoke", "monitor"], "deny": ["configure", "deploy"] },
+          "auditor": { "permissions": ["audit_read", "verify", "export"], "deny": ["write"] }
+        }
+      }
+    framework_generic: |
+      # FAIL: A single admin can deploy code, issue certificates, and review
+      # audit logs. A compromised admin account has unlimited control.
+      # PASS: Four roles with no overlap in critical permissions. Compromising
+      # any single role does not grant full system control.
+
+  - id: dual-approval
+    severity: fundamental
+    rule: "Critical operations require dual approval from two distinct roles before execution. Operations requiring dual approval include: root CA key access (Mesh Admin + Security Officer), risk policy modification (Mesh Admin + Security Officer), agent termination (2 x Mesh Admin or Admin + Officer), and audit chain configuration changes (Mesh Admin + Auditor). Single-operator mode must never be the default."
+    framework_yaml: |
+      # FAIL — no dual approval
+      critical_operations:
+        root_ca_access: { approver: mesh_admin }
+        risk_policy_change: { approver: mesh_admin }
+      # PASS — dual approval
+      critical_operations:
+        root_ca_access:
+          required_approvers: [mesh_admin, security_officer]
+          ceremony: offline
+        risk_policy_change:
+          required_approvers: [mesh_admin, security_officer]
+          chain_log_reason: required
+        agent_termination:
+          required_approvers: 2
+          method: multi_sig
+    framework_python: |
+      # FAIL — single approver
+      def terminate_agent(agent_id, requestor):
+          authorize(requestor, "agent:terminate")
+          agent_service.kill(agent_id)
+      # PASS — dual approval
+      def terminate_agent(agent_id, requestor, approver):
+          authorize(requestor, "agent:terminate:request")
+          authorize(approver, "agent:terminate:approve")
+          if requestor == approver:
+              raise DualApprovalError("Requester and approver must be different")
+          change = change_queue.create(agent_id, requestor, approver)
+          agent_service.kill(agent_id)
+    framework_generic: |
+      # FAIL: Root CA key accessed by a single operator with no witness.
+      # FAIL: Agent termination authorized by the same person who requested it.
+      # PASS: Root CA ceremony requires Mesh Admin + Security Officer
+      # physically present. Agent termination requires dual signatures from
+      # two distinct role holders.
+
+  - id: single-operator-mode
+    severity: fundamental
+    check_regex: |-
+      (?i)single_operator(?:_mode)?\s*[:=]\s*["']?(?:true|yes|1)\b
+    rule: "Single-operator mode bypasses segregation of duties and must never be enabled in production. Emergency (break-glass) access requires dual-operator approval with logged justification. Configuration that sets single_operator to true, yes, or 1 is a security architecture violation."
+    framework_yaml: |
+      # FAIL — single-operator mode enabled
+      security:
+        single_operator: true
+      # PASS — dual-operator approval
+      security:
+        single_operator: false
+        dual_approval:
+          enabled: true
+          timeout_seconds: 300
+          require_justification: true
+    framework_json: |
+      // FAIL
+      { "single_operator_mode": true }
+      // PASS
+      { "single_operator_mode": false, "dual_approval_required": true }
+    framework_config: |
+      # FAIL
+      single_operator = yes
+      # PASS
+      single_operator = no
+      dual_approval = true
+    framework_generic: |
+      # FAIL: Single operator mode enabled — no oversight on critical
+      # actions. A single compromised account has full control.
+      # PASS: All critical actions require two distinct operators.
+      # Break-glass has a timer, logs everything, and notifies security.
+
+  - id: risk-classification
+    severity: advanced
+    rule: "Every action must be classified by risk level: LOW (auto-approved, routine), MEDIUM (single approver, domain owner), HIGH (role-based approval, chain notarized), or CRITICAL (multi-sig, 2+ approvers, justifications required, chain notarized). The risk level determines the approval workflow, notification requirements, and audit depth."
+    framework_yaml: |
+      # FAIL — single flat approval for all operations
+      approval:
+        policy: all_operations_require_approval
+      # PASS — 4-level risk classification
+      risk_policy:
+        low:
+          label: "Routine operations"
+          approval: auto
+          notify: false
+          chain_log: true
+        medium:
+          label: "Infrastructure changes"
+          approval: single_approver
+          approver: domain_owner
+          timeout_hours: 4
+        high:
+          label: "Legal, compliance, financial"
+          approval: role_based
+          required_roles: [domain_owner]
+          chain_notarize: true
+        critical:
+          label: "Irreversible, high blast radius"
+          approval: multi_sig
+          required_approvers: 2
+          require_reason: true
+          chain_notarize: true
+    framework_json: |
+      // FAIL — no classification
+      { "approval": { "policy": "single_queue" } }
+      // PASS — classified
+      {
+        "risk_classification": {
+          "criteria": [
+            { "pattern": "secrets/**", "level": "critical" },
+            { "pattern": "feature/*", "level": "low" },
+            { "pattern": "main", "level": "high" }
+          ]
+        }
+      }
+    framework_generic: |
+      # FAIL: All changes go through the same approval queue regardless of
+      # risk. A typo fix waits as long as a production database migration.
+      # PASS: LOW auto-approves. MEDIUM notifies domain owner. HIGH requires
+      # role-based approval. CRITICAL requires multi-sig with written
+      # justification.
+
+  # ── OBSERVABILITY & RESILIENCE (4 rules) ────────────────────────────────
+
+  - id: structured-observability
+    severity: fundamental
+    rule: "Every service must emit structured logs (JSON), metrics (counters, histograms, gauges), and distributed traces as the three pillars of observability. Bare print() statements, unstructured log strings, and the absence of correlation IDs are all violations. Logs must capture: timestamp (UTC ISO 8601), severity, service name, trace ID, and structured payload."
+    framework_python: |
+      # FAIL — print-based observability
+      print(f"User {id} logged in")
+      print(f"Order {order_id} processed in {elapsed}ms")
+      # PASS — structured observability
+      logger.info("user_login", extra={"user_id": id, "session": session_id})
+      metrics.timing("order.process_time", elapsed, tags={"region": region})
+      with tracer.start_span("process_order") as span:
+          span.set_attribute("order_id", order_id)
+          process(order)
+    framework_yaml: |
+      # FAIL — no observability config
+      services:
+        api:
+          logging: disabled
+      # PASS — structured observability configured
+      services:
+        api:
+          logging:
+            format: json
+            level: info
+            fields: [timestamp, severity, service, trace_id, payload]
+          metrics:
+            endpoint: /metrics
+            format: prometheus
+          tracing:
+            sampler: probabilistic
+            sampling_rate: 0.1
+    framework_generic: |
+      # FAIL: print("Order processed") — no timestamp, no severity, no trace ID,
+      # no structured data. grep cannot find it reliably.
+      # PASS: {"ts": "2026-06-08T14:30:00Z", "sev": "info", "svc": "order-api",
+      #        "trace": "abc123", "msg": "order_processed", "order_id": 42}
+      # PASS: logger.info("order_processed", extra={"order_id": 42})
+
+  - id: print-logging
+    severity: fundamental
+    check_regex: |-
+      (?<![.\w])print\(
+    rule: "Never use print() for production logging. print() outputs to stdout without structured metadata (level, timestamp, service name, trace ID). Use a structured logger that emits JSON or key-value pairs. print() is acceptable for CLI tools and debugging only."
+    framework_python: |
+      # FAIL — print for production logging
+      print(f"Processing order {order_id}")
+      print(f"Payment failed: {error}")
+      # PASS — structured logger
+      logger.info("order_processing", extra={"order_id": order_id})
+      logger.error("payment_failed", extra={"error": str(error)})
+    framework_generic: |
+      # FAIL: print("user logged in") — no metadata, cannot be filtered by
+      # severity, cannot be traced.
+      # PASS: logger.info({"event": "user_login", "user_id": 42, "trace": "abc"})
+
+  - id: circuit-breaker
+    severity: advanced
+    rule: "Every call to an external service (HTTP, gRPC, message queue, database across the network) must be wrapped in a circuit breaker. Without one, a downstream failure cascades: latency spikes tie up threads, timeouts pile up, and the system collapses. The circuit breaker trips to OPEN when failures exceed a threshold, fails fast, and retries after a cooldown."
+    framework_python: |
+      # FAIL — direct call, no circuit breaker
+      def get_user_preferences(user_id):
+          return requests.get(f"http://prefs-api/{user_id}", timeout=5).json()
+      # PASS — circuit breaker
+      import pybreaker
+      breaker = pybreaker.CircuitBreaker(fail_max=5, reset_timeout=30)
+      def get_user_preferences(user_id):
+          return breaker.call(requests.get, f"http://prefs-api/{user_id}", timeout=5)
+    framework_yaml: |
+      # FAIL — no circuit breaker
+      dependencies:
+        preference_service:
+          url: http://prefs-api:8080
+          timeout: 5s
+      # PASS — circuit breaker configured
+      dependencies:
+        preference_service:
+          url: http://prefs-api:8080
+          timeout: 5s
+          circuit_breaker:
+            failure_threshold: 5
+            reset_timeout: 30s
+            half_open_max_calls: 3
+    framework_generic: |
+      # FAIL: Every request to preferences service waits up to 5s for timeout.
+      # When it's slow, all threads block. System throughput drops to zero.
+      # PASS: After 5 failures, circuit opens. Requests return immediately with
+      # fallback. After 30s cooldown, a probe tests recovery.
+
+  - id: stateless-design
+    severity: advanced
+    rule: "Design application instances to be stateless: no in-memory session state, no local file storage for business data, no reliance on a specific instance being reachable. State belongs in a shared data store (database, cache, object store). Statelessness enables horizontal scaling: any instance can handle any request, and instances can be added or removed without coordination."
+    framework_python: |
+      # FAIL — stateful: session in local memory
+      session_store = {}
+      def handle_login(user_id):
+          session_store[user_id] = {"logged_in": True, "timestamp": time.time()}
+      # PASS — stateless: session in shared store
+      def handle_login(user_id, redis_client):
+          redis_client.set(f"session:{user_id}", {"ts": time.time()})
+    framework_yaml: |
+      # FAIL — stateful instances
+      deployment:
+        api:
+          sticky_sessions: required
+          local_storage: /var/data
+      # PASS — stateless instances
+      deployment:
+        api:
+          sticky_sessions: false
+          ephemeral_storage: true
+          shared_state: redis-cluster:6379
+    framework_generic: |
+      # FAIL: User session stored in local dict — restart loses all sessions.
+      # Instance B cannot serve Instance A's users. Scaling up requires
+      # rebalancing sessions.
+      # PASS: Session in Redis — any instance serves any user. Instances are
+      # interchangeable. Scale up by adding replicas, scale down by removing.
+
+  # ── INTEGRATION & DATA ARCHITECTURE (4 rules) ───────────────────────────
+
+  - id: audit-chain-integrity
+    severity: fundamental
+    rule: "Audit logs must be tamper-evident: cryptographically hashed, stored in append-only (WORM) storage, and chain-verifiable through hash linking. Each entry includes a hash of the previous entry, forming a chain. Plain log files, SQL tables that allow UPDATE or DELETE, or any mutable storage without integrity proofs are not admissible audit trails."
+    framework_python: |
+      # FAIL — mutable audit log
+      def log_audit(event):
+          with open("audit.log", "a") as f:
+              f.write(json.dumps(event) + "\n")
+      # PASS — chain-verified audit
+      def log_audit(event, chain):
+          entry = {
+              **event,
+              "previous_hash": chain.head_hash(),
+              "timestamp": utc_now()
+          }
+          entry["hash"] = sha256(json.dumps(entry, sort_keys=True))
+          chain.append(entry)
+    framework_yaml: |
+      # FAIL — mutable storage, no hashing
+      audit:
+        backend: sqlite
+        allow_delete: true
+        hash_chain: false
+      # PASS — WORM audit trail
+      audit:
+        backend: wormchain
+        storage: append_only
+        signing: ed25519
+        hash_witness: enabled
+        verification_frequency: hourly
+    framework_generic: |
+      # FAIL: Audit log is a text file. Anyone with file access can delete or
+      # modify entries. No tampering evidence.
+      # PASS: Each entry links to the previous via cryptographic hash.
+      # Deletion breaks the chain and is immediately detectable. Verification
+      # runs hourly and alerts on any integrity failure.
+
+  - id: event-driven-async
+    severity: advanced
+    rule: "Use asynchronous event-driven communication between bounded contexts rather than synchronous request-response, unless the operation requires an immediate response. Events decouple producers from consumers: the producer emits an event without knowing who consumes it. This enables loose coupling, independent deployability, and evolution of each context."
+    framework_python: |
+      # FAIL — synchronous coupling
+      class OrderService:
+          def place_order(self, order):
+              self.inventory_client.reserve(order.items)
+              self.payment_client.charge(order.total)
+              self.email_client.send_confirmation(order)
+      # PASS — event-driven
+      class OrderService:
+          def place_order(self, order):
+              order = self.order_repo.save(order)
+              self.event_bus.publish("order.placed", order)
+              # Inventory, payment, email consume the event independently
+    framework_yaml: |
+      # FAIL — synchronous dependency chain
+      services:
+        order:
+          depends_on_sync: [inventory, payment, email, shipping]
+      # PASS — event-driven
+      services:
+        order:
+          publishes: ["order.placed"]
+        inventory:
+          subscribes: ["order.placed"]
+        payment:
+          subscribes: ["order.placed"]
+    framework_generic: |
+      # FAIL: Order service calls payment, inventory, email, and shipping
+      # synchronously. If shipping is slow, the entire order placement blocks.
+      # Adding a new consumer requires changing the OrderService code.
+      # PASS: Order emits "order.placed". Payment, inventory, email, and
+      # shipping consume it independently. New consumers subscribe without
+      # changing OrderService.
+
+  - id: idempotent-consumer
+    severity: advanced
+    rule: "Event and message consumers must be idempotent: processing the same message twice must produce the same result as processing it once. Use consumer-side deduplication (message ID tracking), idempotent writes (upsert), or deterministic operations. At-least-once delivery without idempotent consumers guarantees duplicate processing."
+    framework_python: |
+      # FAIL — non-idempotent consumer
+      def handle_order_placed(event):
+          order = Order(**event.data)
+          db.session.add(order)
+          db.session.commit()  # Second delivery creates duplicate
+      # PASS — idempotent consumer
+      def handle_order_placed(event):
+          if dedup.check(event.message_id):
+              return  # Already processed
+          order = Order(**event.data)
+          db.session.merge(order)  # Upsert — no duplicate
+          db.session.commit()
+          dedup.mark(event.message_id)
+    framework_generic: |
+      # FAIL: If order.placed message delivers twice, two orders are created
+      # with the same data. No deduplication.
+      # PASS: Consumer checks message_id against processed set. Duplicate
+      # messages are silently skipped. Database uses upsert semantics.
+
+  - id: pki-hierarchy
+    severity: advanced
+    rule: "Design a private CA hierarchy with at minimum two tiers: an offline Root CA (self-signed, air-gapped, used only for cross-signing and disaster recovery) and an online Issuing CA (signs all operational certificates). Agent certificates should be short-lived (90 days), operator certificates 365 days, and auditor certificates time-scoped (1-90 days). Each certificate profile carries scoped EKUs matching the role's permissions."
+    framework_yaml: |
+      # FAIL — flat PKI, no hierarchy
+      pki:
+        ca:
+          mode: online
+          single_tier: true
+        cert_validity_days: 3650
+      # PASS — two-tier hierarchy
+      pki:
+        root_ca:
+          mode: offline
+          storage: air_gapped
+          access: dual_control
+        issuing_ca:
+          mode: online
+          signer: root_ca
+        profiles:
+          agent:
+            validity_days: 90
+            key_usage: [digitalSignature]
+            extended_key_usage: [clientAuth]
+          operator:
+            validity_days: 365
+            key_usage: [digitalSignature, keyEncipherment]
+            extended_key_usage: [clientAuth, serverAuth]
+          auditor:
+            validity_days: 30
+            key_usage: [digitalSignature]
+            extended_key_usage: [clientAuth]
+            read_only: true
+        crl:
+          generation_interval_hours: 24
+          validity_days: 7
+    framework_generic: |
+      # FAIL: Single online CA issues all certificates. Compromise of the CA
+      # key means the entire PKI must be rebuilt. Certificates valid for 10
+      # years have no rotation discipline.
+      # PASS: Root CA is offline and air-gapped — compromise requires physical
+      # access with dual control. Issuing CA is online and can be rotated
+      # independently. Short-lived certs (90 days) minimize blast radius of
+      # key compromise. CRL regenerates every 24h with 7-day validity.

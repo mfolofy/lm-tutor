@@ -1,0 +1,509 @@
+# test — Test-Driven Development & Testing Best Practices
+#
+# Source standards: xUnit Test Patterns (Meszaros), FIRST Principles,
+# Practical Test Pyramid (Ham Vocke), Property-Based Testing (F# for Fun and Profit).
+# See SOURCES.md for per-rule citations.
+#
+# Every rule is self-contained: it carries teaching examples AND (where
+# codifiable) a deterministic check_regex the Layer 1 harness runs.
+#
+# Regex dialect (Layer 1, stdlib): Python re. A match = a VIOLATION.
+# Teaching-only rules carry no check_regex — they inject knowledge for the
+# Socratic fix step and the LLM judge (Layer 2).
+#
+# Injected size: ~180 tokens for checkable rules (rule lines only; framework
+# examples are not injected at generation time — they back the Socratic fix step).
+
+class:
+  id: test
+  title: "Test — TDD & Testing Best Practices"
+  version: 1.0.0
+  sources:
+    - "xUnit Test Patterns (Meszaros, 2007)"
+    - "FIRST Principles (Tim Ottinger / Clean Code)"
+    - "Practical Test Pyramid (Ham Vocke, 2018)"
+    - "Property-Based Testing (F# for Fun and Profit, Scott Wlaschin)"
+  prerequisites: []
+  target_violations:
+    - "test-mock-assert-existence"
+    - "test-hardcoded-assert-placeholder"
+    - "test-shared-state"
+    - "test-skip-without-reason"
+    - "test-pyramid"
+    - "test-isolation"
+    - "test-coverage-criteria"
+  estimated_cost_tokens: 300
+
+rules:
+
+  # ── CHECKABLE RULES (4, deterministic regex checks) ──────────────────────
+
+  - id: test-mock-assert-existence
+    severity: fundamental
+    rule: "Never assert on mock elements or mock existence. Assert on real behavior rendered by the component under test, not on test-double placeholder elements. A test that passes because a mock exists but fails when the mock is removed is testing the mock, not the code."
+    check_regex: |-
+      (?i)getByTestId\s*\(\s*['"][a-z0-9-]+-mock['"]\s*\)
+    framework_python: |
+      # FAIL
+      def test_sidebar():
+          render(Page)
+          assert screen.get_by_test_id("sidebar-mock")
+      # PASS
+      def test_sidebar():
+          render(Page)
+          assert screen.get_by_role("navigation")
+    framework_javascript: |
+      // FAIL
+      test('renders sidebar', () => {
+        render(<Page />);
+        expect(screen.getByTestId('sidebar-mock')).toBeInTheDocument();
+      });
+      // PASS
+      test('renders sidebar', () => {
+        render(<Page />);
+        expect(screen.getByRole('navigation')).toBeInTheDocument();
+      });
+    framework_generic: |
+      # FAIL: assertion targets a mock placeholder element
+      # PASS: assertion targets real rendered behavior
+
+  - id: test-hardcoded-assert-placeholder
+    severity: fundamental
+    rule: "Never use bare assert True or assert False as test assertions. These are placeholders that either always pass (assert True) or always fail (assert False), providing zero verification of actual behavior. Every assertion must evaluate actual code output."
+    check_regex: |-
+      (?i)\bassert\s+(?:True|False)\b
+    framework_python: |
+      # FAIL
+      def test_response():
+          assert True  # TODO: implement actual check
+      def test_failure():
+          assert False  # placeholder
+      # PASS
+      def test_response():
+          assert response.status_code == 200
+      def test_failure():
+          assert "error" in response.text
+    framework_javascript: |
+      // FAIL
+      test('works', () => {
+        expect(true).toBe(true);  // placeholder
+      });
+      // PASS
+      test('returns 200', () => {
+        expect(response.status).toBe(200);
+      });
+    framework_generic: |
+      # FAIL: assert True / assert False — zero verification power
+      # PASS: assertions that evaluate the code under test
+
+  - id: test-shared-state
+    severity: fundamental
+    rule: "Tests must not share mutable module-level state. Empty list/dict declarations at module level encourage state leakage between tests. Each test should create its own data or use isolated fixtures. Shared mutable state makes tests order-dependent and flaky."
+    check_regex: |-
+      (?im)^[A-Za-z_]\w*\s*=\s*(?:\[\]|\{\})\s*$
+    framework_python: |
+      # FAIL — shared mutable state
+      items = []
+
+      def test_add():
+          items.append("x")
+          assert len(items) == 1
+
+      def test_again():
+          assert len(items) == 1  # depends on test_add running first
+      # PASS — isolated state per test
+      def test_add():
+          items = ["x"]
+          assert len(items) == 1
+
+      def test_empty():
+          items = []
+          assert len(items) == 0
+    framework_javascript: |
+      // FAIL — shared mutable state
+      const items = [];
+
+      test('adds item', () => {
+        items.push('x');
+        expect(items).toHaveLength(1);
+      });
+      // PASS — isolated per test
+      test('adds item', () => {
+        const items = ['x'];
+        expect(items).toHaveLength(1);
+      });
+    framework_generic: |
+      # FAIL: module-level [] / {} shared across tests
+      # PASS: each test creates and owns its own data
+
+  - id: test-skip-without-reason
+    severity: advanced
+    rule: "Every skipped or expected-failure test must document why with a descriptive reason parameter. Skip markers without reasons accumulate indefinitely — no one knows if they are still relevant, blocked by a known bug, or abandoned. A skip without a reason is technical debt."
+    check_regex: |-
+      @pytest\.mark\.(?:skip|skipif|xfail)\s*\((?!.*\breason\s*=)
+    framework_python: |
+      # FAIL
+      @pytest.mark.skip()
+      def test_slow_feature():
+          ...
+
+      @pytest.mark.skipif(sys.version_info < (3, 10))
+      def test_new_syntax():
+          ...
+      # PASS
+      @pytest.mark.skip(reason="Requires local Redis")
+      def test_cache_hit():
+          ...
+
+      @pytest.mark.skipif(
+          sys.version_info < (3, 10),
+          reason="Structural pattern matching requires Python 3.10+"
+      )
+      def test_match_statement():
+          ...
+
+  # ── TEACHING-ONLY RULES (13, no check_* — LLM judge / Socratic) ─────────
+
+  - id: test-pyramid
+    severity: fundamental
+    rule: "Follow the test pyramid: many fast unit tests (60-70%), fewer integration tests (20-30%), and even fewer end-to-end tests (5-10%). Unit tests validate single functions or classes in isolation. Integration tests verify module boundaries with real I/O at the boundary. E2E tests validate critical user journeys only. An inverted pyramid (too many e2e tests) creates a slow, brittle suite that discourages frequent runs."
+    framework_python: |
+      # FAIL — e2e-heavy suite, slow
+      def test_get_user_returns_200(): ...    # hits real DB
+      def test_get_user_returns_json(): ...   # hits real DB again
+      def test_create_user(): ...             # hits real DB + API
+      # PASS — pyramid-balanced
+      def test_parse_user_valid(): ...        # unit, fast
+      def test_parse_user_missing_field(): ... # unit, edge case
+      def test_user_db_roundtrip(): ...        # integration, one DB call
+      def test_signup_flow(): ...             # e2e, critical path only
+    framework_generic: |
+      # Unit (fast, isolated)     -> 60-70% of tests
+      # Integration (boundaries)  -> 20-30% of tests
+      # E2E (critical journeys)   -> 5-10% of tests
+      # Manual / exploratory       -> <5% of effort
+
+  - id: first-principles
+    severity: fundamental
+    rule: "Every test must satisfy the FIRST principles: Fast (runs in milliseconds, not seconds — slow tests don't get run), Isolated (no test depends on another, order-independent), Repeatable (same result every time — no flakiness from network, time, or randomness), Self-validating (pass or fail is automatic — no human inspection of output required), Timely (written at the right time — preferably before the code)."
+    framework_python: |
+      # FAIL — slow, shared, flaky, not self-validating
+      def test_api():
+          time.sleep(2)
+          resp = requests.get("https://real-api.example.com/data")
+          write_output(resp.text)
+          assert "result" in resp.text
+      # PASS — fast, isolated, deterministic, self-validating
+      def test_api(mock_api):
+          resp = mock_api.get("/data")
+          assert resp["result"] is not None
+    framework_javascript: |
+      // FAIL — flaky (Date.now), not self-validating (console.log)
+      test('generates report', () => {
+        const report = generateReport(new Date());
+        console.log(report);  // human must inspect
+      });
+      // PASS — deterministic, self-validating
+      test('generates report for given date', () => {
+        const report = generateReport(new Date('2026-01-01'));
+        expect(report).toContain('Q1 2026');
+      });
+    framework_generic: |
+      # FAST: milliseconds, not seconds
+      # ISOLATED: order-independent, no shared state
+      # REPEATABLE: deterministic, no network/clock dependency
+      # SELF-VALIDATING: pass/fail is automatic
+      # TIMELY: written before or with the code
+
+  - id: test-coverage-criteria
+    severity: fundamental
+    rule: "Line coverage is a minimum bar, not a goal. Test for: happy path (works as expected with valid input), edge cases (empty inputs, zero values, boundary values, maximum lengths), and error paths (invalid inputs, permission denied, service unavailable, missing resources, malformed data). Coverage criteria should be behavior-based, not line-based. 100% line coverage with zero assertions against behavior is worthless."
+    framework_python: |
+      # FAIL — high line coverage, no behavioral depth
+      def test_parse():
+          result = parse("user,alice,admin")
+          assert result is not None  # only happy path
+      # PASS — covers all behavioral scenarios
+      def test_parse_valid():
+          assert parse("user,alice,admin") == {"role": "admin", "name": "alice"}
+      def test_parse_empty():
+          assert parse("") is None
+      def test_parse_missing_field():
+          assert parse("user,alice").get("error") == "missing_role"
+      def test_parse_invalid():
+          assert parse(None) is None
+    framework_generic: |
+      # Every function needs tests across three axes:
+      # 1. Happy path  — normal valid input, expected output
+      # 2. Edge case   — empty, zero, None, boundary, max length
+      # 3. Error path  — invalid input, exception, timeout, denied
+      # Line coverage of only the happy path is not coverage.
+
+  - id: test-doubles
+    severity: fundamental
+    rule: "Choose the right test double: Stubs return canned values (use when you only need the return value and don't care about call patterns). Fakes have working but simplified implementations (use when you need real behavior without side effects, like an in-memory database). Spies record call information (use when verifying call patterns without stubbing returns). Mocks are pre-programmed with expectations (use only when verifying interaction contracts between components). Prefer the least powerful double that meets your need: stub > fake > spy > mock. Never mock what you don't own — wrap third-party libraries and OS calls behind your own abstraction."
+    framework_python: |
+      # Stub — canned return value
+      mock_db.get_user.return_value = {"id": 1, "name": "Alice"}
+      # Fake — simplified implementation
+      class FakeDB:
+          def __init__(self): self.users = {}
+          def get_user(self, id): return self.users.get(id)
+      # Spy — records calls for later assertion
+      def test_logging():
+          logger = SpyLogger()
+          process(logger)
+          assert logger.calls[0].args[0] == "started"
+      # Mock — pre-programmed with expectations
+      def test_sends_email():
+          mailer = Mock()
+          mailer.send(to="alice@x.com", subject="Welcome")
+          notify_user(mailer, "alice@x.com")
+          mailer.assert_called_once()
+    framework_javascript: |
+      // Stub: vi.fn().mockReturnValue(value)
+      // Fake: simplified class implementing the interface
+      // Spy: vi.spyOn(obj, 'method')
+      // Mock: vi.fn() with expectations
+      // Rule: stub > fake > spy > mock. Choose the least powerful double.
+
+  - id: property-based
+    severity: advanced
+    rule: "Property-based testing verifies invariants — properties that must hold for ALL inputs — rather than testing specific examples. A property-based test framework generates hundreds of random inputs and checks the invariant holds. Use for: serialization/deserialization roundtrips (encode then decode yields the original), sorting (result is sorted and contains same elements), validation (valid inputs accepted, invalid rejected), and any idempotent or symmetric operation. Example-based tests cover specific cases; property-based tests cover the space between them."
+    framework_python: |
+      # FAIL — example-based only, misses edge cases
+      def test_sort():
+          assert sort([3, 1, 2]) == [1, 2, 3]
+      # PASS — property-based, covers all inputs
+      from hypothesis import given, strategies as st
+
+      @given(st.lists(st.integers()))
+      def test_sort_invariants(items):
+          result = sort(items)
+          assert len(result) == len(items)
+          assert all(result[i] <= result[i+1] for i in range(len(result)-1))
+          assert set(result) == set(items)
+    framework_javascript: |
+      // FAIL — example-based only
+      test('sort', () => expect(sort([3,1,2])).toEqual([1,2,3]));
+      // PASS — property-based with fast-check
+      test('sort invariant', () => {
+        fc.assert(fc.property(fc.array(fc.integer()), (items) => {
+          const result = sort(items);
+          expect(result).toHaveLength(items.length);
+          for (let i = 0; i < result.length - 1; i++)
+            expect(result[i]).toBeLessThanOrEqual(result[i+1]);
+        }));
+      });
+    framework_generic: |
+      # Invariant patterns to test: roundtrip, idempotency,
+      # commutativity, ordering preservation, no-data-loss
+
+  - id: regression-test
+    severity: fundamental
+    rule: "When a bug is reported, write a failing test that reproduces the bug BEFORE fixing any code. This follows red-green-refactor for bug fixes: Red (test fails, confirming the bug exists), Green (fix the code, watch the test pass), Refactor (clean up while keeping green). Never fix a bug without a regression test — without a test that previously failed, you cannot prove the fix works or prevent regression."
+    framework_python: |
+      # FAIL — fix without regression test (no proof)
+      def calculate_interest(balance, rate):
+          # Fixed: was using rate/100 but rate is already decimal
+          return balance * rate
+      # PASS — red-green-refactor for the bug
+      def test_interest_decimal_rate():
+          # RED: this input would fail with the old code
+          result = calculate_interest(1000, 0.05)
+          assert result == 50.0
+      # GREEN: fix calculate_interest, test passes
+      # REFACTOR: clean up while test stays green
+
+  - id: integration-boundaries
+    severity: advanced
+    rule: "Write integration tests at system boundaries where I/O happens: database queries, REST API endpoints, file system operations, message queues, and third-party service calls. The test should exercise real (or containerized) infrastructure at the boundary — not mocked. Inside the boundary (pure logic), unit tests suffice. Outside the boundary (callers), mock the boundary interface. Never mock at the boundary itself — that gives false confidence."
+    framework_python: |
+      # FAIL — mock at the boundary (false confidence)
+      @patch("db.session.execute")
+      def test_get_users(mock_execute):
+          mock_execute.return_value = [{"id": 1}]
+          result = get_users()
+          assert len(result) == 1
+      # PASS — real database at the boundary
+      def test_get_users(test_db):
+          test_db.insert("users", {"id": 1, "name": "Alice"})
+          result = get_users()
+          assert result[0]["name"] == "Alice"
+    framework_javascript: |
+      // FAIL — over-mocked, false confidence
+      vi.mock('../../db');
+      vi.mock('../../cache');
+      vi.mock('../../queue');
+      // PASS — containerized infra at boundaries
+      // Unit: pure logic in isolation
+      // Integration: real DB container, real queue, real endpoint
+
+  - id: test-naming-conventions
+    severity: fundamental
+    rule: "Name tests as a sentence describing the scenario and expected outcome. Pattern: test_<method>_<condition>_<expected> or 'should <expected> when <condition>'. A good test name replaces most comments — it tells you at a glance what functionality is under test and what the expected result is. Vague names (test_user, test_process, test_1) force readers to read the body to understand intent."
+    framework_python: |
+      # FAIL — cryptic or incomplete names
+      def test_user(): ...
+      def test_login(): ...
+      def test_process_data_1(): ...
+      # PASS — descriptive scenario + expected outcome
+      def test_login_with_valid_credentials_returns_token(): ...
+      def test_login_with_expired_password_returns_403(): ...
+      def test_get_user_with_missing_id_returns_404(): ...
+    framework_javascript: |
+      // FAIL — vague test names
+      test('user', ...);
+      test('process', ...);
+      // PASS — scenario + expected outcome
+      test('returns token when login with valid credentials', ...);
+      test('returns 403 when login with expired password', ...);
+    framework_generic: |
+      # Convention: test_<unit>_<condition>_<expected>
+      # Or: <unit>_should_<expected>_when_<condition>
+
+  - id: test-isolation
+    severity: fundamental
+    rule: "Every test must set up its own data and clean up after itself. No test should depend on side effects from another test — order independence is mandatory. Shared fixtures must be immutable (read-only data, function-scoped, or reset between tests). A test that passes in isolation but fails in a suite has a test-isolation bug. Use setUp/afterEach/beforeEach hooks for cleanup, never rely on cleanup from other tests."
+    framework_python: |
+      # FAIL — depends on previous test's side effects
+      def test_cache_set():
+          set_cache("key", "value")
+          assert get_cache("key") == "value"
+
+      def test_cache_get():
+          assert get_cache("key") == "value"  # relies on test_cache_set
+      # PASS — isolated, order-independent
+      def test_cache_set(test_cache):
+          set_cache("key", "value")
+          assert get_cache("key") == "value"
+
+      def test_cache_missing(test_cache):
+          assert get_cache("missing_key") is None
+
+  - id: tdd-cycle
+    severity: fundamental
+    rule: "Follow the TDD cycle strictly: Red (write a failing test before any implementation code), Green (write the minimum code to make it pass), Refactor (improve the code while keeping tests green). Never skip to Green without seeing Red first — if you haven't seen the test fail, you don't know it tests anything real. The refactor step is mandatory: passing tests are permission to improve, not a signal to stop."
+    framework_python: |
+      # RED — test written first, fails (no implementation yet)
+      def test_is_even():
+          assert is_even(4) is True
+          assert is_even(3) is False
+      # is_even() doesn't exist yet -> test fails
+
+      # GREEN — minimum implementation to pass
+      def is_even(n): return n % 2 == 0
+      # All tests pass
+
+      # REFACTOR — improve while green
+      # (no change needed for this simple case)
+
+  - id: behavior-driven
+    severity: advanced
+    rule: "Structure tests in Given/When/Then format: Given (preconditions and test setup), When (the action being exercised), Then (observable outcomes and assertions). This pattern aligns tests with user stories (As a/I want/So that) and keeps the focus on externally visible behavior, not implementation details. A test without clear Given/When/Then separation is harder to debug when it fails."
+    framework_python: |
+      # FAIL — unstructured, hides intent
+      def test_cart():
+          cart = ShoppingCart()
+          cart.add("item-1", price=1000)
+          cart.add("item-2", price=1000)
+          cart.remove("item-1")
+          assert cart.total == 1000
+      # PASS — Given/When/Then separates setup, action, assertion
+      def test_remove_item_updates_cart_total():
+          # Given: a cart with two items totaling $20
+          cart = ShoppingCart()
+          cart.add("item-1", price=1000)
+          cart.add("item-2", price=1000)
+          # When: the first item is removed
+          cart.remove("item-1")
+          # Then: total should reflect only the remaining item
+          assert cart.total == 1000
+
+  - id: parametrized-tests
+    severity: advanced
+    rule: "Use parameterized tests to cover multiple inputs with the same test logic. A single parametrized test replaces N copy-pasted test functions, makes edge cases visible as a data table, and ensures all cases run even if one fails. Every time you find yourself writing a second test with the same structure but different inputs, reach for parameterization instead of duplication."
+    framework_python: |
+      # FAIL — copy-paste for each case
+      def test_adult_18(): assert is_adult(18) is True
+      def test_adult_25(): assert is_adult(25) is True
+      def test_adult_17(): assert is_adult(17) is False
+      def test_adult_0(): assert is_adult(0) is False
+      def test_adult_minus1(): assert is_adult(-1) is False
+      # PASS — parameterized, edge cases visible as data
+      @pytest.mark.parametrize("age,expected", [
+          (18, True), (25, True), (17, False), (0, False), (-1, False),
+      ])
+      def test_is_adult(age, expected):
+          assert is_adult(age) is expected
+    framework_javascript: |
+      // FAIL — repeated test functions
+      test('adult 18', () => expect(isAdult(18)).toBe(true));
+      test('adult 25', () => expect(isAdult(25)).toBe(true));
+      test('adult 17', () => expect(isAdult(17)).toBe(false));
+      // PASS — parameterized using test.each
+      test.each([
+        [18, true], [25, true], [17, false], [0, false], [-1, false]
+      ])('isAdult(%i) returns %s', (age, expected) => {
+        expect(isAdult(age)).toBe(expected);
+      });
+
+  - id: flaky-tests
+    severity: advanced
+    rule: "Flaky tests that pass and fail without code changes must be quarantined immediately and root-caused. Never ignore a flaky test — it erodes trust in the entire suite. Common root causes: time-dependent assertions (use fixed timestamps), network-dependent tests (use test doubles at the boundary), order-dependent tests (fix test isolation), shared mutable state (fix fixtures), async race conditions (use proper await/barriers/retry). Quarantine by moving to a separate CI stage that does not block deploys until the root cause is found and fixed."
+    framework_python: |
+      # FAIL — time-dependent, flaky
+      def test_cache_works():
+          set_cache("key", "value")
+          assert get_cache("key") == "value"  # fails if cache flush races
+      # PASS — deterministic
+      def test_cache_works(test_cache):
+          set_cache("key", "value")
+          assert get_cache("key") == "value"
+    framework_javascript: |
+      // FAIL — time-dependent flakiness
+      test('returns today', () => {
+        expect(getDate()).toBe(new Date().toISOString().slice(0, 10));
+        // Fails at midnight boundary!
+      });
+      // PASS — deterministic time injection
+      test('returns given date', () => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-06-01'));
+        expect(getDate()).toBe('2026-06-01');
+      });
+    framework_generic: |
+      # Flaky test quarantine process:
+      # 1. Isolate — mark as xfail or move to non-blocking stage
+      # 2. Root cause — timing? ordering? shared state? network? async?
+      # 3. Fix the root cause (never add retry loops as a "fix")
+      # 4. Verify fix, remove quarantine marker
+
+  - id: test-assertion-quality
+    severity: fundamental
+    rule: "Write one logical assertion per test. Each test should verify exactly one behavior — multiple independent assertions in a single test obscure which behavior failed. A test that checks response status, response body structure, database state, and email delivery in the same function leaves you debugging which assertion broke. If one behavior fails, the rest should still run (separate tests). Use meaningful failure messages in assertions so when a test fails, you know what was expected without reading the code."
+    framework_python: |
+      # FAIL — three unrelated assertions in one test
+      def test_api_response():
+          assert response.status_code == 200
+          assert response.json()["user"]["name"] == "Alice"
+          assert email_sent is True
+      # PASS — one logical assertion per test
+      def test_api_returns_200():
+          assert response.status_code == 200
+
+      def test_api_returns_user_name():
+          assert response.json()["user"]["name"] == "Alice"
+
+      def test_sends_welcome_email():
+          assert email_sent is True
+    framework_javascript: |
+      // FAIL — multiple concerns in one test
+      test('handles request', () => {
+        expect(response.status).toBe(200);
+        expect(response.body.user.name).toBe('Alice');
+        expect(emailSent).toBe(true);
+      });
+      // PASS — each concern is its own test
+      test('returns 200', () => {
+        expect(response.status).toBe(200);
+      });

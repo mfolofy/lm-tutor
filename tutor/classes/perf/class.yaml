@@ -1,0 +1,249 @@
+# perf — Performance optimization patterns. Second class in the School.
+#
+# Source standard: Web Vitals (Google), HTTP Archive, MDN Web Performance,
+# Lighthouse best practices. See SOURCES.md for per-rule citations. Every rule
+# is self-contained: it carries teaching examples (framework_*) AND the
+# deterministic check (check_selector / check_regex) the Layer 1 harness runs.
+# No drift between teaching and testing.
+#
+# Selector dialect (Layer 1, stdlib): tag, tag[attr], tag[attr="v"],
+# tag[attr=""], tag:not([attr]), tag:empty. A match = a VIOLATION.
+#
+# Regex checks are Python `re` patterns. Any match in the submission text is a
+# VIOLATION. Teaching-only rules (no checker) still inject teaching content for
+# the Socratic fix step.
+
+class:
+  id: perf
+  title: "Perf — Performance Optimization Patterns"
+  version: 1.0.0
+  sources: ["Web Vitals", "HTTP Archive", "Lighthouse", "MDN Performance"]
+  prerequisites: []
+  target_violations:
+    - "cls-dimensions"    # Images without width/height cause CLS
+    - "css-waterfall"     # @import blocks parallel CSS loading
+    - "foit"              # font-display: block hides text 0-3s
+    - "parser-blocking"   # document.write() blocks HTML parsing
+    - "render-blocking"   # Non-deferred CSS/JS above the fold
+    - "n-plus-one"        # Unbatched DB queries in loops
+    - "layout-thrashing"  # Interleaved DOM read/write cycles
+    - "memory-leak"       # Unreleased listeners, closures, DOM refs
+    - "no-memo"           # Missing memoization on expensive computations
+    - "no-compression"    # gzip/brotli not enabled for text assets
+    - "no-cache"          # Missing Cache-Control / ETag on static assets
+    - "no-lazy"           # Below-fold images without loading="lazy"
+    - "no-dimensions"     # <img> missing width/height
+    - "no-responsive"     # Single static image, no srcset/sizes
+    - "no-worker"         # Heavy computation on main thread
+  estimated_cost_tokens: 320
+  rule_count: 18
+
+rules:
+
+  # ── CORE WEB VITALS (4 rules) ─────────────────────────────────────────────
+
+  - id: lcp
+    severity: fundamental
+    rule: "Largest Contentful Paint must be under 2.5s. Main causes: oversized images, slow server response (TTFB >800ms), render-blocking CSS/JS, and client-side rendering without SSR. The LCP element is typically an <img>, <video>, or text block."
+    framework_html: |
+      <!-- FAIL: LCP image without priority hint -->
+      <img src="hero.jpg">
+      <!-- PASS: Optimized LCP with fetchpriority and dimensions -->
+      <img src="hero-1200w.webp" width="1200" height="600" fetchpriority="high" alt="Hero">
+
+  - id: cls
+    severity: fundamental
+    rule: "Cumulative Layout Shift must be under 0.1. Common causes: images and embeds without explicit dimensions, dynamic content injected above existing content, web fonts causing FOIT/FOUT, and late-loading ads without reserved space."
+    framework_html: |
+      <!-- FAIL: dynamic insert pushes content down -->
+      <div id="container"></div>
+      <script>document.getElementById('container').innerHTML = '<div style="height:200px">Late content</div>';</script>
+      <!-- PASS: reserved dimensions via CSS min-height -->
+      <div id="container" style="min-height: 200px"></div>
+
+  - id: img-dimensions
+    severity: fundamental
+    check_selector: "img[src]:not([width]):not([height])"
+    rule: "Every <img> must have explicit width and height attributes to reserve layout space and prevent Cumulative Layout Shift. aspect-ratio CSS can supplement but does not replace HTML dimensions — without them the browser cannot allocate space until the image loads."
+    framework_html: |
+      <!-- FAIL: no dimensions causes CLS on load -->
+      <img src="photo.jpg" alt="Photo">
+      <!-- PASS: explicit width/height reserves layout space -->
+      <img src="photo.jpg" width="800" height="600" alt="Photo">
+    framework_react: |
+      // FAIL: <img src={photo} alt="Photo" />
+      // PASS: <img src={photo} width="800" height="600" alt="Photo" />
+    framework_vue: |
+      <!-- FAIL --> <img :src="photo" alt="Photo">
+      <!-- PASS --> <img :src="photo" width="800" height="600" alt="Photo">
+
+  - id: fid
+    severity: fundamental
+    rule: "First Input Delay must be under 100ms (INP under 200ms). Caused by long tasks (>50ms) on the main thread: heavy JS parsing, complex React/Vue component trees during hydration, and third-party script execution. Break long tasks with setTimeout or scheduler.yield()."
+    framework_vanilla: |
+      // FAIL: one long task blocks user interaction
+      function processAll(items) { items.forEach(expensive); }
+      // PASS: yield to main thread between chunks
+      async function processAll(items) {
+        for (const item of items) {
+          expensive(item);
+          await new Promise(r => setTimeout(r, 0));  // yield
+        }
+      }
+
+  # ── LOADING & BUNDLE (4 rules) ────────────────────────────────────────────
+
+  - id: lazy-loading
+    severity: advanced
+    rule: "Lazy-load below-fold images and iframes with loading='lazy'. Use route-based code splitting (React.lazy, dynamic import()) to defer non-critical JS modules. Never lazy-load LCP candidates — use fetchpriority='high' for hero images."
+    framework_html: |
+      <!-- FAIL: below-fold image loads eagerly -->
+      <img src="gallery-photo.jpg" alt="Gallery">
+      <!-- PASS: lazy-loaded below-fold image -->
+      <img src="gallery-photo.jpg" loading="lazy" alt="Gallery">
+    framework_react: |
+      // FAIL: eager-loaded heavy component
+      import HeavyChart from './HeavyChart';
+      // PASS: route-based code splitting
+      const HeavyChart = React.lazy(() => import('./HeavyChart'));
+
+  - id: tree-shaking
+    severity: advanced
+    rule: "Eliminate dead code and unused exports through bundler tree-shaking. Configure \"sideEffects\": false in package.json. Use named imports to enable accurate dead-code elimination. Dead code increases parse, compile, and execute time for no benefit."
+    framework_vanilla: |
+      // FAIL: barrel import brings unused modules
+      import { utils } from './lib';  // loads entire lib barrel
+      // PASS: direct import enables tree-shaking
+      import { formatDate } from './lib/formatDate';
+
+  - id: compression
+    severity: advanced
+    rule: "Enable gzip (deflate) or brotli (br) compression for all text-based assets: HTML, CSS, JS, JSON, SVG, fonts. Brotli at quality 4–5 offers the best compression/speed tradeoff for dynamic responses; quality 11 for static pre-compressed assets. Verify via Content-Encoding response header."
+    framework_html: |
+      <!-- Server config (nginx): brotli on; brotli_types text/html text/css application/javascript image/svg+xml; -->
+      <!-- FAIL: server returns raw text assets without compression -->
+      <!-- PASS: Content-Encoding: br set on text responses -->
+
+  - id: caching-strategies
+    severity: advanced
+    rule: "Set Cache-Control and ETag/Last-Modified headers on static assets. Use immutable caching (Cache-Control: max-age=31536000, immutable) for content-hash-versioned assets (e.g., main.a3b2c1.js). Serve from CDN edge. Implement cache-busting via file content hashes. For API responses, use ETag for conditional revalidation."
+    framework_html: |
+      <!-- FAIL: no caching headers -->
+      <link rel="stylesheet" href="styles.css">
+      <!-- PASS: versioned asset with CDN -->
+      <link rel="stylesheet" href="https://cdn.example.com/styles.a3b2c1.css">
+
+  # ── RENDERING & COMPUTATION (4 rules) ─────────────────────────────────────
+
+  - id: layout-thrashing
+    severity: advanced
+    rule: "Avoid interleaved DOM reads and writes that force synchronous layout (reflow). Read layout properties first (offsetHeight, getBoundingClientRect), then batch all writes. Use requestAnimationFrame for visual updates. A single read-write cycle in a loop causes n forced layouts."
+    framework_vanilla: |
+      // FAIL: forced reflow on every iteration
+      for (const el of items) {
+        const h = el.offsetHeight;     // read
+        el.style.height = (h + 10) + 'px';  // write
+      }
+      // PASS: batch reads first, then writes
+      const heights = items.map(el => el.offsetHeight);
+      items.forEach((el, i) => { el.style.height = (heights[i] + 10) + 'px'; });
+
+  - id: memoization
+    severity: advanced
+    rule: "Memoize expensive computations (React.useMemo, useCallback, Lodash.memoize). Debounce or throttle rapid-fire events (scroll, resize, input). Cache derived data to avoid recalculating on every render. Use React.memo to skip re-rendering when props haven't changed."
+    framework_react: |
+      // FAIL: recalculates on every render
+      const total = expensiveCalculation(orders);
+      // PASS: memoized with stable dependencies
+      const total = useMemo(() => expensiveCalculation(orders), [orders]);
+    framework_vanilla: |
+      // FAIL: recalculates every call
+      function process(items) { /* expensive transform */ }
+      // PASS: cached result for same input
+      const process = memoize((items) => { /* expensive transform */ });
+
+  - id: web-workers
+    severity: advanced
+    rule: "Offload CPU-heavy computations (image processing, data parsing, ML inference, encryption) to Web Workers. The main thread handles UI only. Workers communicate via postMessage; use Transferable objects (ArrayBuffer) to avoid structured clone overhead for large payloads."
+    framework_vanilla: |
+      // FAIL: heavy computation blocks main thread
+      const result = heavyProcess(mbOfData); render(result);
+      // PASS: offloaded to worker via postMessage
+      const worker = new Worker('processor.js');
+      worker.postMessage(data);
+      worker.onmessage = (e) => render(e.data);
+
+  - id: memory-leaks
+    severity: advanced
+    rule: "Clean up event listeners, timer references (setInterval), closure captures of large objects, and DOM references when components unmount or elements are removed. Unreleased listeners keep entire DOM subtrees alive and prevent garbage collection. Use AbortController for grouped listener cleanup."
+    framework_vanilla: |
+      // FAIL: listener never removed — component leak
+      el.addEventListener('click', handler);
+      // PASS: removable via AbortController
+      const ctrl = new AbortController();
+      el.addEventListener('click', handler, { signal: ctrl.signal });
+      ctrl.abort();  // cleanup
+
+  # ── ASSET DELIVERY (4 rules) ─────────────────────────────────────────────
+
+  - id: critical-css
+    severity: advanced
+    rule: "Inline above-fold (critical) CSS directly in <head>. Load non-critical CSS asynchronously using the media='print' onload='this.media=\"all\"' pattern, or rel='preload' as='style' for early fetch without blocking render. This eliminates render-blocking CSS for above-fold content."
+    framework_html: |
+      <!-- FAIL: all CSS is render-blocking -->
+      <link rel="stylesheet" href="styles.css">
+      <!-- PASS: critical CSS inlined, non-critical deferred -->
+      <style>/* critical above-fold CSS here */</style>
+      <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all'">
+
+  - id: img-format
+    severity: advanced
+    rule: "Use modern image formats (WebP, AVIF) with srcset/sizes for responsive delivery. Match image dimensions to display size — never serve 4000px for a 300px thumbnail. Provide format fallbacks in <picture> elements. Use width descriptors for density-based switching."
+    framework_html: |
+      <!-- FAIL: single static image, no format or size choices -->
+      <img src="photo.jpg" alt="Photo">
+      <!-- PASS: modern format with responsive sizes -->
+      <picture>
+        <source srcset="photo.avif" type="image/avif">
+        <source srcset="photo.webp" type="image/webp">
+        <img src="photo.jpg" width="800" height="600" alt="Photo">
+      </picture>
+
+  - id: font-display
+    severity: advanced
+    check_regex: 'font-display:\s*block\b'
+    rule: "Use font-display: swap to prevent Flash of Invisible Text (FOIT). The value block hides text for up to 3 seconds while the font downloads; swap renders fallback text immediately and swaps when the font arrives. For icons, use font-display: block is acceptable — for body text, always swap."
+    framework_html: |
+      <!-- FAIL: block causes invisible text for up to 3s -->
+      @font-face { font-family: 'Inter'; font-display: block; }
+      <!-- PASS: swap shows fallback text immediately -->
+      @font-face { font-family: 'Inter'; font-display: swap; }
+
+  - id: document-write
+    severity: advanced
+    check_regex: 'document\.write\s*\('
+    rule: "Never use document.write() in production. It blocks the HTML parser, forces synchronous resource loading (defeats preload scanner), and fails catastrophically on slow connections — execution after the document has finished loading calls document.open() which clears the entire page."
+
+  # ── DATA & METRICS (2 rules) ─────────────────────────────────────────────
+
+  - id: database-performance
+    severity: advanced
+    rule: "Prevent N+1 queries by eager-loading related data (SELECT IN, JOIN, batch in ORM). Index all queried columns; use composite indexes for multi-column filters. Reuse database connections via connection pooling — avoid open/close per request. Use EXPLAIN to verify query plans."
+    framework_vanilla: |
+      // FAIL: N+1 — one query per related item
+      for (const user of users) {
+        const posts = db.query(`SELECT * FROM posts WHERE user_id = ${user.id}`);
+      }
+      // PASS: single batched query
+      const ids = users.map(u => u.id).join(',');
+      const posts = db.query(`SELECT * FROM posts WHERE user_id IN (${ids})`);
+
+  - id: css-import
+    severity: advanced
+    check_regex: '@import\s+url'
+    rule: "Use <link rel='stylesheet'> instead of CSS @import. @import blocks parallel CSS loading: each @import must wait for its parent stylesheet to download and parse before it can start fetching, creating a sequential waterfall that delays rendering."
+    framework_html: |
+      <!-- FAIL: @import blocks parallel loading -->
+      <style>@import url('components.css');</style>
+      <!-- PASS: <link> loads in parallel -->
+      <link rel="stylesheet" href="components.css">

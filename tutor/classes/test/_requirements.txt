@@ -1,0 +1,5 @@
+# Per-class dependencies for the test class.
+#
+# All check_regex rules are stdlib-only (Python re, Layer 1).
+# Teaching-only rules have no checker.
+# No extra packages needed.
