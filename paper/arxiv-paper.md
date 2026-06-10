@@ -25,8 +25,8 @@ steering. Real injection reduces violations by 64-83% for models above the
 capability floor (~70% HumanEval). Python output on already-clean data shows
 0% effect, demonstrating that injection's impact is proportional to training
 data quality. The effect is not limited to WCAG -- we extend the approach to
-28 additional domains including security, compliance, code review, and 18
-professional credential classes with cited standards.
+33 additional domains including security, compliance, code review, Python/TypeScript best
+practices, architecture, DevOps, and 18 professional credential classes with cited standards.
 
 Our findings challenge the assumption that output quality is primarily
 determined by model capability. We provide evidence that training data quality
@@ -219,7 +219,7 @@ capability floor below which injection loses effectiveness. Models below ~70%
 HumanEval equivalent may struggle to parse and apply structured [RULE]
 instructions -- the capability genuinely isn't present, not merely buried.
 
-### 4.4 Python Ceiling Effect
+### 4.6 Python Ceiling Effect
 
 When tested on Python code generation with PEP 8/484 rules, V4 Flash scored
 near-zero violations in both raw and class conditions. The model's Python
@@ -234,7 +234,7 @@ This provides inverse validation: injection's effect is proportional to
 training data brokenness. When training data is clean, there is nothing to
 fix.
 
-### 4.5 Professional Credential Classes
+### 4.7 Professional Credential Classes
 
 Beyond WCAG and code quality, we built 18 credential classes covering
 licensed professions (attorney, physician, accountant, engineer, therapist,
