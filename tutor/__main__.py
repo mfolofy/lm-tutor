@@ -80,6 +80,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_curriculum.add_argument("--model", required=True, help="Model id.")
     p_curriculum.add_argument("--json", action="store_true", help="Emit JSON instead of text.")
 
+    # tutor prefix
+    p_prefix = sub.add_parser("prefix", help="Compose multiple classes into a single injection prefix.")
+    p_prefix.add_argument(
+        "--classes", default="", help="Comma-separated class IDs, e.g. brushes,security,test."
+    )
+    p_prefix.add_argument(
+        "--lang", default="",
+        help="Language shorthand, e.g. python,javascript,typescript. Resolves to best-practices classes.",
+    )
+
     # tutor profile
     p_profile = sub.add_parser("profile", help="Show eval history and pass rates for a model.")
     p_profile.add_argument("--model", required=True, help="Model id.")
@@ -164,6 +174,9 @@ def main(argv: list[str] | None = None) -> int:
         return _run_booster(args)
     if args.command == "profile":
         from tutor.cli.profile import run
+        return run(args)
+    if args.command == "prefix":
+        from tutor.cli.prefix import run
         return run(args)
 
     parser.print_help()

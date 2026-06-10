@@ -68,7 +68,7 @@ rules:
   - id: unknown-over-any
     severity: fundamental
     rule: "Use unknown (not any) when you genuinely don't know the type. Unlike any, unknown forces type narrowing (typeof, instanceof, type guard) before the value can be used. This is the safe escape hatch."
-    framework_typescript: [
+    framework_typescript: |
       // FAIL: function parse(data: any): string {
       //   ...   return data.name;  // no check — could crash at runtime
       //   ... }
@@ -81,7 +81,6 @@ rules:
       // FAIL: const value: any = JSON.parse(raw);
       // PASS: const value: unknown = JSON.parse(raw);
       //       // must narrow before use
-    ]
 
   # ── GENERICS & COMPOSITION (3 rules, teaching-only) ──────────────────
 
