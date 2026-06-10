@@ -72,6 +72,14 @@ class ScratchpadSandbox:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
         self._tmpdir = None
 
+    def _dir_size(self) -> int:
+        """Bytes currently used by the tempdir jail."""
+        if self._tmpdir is None:
+            return 0
+        return sum(
+            f.stat().st_size for f in self._tmpdir.rglob("*") if f.is_file()
+        )
+
     def run(self, script: str, interpreter: str | None = None) -> str:
         """Write ``script`` to the tempdir, run it, return stdout.
 
@@ -84,12 +92,9 @@ class ScratchpadSandbox:
         script_path = self._tmpdir / "scratchpad_script.py"
         script_path.write_text(script, encoding="utf-8")
 
-        used = sum(
-            f.stat().st_size for f in self._tmpdir.rglob("*") if f.is_file()
-        )
-        if used > self.MAX_DISK_BYTES:
+        if self._dir_size() > self.MAX_DISK_BYTES:
             raise ScratchpadQuotaExceeded(
-                f"Scratchpad wrote {used} bytes (limit {self.MAX_DISK_BYTES})"
+                f"Scratchpad script exceeds {self.MAX_DISK_BYTES} bytes before run"
             )
 
         proc = subprocess.Popen(
@@ -99,6 +104,25 @@ class ScratchpadSandbox:
             stderr=subprocess.PIPE,
             stdin=subprocess.DEVNULL,
         )
+
+        # Enforce the disk quota *during* execution. The pre-run check only sees
+        # the script source; without this a runaway that writes to its cwd blows
+        # past MAX_DISK_BYTES unbounded — the exact "excessive output" case the
+        # limit is meant to bound. Poll the jail and kill the process if it
+        # exceeds the cap.
+        quota_hit = threading.Event()
+
+        def _watch() -> None:
+            while proc.poll() is None:
+                if self._dir_size() > self.MAX_DISK_BYTES:
+                    quota_hit.set()
+                    proc.kill()
+                    return
+                time.sleep(0.25)
+
+        watcher = threading.Thread(target=_watch, daemon=True)
+        watcher.start()
+
         try:
             stdout, stderr = proc.communicate(timeout=self.MAX_DURATION_SECONDS)
         except subprocess.TimeoutExpired:
@@ -109,6 +133,13 @@ class ScratchpadSandbox:
                 pass
             raise ScratchpadTimeout(
                 f"Scratchpad exceeded {self.MAX_DURATION_SECONDS}s limit"
+            )
+        finally:
+            watcher.join(timeout=1)
+
+        if quota_hit.is_set():
+            raise ScratchpadQuotaExceeded(
+                f"Scratchpad exceeded {self.MAX_DISK_BYTES} bytes during run"
             )
 
         if len(stdout) > self.MAX_STDOUT_BYTES:
