@@ -27,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version", action="version", version=_version_string()
     )
-    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster,curriculum,profile}")
+    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster,curriculum,profile,prefix,install-opencode,class}")
 
     # tutor enroll
     p_enroll = sub.add_parser("enroll", help="Identify a model, get its track.")
@@ -126,6 +126,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_profile.add_argument("--model", required=True, help="Model id.")
     p_profile.add_argument("--json", action="store_true", help="Emit JSON instead of text.")
 
+    # tutor class
+    p_class = sub.add_parser("class", help="Create and manage classes.")
+    p_class.add_argument("--new", action="store_true", help="Scaffold a new class from the CONTRIBUTING.md template.")
+    p_class.add_argument("--name", default="", help="Class identifier, e.g. my-class.")
+    p_class.add_argument("--title", default=None, help="Human-readable title (generated from --name if omitted).")
+    p_class.add_argument("--sources", default="", help="Comma-separated source standards, e.g. 'WCAG 2.2, OWASP'.")
+    p_class.add_argument("--dry-run", action="store_true", help="Preview scaffold without creating files.")
+
     # tutor booster — 4 sub-tools
     p_booster = sub.add_parser("booster", help="Booster tools for small models.")
     booster_sub = p_booster.add_subparsers(
@@ -212,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "install-opencode":
         from tutor.cli.install_opencode import run
         return run(args)
+    if args.command == "class":
+        return _run_class(args)
 
     parser.print_help()
     return 1
@@ -237,6 +247,17 @@ def _run_booster(args) -> int:
         return run_foresee(args)
 
     print(f"Unknown booster command: {args.booster_cmd}")
+    return 1
+
+
+def _run_class(args) -> int:
+    """Dispatch class subcommands."""
+    if getattr(args, "new", False):
+        from tutor.cli.new_class import run
+        return run(args)
+
+    # No flag — show help.
+    print("Usage: tutor class --new --name <class-id> [--title ...] [--sources ...] [--dry-run]")
     return 1
 
 
