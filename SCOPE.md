@@ -386,6 +386,7 @@ in each class's `SOURCES.md`.
 | Community infra | v1 first, v2 community |
 | Training / fine-tuning | Inference-side only |
 | PyPI publishing | Unreliable. Clone + `pip install -e .` is primary. |
+| **Building Outward** — multi-class prefix composition (`tutor prefix`), agent integration (Hermes/OpenCode call tutor before code gen), universal generation-time quality floor | **In progress** — JS class shipped 2026-06-09 (`github.com/mfolofy/lm-tutor`). Next: TS class, then `tutor prefix` command. Agent integration still deferred until prefix ships. |
 
 ---
 
@@ -412,3 +413,8 @@ These decisions cannot be re-litigated without Miguel:
 - **Date:** 2026-06-09
 - **Reviewer:** Mike (Claude Code / deepseek-v4-flash)
 - **Approved by:** Miguel
+
+## Building Outward — Progress
+
+- **2026-06-09:** `javascript-best-practices` class shipped (16 rules, 44% checkable by regex). Committed to `github.com/mfolofy/lm-tutor` standalone repo.
+- **Next:** TypeScript class, then `tutor prefix` command for multi-class composition.
