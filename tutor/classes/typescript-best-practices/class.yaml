@@ -1,0 +1,302 @@
+# typescript-best-practices — TypeScript coding standards for LLM-generated code.
+#
+# Source standards: TypeScript Handbook, TypeScript ESLint Strict Rules,
+# Microsoft TypeScript Coding Guidelines, Google TypeScript Style Guide.
+# See SOURCES.md for per-rule citations. Every rule is self-contained: it
+# carries teaching examples (framework_typescript) and, where detectable,
+# a deterministic regex check (check_regex) that the Layer 1 harness runs.
+# No drift between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.fullmatch-equivalent via finditer.
+# A match = a VIOLATION. Rules without check_regex are teaching-only and
+# require no deterministic checker — they guide the LLM during Socratic fix.
+#
+# Coverage honesty:
+#   ~7 rules (44%) have deterministic regex checks — patterns like : any,
+#   !. (non-null assertion), require(), namespace, as Type, new Array(),
+#   and unused variables are reliably detectable.
+#   ~9 rules (56%) are teaching-only — generics, readonly, narrowing,
+#   satisfies, utility types, enum choice, branded types, exhaustive
+#   checking, and interface-vs-type require semantic judgement beyond
+#   regex scope.
+#
+# Injected size: ~160 tokens for 16 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: typescript-best-practices
+  title: "TypeScript Best Practices — Strict Types, Generics, and Idiomatic TS"
+  version: 1.0.0
+  sources: ["TypeScript Handbook", "TypeScript ESLint", "Microsoft TS Coding Guidelines", "Google TS Style Guide"]
+  prerequisites: []
+  target_violations:
+    - "no-explicit-any"
+    - "unknown-over-any"
+    - "interface-over-type"
+    - "generics"
+    - "no-non-null-assertion"
+    - "no-unused-vars"
+    - "readonly"
+    - "narrowing"
+    - "satisfies"
+    - "utility-types"
+    - "enum-preference"
+    - "no-require"
+    - "branded-types"
+    - "exhaustive-check"
+    - "no-namespace"
+    - "array-type"
+  estimated_cost_tokens: 210
+  rule_count: 16
+
+rules:
+
+  # ── TYPE SAFETY (4 rules, 2 checkable) ───────────────────────────────
+
+  - id: no-explicit-any
+    severity: fundamental
+    rule: "Never use the any type. any disables all type checking for that value — errors that would be caught at compile time silently escape to runtime. Use unknown when the type is truly not known at authoring time."
+    check_regex: '(?<!keyof |as |of |//.*):\s*any\b'
+    framework_typescript: |
+      // FAIL: function process(data: any) { ... }
+      // FAIL: const result: any = await fetchData();
+      // PASS: function process(data: unknown) { ... }
+      // PASS: const result = await fetchData();
+      // FAIL: const items: Array<any> = getList();
+      // PASS: const items: unknown[] = getList();
+
+  - id: unknown-over-any
+    severity: fundamental
+    rule: "Use unknown (not any) when you genuinely don't know the type. Unlike any, unknown forces type narrowing (typeof, instanceof, type guard) before the value can be used. This is the safe escape hatch."
+    framework_typescript: [
+      // FAIL: function parse(data: any): string {
+      //   ...   return data.name;  // no check — could crash at runtime
+      //   ... }
+      // PASS: function parse(data: unknown): string {
+      //   ...   if (typeof data === "object" && data !== null && "name" in data) {
+      //   ...     return (data as { name: string }).name;
+      //   ...   }
+      //   ...   return "unknown";
+      //   ... }
+      // FAIL: const value: any = JSON.parse(raw);
+      // PASS: const value: unknown = JSON.parse(raw);
+      //       // must narrow before use
+    ]
+
+  # ── GENERICS & COMPOSITION (3 rules, teaching-only) ──────────────────
+
+  - id: generics
+    severity: fundamental
+    rule: "Use generics to preserve type relationships between inputs and outputs. Constrain generic parameters with extends to limit what types are accepted. Prefer generic helper functions over overloads where one overload would suffice."
+    framework_typescript: |
+      // FAIL: function getFirst(items: unknown[]): unknown {
+      //   ...   return items[0];
+      //   ... }
+      // PASS: function getFirst<T>(items: T[]): T | undefined {
+      //   ...   return items[0];
+      //   ... }
+      // FAIL: function merge(a: any, b: any): any { return { ...a, ...b }; }
+      // PASS: function merge<T extends object, U extends object>(a: T, b: U): T & U {
+      //   ...   return { ...a, ...b };
+      //   ... }
+
+  - id: interface-over-type
+    severity: advanced
+    rule: "Prefer interface for object shapes that may be extended or implemented. Prefer type for unions, intersections, and mapped/conditional types. Interface declarations merge; type aliases do not. Use interface by default for public API contracts."
+    framework_typescript: |
+      // FAIL: type User = {
+      //   ...   id: number;
+      //   ...   name: string;
+      //   ... };
+      // PASS: interface User {
+      //   ...   id: number;
+      //   ...   name: string;
+      //   ... }
+      // PASS: type Status = "active" | "inactive" | "pending";  // union — type is correct
+      // PASS: type ApiResponse<T> = { data: T; error: string | null };  // generic — type is flexible
+
+  - id: utility-types
+    severity: advanced
+    rule: "Prefer built-in utility types (Partial, Pick, Omit, Record, Exclude, Extract, ReturnType, NonNullable) over manually reconstructing mapped types. Utility types are standard, maintained, and immediately readable by any TypeScript developer."
+    framework_typescript: |
+      // FAIL: type PartialUser = {
+      //   ...   [K in keyof User]?: User[K];
+      //   ... };
+      // PASS: type PartialUser = Partial<User>;
+      // FAIL: type UserWithoutId = {
+      //   ...   [K in keyof User as K extends "id" ? never : K]: User[K];
+      //   ... };
+      // PASS: type UserWithoutId = Omit<User, "id">;
+
+  # ── NULL SAFETY & NARROWING (3 rules, 1 checkable) ───────────────────
+
+  - id: no-non-null-assertion
+    severity: fundamental
+    rule: "Avoid the non-null assertion operator (!). It tells the compiler to suppress null checks without any runtime safety. If the value is null at runtime, you get a runtime error. Use conditional checks or early returns instead."
+    check_regex: '(?<!\w)\w+!\.'
+    framework_typescript: |
+      // FAIL: const name = user!.name;
+      // FAIL: const value = map.get(key)!;
+      // PASS: if (user !== null && user !== undefined) {
+      //   ...   const name = user.name;
+      //   ... }
+      // PASS: const value = map.get(key) ?? defaultValue;
+
+  - id: narrowing
+    severity: fundamental
+    rule: "Use type narrowing (typeof, instanceof, in, discriminated unions, type guards) instead of type assertions (as). Narrowing is checked by the compiler; assertions are not. Prefer early returns with type guards to reduce nesting."
+    framework_typescript: |
+      // FAIL: if ((data as User).role) { ... }
+      // PASS: if ("role" in data) { ... }
+      // FAIL: function handle(value: string | number) {
+      //   ...   return (value as string).toUpperCase();
+      //   ... }
+      // PASS: function handle(value: string | number) {
+      //   ...   if (typeof value === "string") return value.toUpperCase();
+      //   ...   return value.toFixed(2);
+      //   ... }
+      // PASS: type Shape = { kind: "circle"; radius: number } | { kind: "square"; side: number };
+      //       function area(shape: Shape): number {
+      //         if (shape.kind === "circle") return Math.PI * shape.radius ** 2;
+      //         return shape.side ** 2;
+      //       }
+
+  - id: exhaustive-check
+    severity: advanced
+    rule: "Use exhaustive checking in switch/default statements over union types. Assign the value to a never variable in the default case — if a new union member is added, the compiler errors on the uncovered branch."
+    framework_typescript: |
+      // FAIL: type Status = "active" | "inactive" | "pending";
+      //       function getLabel(s: Status): string {
+      //         switch (s) {
+      //           case "active": return "Active";
+      //           case "inactive": return "Inactive";
+      //         }
+      //       }
+      // PASS: function getLabel(s: Status): string {
+      //         switch (s) {
+      //           case "active": return "Active";
+      //           case "inactive": return "Inactive";
+      //           case "pending": return "Pending";
+      //           default: return s satisfies never;
+      //         }
+      //       }
+
+  # ── IMMUTABILITY & READABILITY (3 rules, 2 checkable) ────────────────
+
+  - id: readonly
+    severity: advanced
+    rule: "Mark properties that are never reassigned after construction as readonly. Use ReadonlyArray<T> or readonly T[] for arrays that should not be mutated. Prefer readonly object properties to communicate intent."
+    framework_typescript: |
+      // FAIL: interface Config {
+      //   ...   apiUrl: string;
+      //   ...   timeout: number;
+      //   ... }
+      // PASS: interface Config {
+      //   ...   readonly apiUrl: string;
+      //   ...   readonly timeout: number;
+      //   ... }
+      // FAIL: function process(items: string[]) { ... }
+      // PASS: function process(items: readonly string[]) { ... }
+
+  - id: no-unused-vars
+    severity: fundamental
+    rule: "Remove unused imports, variables, and parameters. Prefix intentionally unused parameters with underscore (_). Unused code misleads readers, bloats bundles, and suggests incomplete refactoring."
+    check_regex: '(?<!_\s*,\s*|_\s*\)|//.*)\b(const|let|var)\s+\w+\s*=(?!=)'
+    framework_typescript: |
+      // FAIL: import { useState, useEffect } from "react";
+      //       // useEffect is unused
+      // PASS: import { useState } from "react";
+      // FAIL: const result = compute();  // result never used
+      // PASS: compute();  // call directly if return is unused
+      // PASS: function handler(_event: MouseEvent) { ... }  // intentional
+
+  - id: array-type
+    severity: advanced
+    rule: "Prefer T[] syntax (string[], number[]) for simple element types. Use Array<T> only for complex generic types (Array<Promise<string>>) or when the type is wrapped (Array<Partial<User>>). Be consistent within a file."
+    check_regex: 'Array<[A-Z]\w+>'
+    framework_typescript: |
+      // FAIL: const items: Array<string> = [];
+      // PASS: const items: string[] = [];
+      // PASS: const results: Array<Promise<string>> = [];  // complex — Array<T> is acceptable
+      // FAIL: function process(input: Array<number>): Array<string> { ... }
+      // PASS: function process(input: number[]): string[] { ... }
+
+  # ── MODULES & ENUMS (3 rules, 2 checkable) ───────────────────────────
+
+  - id: no-require
+    severity: fundamental
+    rule: "Use ES module syntax (import/export) not CommonJS (require/module.exports). ES modules are the standard — they support static analysis, tree shaking, and top-level await. TypeScript uses ES modules by default with modern moduleResolution."
+    check_regex: '(?<!\w)require\s*\('
+    framework_typescript: |
+      // FAIL: const fs = require("fs");
+      // FAIL: module.exports = { process };
+      // PASS: import fs from "fs";
+      // PASS: export { process };
+      // FAIL: const { readFile } = require("fs/promises");
+      // PASS: import { readFile } from "fs/promises";
+
+  - id: no-namespace
+    severity: advanced
+    rule: "Prefer ES modules over namespace declarations. Namespace is a TypeScript-only construct that doesn't align with the ECMAScript module system. Use namespace only for ambient type declarations (.d.ts) or declaration merging."
+    check_regex: '(?<!declare\s+)(?<!\w)\bnamespace\s+\w+'
+    framework_typescript: |
+      // FAIL: namespace Utils {
+      //   ...   export function format(str: string): string { ... }
+      //   ... }
+      // PASS: export function format(str: string): string { ... }
+      // PASS: // Only for .d.ts declaration merging:
+      //       declare namespace Express { interface Request { user?: User; } }
+
+  - id: enum-preference
+    severity: advanced
+    rule: "Prefer const enum or union of string literals over regular enum. Regular enums generate runtime code (IIFE), pollute the namespace, and their reverse mapping is rarely needed. Use union types for simple choices."
+    framework_typescript: |
+      // FAIL: enum Status { Active, Inactive, Pending }
+      // PASS: type Status = "active" | "inactive" | "pending";
+      // PASS: const enum Status { Active = "active", Inactive = "inactive", Pending = "pending" }
+      // FAIL: function setStatus(s: Status): void { ... }
+      //       setStatus(Status.Active);
+      // PASS: function setStatus(s: Status): void { ... }
+      //       setStatus("active");
+
+  # ── ADVANCED PATTERNS (3 rules, teaching-only) ───────────────────────
+
+  - id: satisfies
+    severity: advanced
+    rule: "Use the satisfies operator to validate that a value's type satisfies an interface without widening the inferred type. satisfies checks the value against a type but preserves the narrower inferred type for downstream use — unlike : Type annotation which widens."
+    framework_typescript: |
+      // FAIL: const palette: Record<string, string> = {
+      //   ...   red: "#ff0000",
+      //   ...   blue: "#0000ff",
+      //   ... };
+      //       // palette.red is string, not the literal "#ff0000"
+      // PASS: const palette = {
+      //   ...   red: "#ff0000",
+      //   ...   blue: "#0000ff",
+      //   ... } satisfies Record<string, string>;
+      //       // palette.red is the literal type "#ff0000"
+
+  - id: branded-types
+    severity: advanced
+    rule: "Use branded types for domain primitives (User ID, Order ID, Email) instead of aliasing to string or number. A branded type adds a unique symbol to the type so the compiler prevents accidentally passing the wrong primitive type to a function."
+    framework_typescript: |
+      // FAIL: type UserId = string;
+      //       type OrderId = string;
+      //       function getUser(id: UserId): User { ... }
+      //       getUser(orderId);  // no error — both are string
+      // PASS: type UserId = string & { readonly __brand: "UserId" };
+      //       type OrderId = string & { readonly __brand: "OrderId" };
+      //       function getUser(id: UserId): User { ... }
+      //       getUser(orderId);  // Type error! OrderId is not assignable to UserId
+
+  - id: no-type-assertion
+    severity: advanced
+    rule: "Minimize type assertions (as Type). They tell the compiler to trust you without verification. Use them only when you know something the compiler cannot prove (e.g., DOM element types after existence checks). Prefer type guards, satisfies, or narrowing."
+    check_regex: '\bas\s+\w+'
+    framework_typescript: |
+      // FAIL: const input = document.getElementById("email") as HTMLInputElement;
+      // PASS: const input = document.getElementById("email");
+      //       if (input instanceof HTMLInputElement) { ... }
+      // PASS: // Acceptable assertion — compiler can't prove the element exists:
+      //       const input = document.getElementById("email") as HTMLInputElement;
+      //       input.value = "";

@@ -1,0 +1,2 @@
+# No external dependencies for TypeScript best-practices.
+# All check_regex patterns use Python stdlib re only.

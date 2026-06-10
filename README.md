@@ -1,5 +1,7 @@
 # lm-tutor — Structured AI Education
 
+*Architected by **Fable** — Claude's most capable model*
+
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
 A single `tutor learn` injection reduces output violations by 64–83% on
