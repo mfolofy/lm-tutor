@@ -49,6 +49,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--model", default=None,
         help="Model id. When set, saves the result to eval history.",
     )
+    p_eval.add_argument(
+        "--classes", default="",
+        help="Comma-separated class IDs for multi-class evaluation.",
+    )
+    p_eval.add_argument(
+        "--lang", default="",
+        help="Language shorthand for multi-class evaluation, e.g. python,typescript.",
+    )
 
     # tutor fix
     p_fix = sub.add_parser("fix", help="Eval → fix → re-eval correction loop.")

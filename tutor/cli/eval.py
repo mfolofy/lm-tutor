@@ -18,6 +18,21 @@ from pathlib import Path
 
 _CLASSES_DIR = Path(__file__).parent.parent / "classes"
 
+_LANG_TO_CLASS: dict[str, str] = {
+    "python": "python-best-practices",
+    "javascript": "javascript-best-practices",
+    "js": "javascript-best-practices",
+    "typescript": "typescript-best-practices",
+    "ts": "typescript-best-practices",
+    "html": "brushes",
+    "accessibility": "brushes",
+    "a11y": "brushes",
+    "security": "security",
+    "test": "test",
+    "perf": "perf",
+    "code-review": "code-review",
+}
+
 
 def infer_syllabus(submission: str) -> str:
     """Heuristic syllabus inference. Never errors — always returns a class name.
@@ -76,16 +91,49 @@ def list_classes() -> list[dict]:
     return out
 
 
+def _resolve_syllabuses(raw_classes: str, raw_lang: str) -> list[str]:
+    seen: set[str] = set()
+    resolved: list[str] = []
+    for cid in [c.strip() for c in raw_classes.split(",") if c.strip()]:
+        if cid not in seen:
+            resolved.append(cid)
+            seen.add(cid)
+    for lang in [l.strip() for l in raw_lang.split(",") if l.strip()]:
+        cid = _LANG_TO_CLASS.get(lang)
+        if cid and cid not in seen:
+            resolved.append(cid)
+            seen.add(cid)
+    return resolved
+
+
 def run(args) -> int:
-    from tutor.eval import grade
+    from tutor.eval import grade, grade_multi
     from tutor.registrar.evals import EvalHistory
 
     submission = sys.stdin.read()
-    syllabus = getattr(args, "class_name", None) or infer_syllabus(submission)
 
+    raw_classes = getattr(args, "classes", "") or ""
+    raw_lang = getattr(args, "lang", "") or ""
+    syllabuses = _resolve_syllabuses(raw_classes, raw_lang)
+
+    if syllabuses:
+        multi = grade_multi(submission, syllabuses)
+        payload = multi.model_dump()
+        print(json.dumps(payload, indent=2, default=str))
+
+        model_id = getattr(args, "model", None)
+        if model_id:
+            try:
+                history = EvalHistory()
+                history.record(model_id, {**payload, "syllabus": "+".join(syllabuses)})
+            except Exception:
+                pass
+
+        return 0
+
+    syllabus = getattr(args, "class_name", None) or infer_syllabus(submission)
     result = grade(submission, syllabus)
 
-    # Annotate auto-detection in the emitted syllabus label.
     payload = result.model_dump()
     if not getattr(args, "class_name", None):
         payload["syllabus"] = f"{result.syllabus} (auto-detected)"
@@ -94,14 +142,12 @@ def run(args) -> int:
 
     print(json.dumps(payload, indent=2, default=str))
 
-    # Save to eval history when model is known.
     model_id = getattr(args, "model", None)
     if model_id and result.error is None:
         try:
             history = EvalHistory()
             history.record(model_id, payload)
         except Exception:
-            pass  # Non-fatal — don't crash the eval for history write failure.
+            pass
 
-    # Successful grade => exit 0 even when violations are present.
     return 0 if result.error is None else 2

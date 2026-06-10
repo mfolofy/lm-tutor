@@ -10,6 +10,6 @@ Public API:
     result = grade(submission_text, syllabus="brushes")   # -> EvalResult
 """
 
-from tutor.eval.harness import EvalResult, Violation, grade
+from tutor.eval.harness import EvalResult, Violation, grade, MultiEvalResult, grade_multi
 
-__all__ = ["grade", "EvalResult", "Violation"]
+__all__ = ["grade", "grade_multi", "EvalResult", "Violation", "MultiEvalResult"]

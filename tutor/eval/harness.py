@@ -49,6 +49,13 @@ class EvalResult(BaseModel):
     error: str | None = None
 
 
+class MultiEvalResult(BaseModel):
+    results: list[EvalResult]     # one per class
+    total_violations: int
+    total_rules_checked: int
+    all_passed: bool              # true only if every class passes
+
+
 # ─────────────────────────── HTML element model ────────────────────────────
 
 class _Element:
@@ -242,4 +249,27 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
         rules_checked=len(rules),
         violations=violations,
         hint=None if violations else "No fundamental violations found by Layer 1.",
+    )
+
+
+def grade_multi(submission: str, syllabuses: list[str]) -> MultiEvalResult:
+    results: list[EvalResult] = []
+    total_violations = 0
+    total_rules_checked = 0
+    all_passed = True
+
+    for syllabus in syllabuses:
+        result = grade(submission, syllabus)
+        results.append(result)
+        if result.error is None:
+            total_violations += len(result.violations)
+            total_rules_checked += result.rules_checked
+        if not result.passed:
+            all_passed = False
+
+    return MultiEvalResult(
+        results=results,
+        total_violations=total_violations,
+        total_rules_checked=total_rules_checked,
+        all_passed=all_passed,
     )
