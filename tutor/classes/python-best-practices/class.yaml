@@ -192,7 +192,7 @@ rules:
   - id: string-formatting
     severity: advanced
     rule: "Prefer f-strings over %-formatting and str.format(). Use str.join() for concatenating sequences of strings. F-strings are more readable, faster, and less error-prone."
-    check_regex: '"[^"]*"\s*%[\s(]|\.\s*format\s*\('
+    check_regex: '[''"][^''"]*[''"]\s*%[\s(]|\.\s*format\s*\('
     framework_python: |
       # FAIL: greeting = "Hello, %s!" % name
       # FAIL: greeting = "Hello, {}".format(name)
