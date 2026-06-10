@@ -22,6 +22,7 @@ _TRACK_CURRICULUM = {
     "standard": [
         ("brushes", "UI/UX accessibility — WCAG 2.2"),
         ("python-best-practices", "Python coding standards — PEP 8/484"),
+        ("javascript-best-practices", "JavaScript coding standards — ES2026 / idiomatic JS"),
         ("api-design", "API design — REST/GraphQL/gRPC standards"),
         ("devops", "DevOps/SRE — DORA, SRE, CI/CD, IaC"),
         ("code-review", "Code review patterns — House audit standards"),
@@ -36,6 +37,7 @@ _TRACK_CURRICULUM = {
     "honors": [
         ("brushes", "UI/UX accessibility — WCAG 2.2"),
         ("python-best-practices", "Python coding standards — PEP 8/484"),
+        ("javascript-best-practices", "JavaScript coding standards — ES2026 / idiomatic JS"),
         ("api-design", "API design — REST/GraphQL/gRPC standards"),
         ("devops", "DevOps/SRE — DORA, SRE, CI/CD, IaC"),
         ("code-review", "Code review patterns — House audit standards"),

@@ -1,0 +1,281 @@
+# javascript-best-practices — JavaScript coding standards for LLM-generated code.
+#
+# Source standards: ECMAScript Specification, MDN Web Docs, Airbnb JavaScript
+# Style Guide, Google JavaScript Style Guide. See SOURCES.md for per-rule
+# citations. Every rule is self-contained: it carries teaching examples
+# (framework_javascript) and, where detectable, a deterministic regex check
+# (check_regex) that the Layer 1 harness runs. No drift between teaching and
+# testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.fullmatch-equivalent via finditer.
+# A match = a VIOLATION. Rules without check_regex are teaching-only and
+# require no deterministic checker — they guide the LLM during Socratic fix.
+#
+# Coverage honesty:
+#   ~7 rules (44%) have deterministic regex checks — patterns like var,
+#   == / != (non-strict), eval(), with(), document.write(), prototype
+#   mutation, and new String/Number/Boolean are reliably detectable.
+#   ~9 rules (56%) are teaching-only — const-preference, template literals,
+#   destructuring, arrow functions, async/await, array methods, error
+#   handling, JSDoc, and callback depth require semantic judgement beyond
+#   regex scope.
+#
+# Injected size: ~150 tokens for 16 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: javascript-best-practices
+  title: "JavaScript Best Practices — ECMAScript Standards and Idiomatic JS"
+  version: 1.0.0
+  sources: ["MDN Web Docs", "ECMAScript Spec", "Airbnb JS Style Guide", "Google JS Style Guide", "ESLint Docs"]
+  prerequisites: []
+  target_violations:
+    - "no-var"
+    - "const-over-let"
+    - "strict-equality"
+    - "no-eval"
+    - "no-with"
+    - "strict-mode"
+    - "template-literals"
+    - "destructuring"
+    - "arrow-functions"
+    - "async-patterns"
+    - "no-prototype-mutation"
+    - "no-new-wrappers"
+    - "array-methods"
+    - "error-handling"
+    - "no-document-write"
+    - "jsdoc"
+  estimated_cost_tokens: 200
+  rule_count: 16
+
+rules:
+
+  # ── DECLARATIONS & SCOPING (3 rules, 2 checkable) ─────────────────────
+
+  - id: no-var
+    severity: fundamental
+    rule: "Use const for variable bindings that are never reassigned. Use let for variables that are reassigned. Never use var — var is function-scoped, not block-scoped, and hoisting causes subtle bugs."
+    check_regex: '\bvar\s+\w+'
+    framework_javascript: |
+      // FAIL: var count = 0;
+      // FAIL: var name = getValue();
+      // PASS: let count = 0;
+      // PASS: const name = getValue();
+      // FAIL: for (var i = 0; i < 10; i++) { ... }
+      // PASS: for (let i = 0; i < 10; i++) { ... }
+
+  - id: const-over-let
+    severity: fundamental
+    rule: "Default to const. Only use let when you know the variable will be reassigned. const signals intent, prevents accidental reassignment, and makes the code easier to reason about."
+    framework_javascript: |
+      // FAIL: let config = { theme: "dark" };
+      //       // config is never reassigned
+      // PASS: const config = { theme: "dark" };
+      // PASS: let counter = 0;
+      //       counter += 1;  // reassigned — let is correct here
+      // FAIL: let result = compute();
+      //       // result is never reassigned
+      // PASS: const result = compute();
+
+  - id: strict-equality
+    severity: fundamental
+    rule: "Always use === (strict equality) and !== (strict inequality). The == and != operators perform type coercion, which hides bugs. Only use == when explicitly checking for both null and undefined (== null catches both)."
+    check_regex: '(?<![!<>=])={1}(?!=)|(?<!!)!={1}(?!=)'
+    framework_javascript: |
+      // FAIL: if (value == "5") { ... }
+      // FAIL: if (count != null) { ... }
+      // PASS: if (value === "5") { ... }
+      // PASS: if (count !== null) { ... }
+      // PASS: if (value == null) { ... }  // catches both null and undefined
+      // FAIL: if (result == true) { ... }
+      // PASS: if (result === true) { ... }
+
+  # ── ANTI-PATTERNS (3 rules, 3 checkable) ──────────────────────────────
+
+  - id: no-eval
+    severity: fundamental
+    rule: "Never use eval() or the Function() constructor. eval executes arbitrary code in the caller's scope, bypasses security policies, disables optimizations, and makes debugging impossible."
+    check_regex: '\beval\s*\(|new\s+Function\s*\('
+    framework_javascript: |
+      // FAIL: const result = eval("2 + 2");
+      // FAIL: const fn = new Function("a", "b", "return a + b");
+      // PASS: const result = 2 + 2;
+      // PASS: function add(a, b) { return a + b; }
+      // FAIL: const parsed = eval(`(${response})`);
+      // PASS: const parsed = JSON.parse(response);
+
+  - id: no-with
+    severity: fundamental
+    rule: "Never use the with statement. with is forbidden in strict mode, slows execution, and makes code unpredictable by dynamically adding an object to the scope chain."
+    check_regex: '\bwith\s*\('
+    framework_javascript: |
+      // FAIL: with (document.forms[0]) {
+      //   ...   name.value = "";
+      //   ...   email.value = "";
+      //   ... }
+      // PASS: const form = document.forms[0];
+      //       form.name.value = "";
+      //       form.email.value = "";
+
+  - id: no-document-write
+    severity: fundamental
+    rule: "Never use document.write(). It overwrites the entire document if called after page load, blocks rendering, and has no place in modern JavaScript development."
+    check_regex: 'document\.write\s*\('
+    framework_javascript: |
+      // FAIL: document.write("<h1>Hello</h1>");
+      // FAIL: document.writeln("<p>line</p>");
+      // PASS: element.innerHTML = "<h1>Hello</h1>";
+      // PASS: element.appendChild(document.createTextNode("line"));
+
+  # ── MODERN SYNTAX (4 rules, teaching-only) ────────────────────────────
+
+  - id: template-literals
+    severity: advanced
+    rule: "Use template literals (backtick strings with ${} interpolation) over string concatenation with +. Template literals support multi-line strings, expression interpolation, and tagged templates."
+    framework_javascript: |
+      // FAIL: const msg = "Hello, " + name + "!";
+      // FAIL: const html = "<div>\n" + "<p>" + text + "</p>\n" + "</div>";
+      // PASS: const msg = `Hello, ${name}!`;
+      // PASS: const html = `<div>
+      //   ...   <p>${text}</p>
+      //   ... </div>`;
+
+  - id: destructuring
+    severity: advanced
+    rule: "Use destructuring to extract values from objects and arrays. Prefer default values in destructuring over manual fallback checks. Use nested destructuring for deeply nested objects."
+    framework_javascript: |
+      // FAIL: const name = user.name;
+      //       const age = user.age;
+      // PASS: const { name, age } = user;
+      // FAIL: const first = items[0];
+      //       const second = items[1];
+      // PASS: const [first, second] = items;
+      // FAIL: const displayName = user.name || "Guest";
+      // PASS: const { name: displayName = "Guest" } = user;
+
+  - id: arrow-functions
+    severity: advanced
+    rule: "Prefer arrow functions for callbacks, array methods, and short anonymous functions. Use function declarations for named, top-level functions. Arrow functions inherit this from the enclosing scope — never use const self = this."
+    framework_javascript: |
+      // FAIL: items.map(function(item) { return item.id; });
+      // PASS: items.map(item => item.id);
+      // FAIL: const self = this;
+      //       button.addEventListener("click", function() { self.doSomething(); });
+      // PASS: button.addEventListener("click", () => this.doSomething());
+      // PASS: function calculateTotal(items) {
+      //   ...   return items.reduce((sum, item) => sum + item.price, 0);
+      //   ... }
+
+  # ── ASYNC & CONTROL FLOW (2 rules, teaching-only) ─────────────────────
+
+  - id: async-patterns
+    severity: fundamental
+    rule: "Prefer async/await over raw Promise chains. Avoid callback nesting deeper than 3 levels. Use Promise.all() for independent concurrent operations. Always handle promise rejections with try/catch or .catch()."
+    framework_javascript: |
+      // FAIL: fetch(url)
+      //   ...   .then(res => res.json())
+      //   ...   .then(data => process(data))
+      //   ...   .catch(err => console.error(err));
+      // PASS: async function loadData(url) {
+      //   ...   try {
+      //   ...     const res = await fetch(url);
+      //   ...     const data = await res.json();
+      //   ...     return process(data);
+      //   ...   } catch (err) {
+      //   ...     console.error(err);
+      //   ...   }
+      //   ... }
+      // FAIL: const data1 = await fetch("/api/1");
+      //       const data2 = await fetch("/api/2");
+      //       // sequential when they could be parallel
+      // PASS: const [data1, data2] = await Promise.all([
+      //   ...   fetch("/api/1").then(r => r.json()),
+      //   ...   fetch("/api/2").then(r => r.json()),
+      //   ... ]);
+
+  - id: error-handling
+    severity: fundamental
+    rule: "Always catch errors in async functions with try/catch. Throw Error instances, not strings or literals. Use custom Error subclasses for domain-specific errors. Never silently catch errors — log or re-throw."
+    framework_javascript: |
+      // FAIL: throw "something went wrong";
+      // FAIL: throw 404;
+      // PASS: throw new Error("something went wrong");
+      // PASS: class ValidationError extends Error {}
+      //       throw new ValidationError("invalid input");
+      // FAIL: try { await risky(); } catch (e) {}  // silent
+      // PASS: try { await risky(); } catch (e) {
+      //   ...   logger.error(e);
+      //   ...   throw e;  // re-throw if not recoverable
+      //   ... }
+
+  # ── PROTOTYPE & OBJECTS (2 rules, 2 checkable) ───────────────────────
+
+  - id: no-prototype-mutation
+    severity: fundamental
+    rule: "Never mutate built-in prototypes (Array.prototype, Object.prototype, String.prototype, etc.). Extending built-ins breaks all instances in the runtime and conflicts with future spec changes. Use composition or custom classes instead."
+    check_regex: '\.prototype\.\w+\s*='
+    framework_javascript: |
+      // FAIL: Array.prototype.first = function() { return this[0]; };
+      // FAIL: String.prototype.capitalize = function() { ... };
+      // PASS: function first(arr) { return arr[0]; }
+      // PASS: class StringUtils {
+      //   ...   static capitalize(str) { ... }
+      //   ... }
+
+  - id: no-new-wrappers
+    severity: advanced
+    rule: "Never use new with primitive wrappers (new String(), new Number(), new Boolean()). They produce objects, not primitives, and cause type confusion. Use literal syntax for primitives."
+    check_regex: 'new\s+(String|Number|Boolean)\s*\('
+    framework_javascript: |
+      // FAIL: const s = new String("hello");
+      // FAIL: const n = new Number(42);
+      // FAIL: const b = new Boolean(true);
+      // PASS: const s = "hello";
+      // PASS: const n = 42;
+      // PASS: const b = true;
+
+  # ── IDIOMS & PATTERNS (2 rules, teaching-only) ────────────────────────
+
+  - id: array-methods
+    severity: advanced
+    rule: "Prefer Array methods (map, filter, reduce, find, some, every, forEach) over for, for...in, or for...of loops for array iteration. Methods express intent and avoid off-by-one errors. Use for...of only when early break is needed."
+    framework_javascript: |
+      // FAIL: const result = [];
+      //       for (let i = 0; i < items.length; i++) {
+      //         if (items[i].active) result.push(items[i].id);
+      //       }
+      // PASS: const result = items
+      //   ...   .filter(item => item.active)
+      //   ...   .map(item => item.id);
+      // FAIL: for (const key in obj) {
+      //   ...   if (obj.hasOwnProperty(key)) { ... }
+      //   ... }
+      // PASS: Object.keys(obj).forEach(key => { ... });
+
+  - id: jsdoc
+    severity: advanced
+    rule: "Document public functions and exported APIs with JSDoc blocks including @param (with types), @returns (with type), and @throws where applicable. Use @typedef for complex parameter shapes. Keep JSDoc accurate — never let it drift from the implementation."
+    framework_javascript: |
+      // FAIL: function loadUser(id) { ... }
+      // PASS: /**
+      //   ...  * Load a user by their ID.
+      //   ...  * @param {number} id - The user's database ID
+      //   ...  * @returns {Promise<User>} The user object
+      //   ...  * @throws {NotFoundError} If no user with that ID exists
+      //   ...  */
+      //   ... async function loadUser(id) { ... }
+
+  # ── MODULE & STRICT MODE (1 rule, teaching-only) ──────────────────────
+
+  - id: strict-mode
+    severity: fundamental
+    rule: "Use ECMAScript modules (import/export) by default in modern JavaScript. Modules are always in strict mode. In non-module scripts, add 'use strict' at the top of each file. Strict mode prevents silent errors, bans with, and fixes this binding."
+    framework_javascript: |
+      // FAIL: function getData() { ... }
+      //       module.exports = { getData };
+      // PASS: export function getData() { ... }
+      // PASS: // <script>
+      //   ... 'use strict';
+      //   ... function getData() { ... }
+      // PASS: import { getData } from './data.js';
