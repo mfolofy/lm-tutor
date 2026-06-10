@@ -90,6 +90,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Language shorthand, e.g. python,javascript,typescript. Resolves to best-practices classes.",
     )
 
+    # tutor install-opencode
+    p_install_oc = sub.add_parser("install-opencode", help="Inject lm-tutor rules into OpenCode sessions.")
+    p_install_oc.add_argument(
+        "--lang", default="",
+        help="Language shorthand, e.g. python,javascript,typescript.",
+    )
+    p_install_oc.add_argument(
+        "--classes", default="",
+        help="Comma-separated class IDs, e.g. security,test,perf.",
+    )
+    p_install_oc.add_argument(
+        "--config", default=None,
+        help="Path to opencode.json (auto-detected if omitted).",
+    )
+    p_install_oc.add_argument(
+        "--dry-run", action="store_true",
+        help="Preview the injection without writing.",
+    )
+    p_install_oc.add_argument(
+        "--uninstall", action="store_true",
+        help="Remove tutor rules and restore backup.",
+    )
+
     # tutor profile
     p_profile = sub.add_parser("profile", help="Show eval history and pass rates for a model.")
     p_profile.add_argument("--model", required=True, help="Model id.")
@@ -177,6 +200,9 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.command == "prefix":
         from tutor.cli.prefix import run
+        return run(args)
+    if args.command == "install-opencode":
+        from tutor.cli.install_opencode import run
         return run(args)
 
     parser.print_help()
