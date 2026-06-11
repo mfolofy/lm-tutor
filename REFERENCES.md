@@ -1,8 +1,8 @@
 ﻿# lm-tutor -- Master Reference Catalog
 
-Every standard, framework, paper, and specification cited across all 35 classes.
+Every standard, framework, paper, and specification cited across all 37 classes.
 
-> **Note:** This file is being expanded to cover all 35 classes. Currently documented: the core 9. Credential class SOURCES.md files contain their own per-class references.
+> **Note:** This file is being expanded to cover all 37 classes. Currently documented: the core 9. Credential class SOURCES.md files contain their own per-class references.
 
 ---
 

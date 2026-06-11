@@ -30,7 +30,7 @@
 | Curriculum tracks: remedial (fundamentals + Booster) / standard / honors | No external runtime dependencies |
 | Model registry: curated `models.json` with capability profiles | No modules without documented research sources in `SOURCES.md` |
 | Classes: YAML checklist format with rules, FAIL/PASS examples, check selectors/regex | No pricing, GTM, or sales materials |
-| 35 classes across core tracks (brushes, code-review, security, etc.), best-practices tracks (python, js, ts, api-design, devops), and credential tracks (md, jd, cpa, rn, etc.) | No community infrastructure before v1 ships |
+| 37 classes across core tracks (brushes, code-review, security, etc.), best-practices tracks (python, js, ts, api-design, devops), and credential tracks (md, jd, cpa, rn, psychiatry, anthropology, etc.) | No community infrastructure before v1 ships |
 | Eval harness: 3-layer hybrid (rules → LLM judge → adversarial verification). Layer 1 (selector/regex) ships in Phase 0. Layers 2-3 in Phase 1. | |
 | 8B Booster Protocol: remedial track only, multi-factor activation threshold, subprocess sandbox with documented limitations | |
 | Benchmark infrastructure (`tutor/benchmark.py`) — runs real model evaluations against class rules. Published results in README. | |
@@ -100,13 +100,13 @@ Each class is a directory with:
 - **`SOURCES.md`** — cited external standards (WCAG, OWASP, NIST, IEEE, etc.). Every rule must trace to a standard.
 - **`grader.py`** (optional) — custom grading logic for credential classes that need domain-specific scoring beyond Layer 1.
 
-**35 classes** across three families:
+**37 classes** across three families:
 
 **Core (10):** brushes, code-review, audit, security, architect, defense, perf, test, prompt-design, api-design
 
-**Best-Practices (5):** python-best-practices, javascript-best-practices, typescript-best-practices, devops, credential-hr
+**Best-Practices (4):** python-best-practices, javascript-best-practices, typescript-best-practices, devops
 
-**Credential (20):** credential-jd (legal), credential-md (medical), credential-cpa (accounting), credential-pe (engineering), credential-lcsw (social work), credential-journalist, credential-finra (finance), credential-pharmacist, credential-ra (regulatory), credential-rn (nursing), credential-pilot, credential-realtor, credential-pm (project management), credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet
+**Credential (23):** credential-jd (legal), credential-md (medical), credential-cpa (accounting), credential-pe (engineering), credential-lcsw (social work), credential-journalist, credential-finra (finance), credential-pharmacist, credential-ra (regulatory), credential-rn (nursing), credential-pilot, credential-realtor, credential-pm (project management), credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet, credential-hr, credential-psychiatry, credential-anthropology
 
 ### 4. The 8B Booster Protocol (Remedial Track)
 
@@ -129,7 +129,7 @@ Activated by multi-factor threshold: `f(context_window, param_count, tool_reliab
 
 | Layer | What it checks | Method | Phase |
 |-------|---------------|--------|-------|
-| 1. Rules Engine | Codifiable rules (WCAG, OWASP patterns, syntax) | Deterministic selectors, regex, AST checks. ~221 checkable rules across 35 classes. Fully testable. | Phase 0 |
+| 1. Rules Engine | Codifiable rules (WCAG, OWASP patterns, syntax) | Deterministic selectors, regex, AST checks. ~221 checkable rules across 37 classes. Fully testable. | Phase 0 |
 | 2. LLM Judge | Ambiguous criteria (semantic correctness, visual affordance) | Separate evaluator model (different family from student). Confidence-scored (>= 0.80 accepted, 0.60-0.80 weighted, < 0.60 human review). | Phase 1 |
 | 3. Adversarial Verification | Challenges the judge's own verdict | Same evaluator model, different prompt ("find what the judge missed"). Catches self-contradiction and position bias. | Phase 1 |
 
@@ -161,43 +161,8 @@ lm-tutor/
 │   │   ├── overrides.json        # Manual overrides (win over auto-synced data)
 │   │   └── sync.py               # Scrape OpenRouter/LMSys for updates (Phase 1)
 │   │
-│   ├── classes/                  # 35 directories — one per class
-│   │   ├── brushes/              #     class.yaml + SOURCES.md (all classes)
-│   │   ├── code-review/          #     Some include grader.py for custom logic
-│   │   ├── prompt-design/
-│   │   ├── audit/
-│   │   ├── architect/
-│   │   ├── defense/
-│   │   ├── perf/
-│   │   ├── test/
-│   │   ├── security/
-│   │   ├── api-design/
-│   │   ├── devops/
-│   │   ├── python-best-practices/
-│   │   ├── javascript-best-practices/
-│   │   ├── typescript-best-practices/
-│   │   ├── credential-jd/
-│   │   ├── credential-md/
-│   │   ├── credential-cpa/
-│   │   ├── credential-pe/
-│   │   ├── credential-lcsw/
-│   │   ├── credential-journalist/
-│   │   ├── credential-finra/
-│   │   ├── credential-pharmacist/
-│   │   ├── credential-ra/
-│   │   ├── credential-rn/
-│   │   ├── credential-pilot/
-│   │   ├── credential-realtor/
-│   │   ├── credential-pm/
-│   │   ├── credential-dentist/
-│   │   ├── credential-paramedic/
-│   │   ├── credential-adjuster/
-│   │   ├── credential-electrician/
-│   │   ├── credential-judge/
-│   │   ├── credential-socialworker/
-│   │   ├── credential-vet/
-│   │   └── credential-hr/
-│   │
+    │   ├── classes/                  # 37 classes — see MANIFEST.json for full listing
+
 │   ├── booster/                  # 8B Booster Protocol
 │   │   ├── sandbox.py            # ScratchpadSandbox + SandboxManager
 │   │   └── tools.py              # write_to_scratchpad, consistency_check, etc.
@@ -415,13 +380,13 @@ in each class's `SOURCES.md`.
 
 ### Phase 1 — Classes ✅ COMPLETE
 
-**35 classes built across three families:**
+**37 classes built across three families:**
 
 **Core (10):** brushes, code-review, audit, security, architect, defense, perf, test, prompt-design, api-design
 
 **Best-Practices (5):** python-best-practices, javascript-best-practices, typescript-best-practices, devops
 
-**Credential (20):** credential-jd, credential-md, credential-cpa, credential-pe, credential-lcsw, credential-journalist, credential-finra, credential-pharmacist, credential-ra, credential-rn, credential-pilot, credential-realtor, credential-pm, credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet, credential-hr
+**Credential (23):** credential-jd, credential-md, credential-cpa, credential-pe, credential-lcsw, credential-journalist, credential-finra, credential-pharmacist, credential-ra, credential-rn, credential-pilot, credential-realtor, credential-pm, credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet, credential-hr, credential-psychiatry, credential-anthropology
 
 Each with `class.yaml` + `SOURCES.md` + test file. Credential classes include optional `grader.py` for domain-specific scoring.
 
@@ -436,11 +401,12 @@ Each with `class.yaml` + `SOURCES.md` + test file. Credential classes include op
 - Track progression: class pass/fail → next class unlock.
 - Human calibration loop: weekly audit, accuracy metric published.
 
-### Phase 3 — Booster Integration 🟡 NOT STARTED
+### Phase 3 — Booster Integration ✅ COMPLETE
 
-- Wire Booster into remedial track.
-- Benchmark: booster alone vs classes alone vs both.
-- **Gate open** — thesis validated 2026-06-10. Ready to build.
+- `tutor learn --auto` — auto-runs Booster foresight + exemplars for remedial models.
+- `tutor fix --booster` — Booster context before fix suggestions.
+- Benchmark pipeline validated: learn --auto, fix --booster, eval all pass.
+- **Gate:** thesis validated 2026-06-10. Built 2026-06-11.
 
 ### Phase 4 — Protocol Engine 🔴 DEFERRED
 
@@ -502,6 +468,6 @@ These decisions cannot be re-litigated without Miguel:
 ## Building Outward — Progress
 
 - **2026-06-09:** `javascript-best-practices` class shipped (16 rules). `typescript-best-practices` shipped (16 rules). `tutor prefix` command shipped (multi-class composition). `tutor install-opencode` shipped (experimental agent injection).
-- **2026-06-09:** `tutor class --new` scaffold shipped. Class audit + hardening complete (all 34 classes verified).
-- **2026-06-10:** Phase 1 complete — 35 classes, 602 rules, 1,628+ tests. Peer benchmarks published — core thesis validated. SCOPE updated with all 35 classes + credential tracks + Fable 5 validation.
-- **Next:** Phase 3 — Wire Booster into remedial track.
+- **2026-06-09:** `tutor class --new` scaffold shipped. Class audit + hardening complete (all 34 classes verified at the time; expanded to 37 on 2026-06-11).
+- **2026-06-10:** Phase 1 complete — 37 classes, 602 rules, 1,733+ tests. Peer benchmarks published — core thesis validated. SCOPE updated with all 37 classes + credential tracks + Fable 5 validation.
+- **2026-06-11:** Phase 3 complete — Booster wired into remedial track (`tutor learn --auto`, `tutor fix --booster`). credential-psychiatry + credential-anthropology shipped (Mai dependency). 37 classes, 1,733+ tests.

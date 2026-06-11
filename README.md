@@ -221,7 +221,7 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 35 classes, 602 rules, 1628+ tests. Benchmarked across 5 model tiers
+**Beta.** 37 classes, 602 rules, 1733+ tests. Benchmarked across 5 model tiers
 (Gemma 3 4B through DeepSeek V4 Pro) with 5-run placebo-controlled protocol.
 Working in production at Ghost Stack.
 
