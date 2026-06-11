@@ -38,6 +38,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_learn = sub.add_parser("learn", help="Take a class.")
     p_learn.add_argument("--model", required=True, help="Model id.")
     p_learn.add_argument("--class", dest="class_name", default=None, help="Class to take.")
+    p_learn.add_argument(
+        "--auto", action="store_true",
+        help="Phase 3: auto-run Booster tools (foresight + exemplars) for remedial models.",
+    )
 
     # tutor eval
     p_eval = sub.add_parser("eval", help="Grade a submission read from stdin.")
@@ -71,6 +75,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_fix.add_argument(
         "--max-iter", type=int, default=5,
         help="Maximum auto-iteration rounds (default: 5).",
+    )
+    p_fix.add_argument(
+        "--booster", action="store_true",
+        help="Phase 3: run Booster tools (foresight) before fix suggestions.",
     )
 
     # tutor mcp

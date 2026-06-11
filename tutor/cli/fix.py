@@ -100,12 +100,57 @@ def _build_fix_prompt(
     }
 
 
+def _run_fix_booster(submission: str, class_name: str | None) -> dict:
+    """Run Booster tools to aid the fix loop for remedial models.
+
+    Returns a dict with:
+      - foresight: edge cases relevant to the class domain
+      - scratchpad (optional): sandbox reasoning on the broken submission
+    """
+    from tutor.booster.tools import downstream_lookahead
+
+    booster_output: dict = {}
+
+    # Always run foresee on the class context — this is lightweight (static).
+    foresee = downstream_lookahead(
+        f"Fix {class_name or 'code'} violations",
+        context=class_name or "",
+    )
+    if foresee:
+        booster_output["foresight"] = foresee
+
+    # Only run scratchpad if content looks like executable logic, not markup.
+    # HTML/XML/markdown content would fail as Python code.
+    stripped = submission.strip()
+    if stripped and not stripped.startswith(("<", "#", "!")) and len(stripped) > 20:
+        from tutor.booster.tools import write_to_scratchpad
+
+        scratch = write_to_scratchpad(stripped)
+        if scratch and isinstance(scratch, dict) and not scratch.get("error"):
+            booster_output["scratchpad"] = scratch
+
+    return booster_output
+
+
 def run(args) -> int:
     class_name = getattr(args, "class_name", None)
     max_iter = getattr(args, "max_iter", 5)
     auto = getattr(args, "auto", False)
+    use_booster = getattr(args, "booster", False)
 
     submission = sys.stdin.read()
+
+    # Phase 3: pre-run Booster for remedial-model fix context.
+    booster_context = None
+    if use_booster:
+        booster_context = _run_fix_booster(submission, class_name)
+        if booster_context:
+            # Emit as a JSON comment on stderr so it doesn't pollute pipe output.
+            import json as _json
+            print(
+                "fix:booster", _json.dumps(booster_context),
+                file=sys.stderr,
+            )
 
     for iteration in range(1, max_iter + 1):
         syllabus = class_name or infer_syllabus(submission)
@@ -124,6 +169,10 @@ def run(args) -> int:
 
         response = _build_fix_prompt(result, class_data)
         response["iteration"] = iteration
+
+        # Attach Booster context to first-iteration response.
+        if iteration == 1 and booster_context:
+            response["booster"] = booster_context
 
         # Always print the response.
         print(json.dumps(response, indent=2, default=str))
