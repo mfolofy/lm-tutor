@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 1,
   "classes": [
     {
@@ -6,7 +6,11 @@
       "version": "1.0.0",
       "domain": "api-standards",
       "rules_count": 18,
-      "standards": ["Fielding REST", "Google API Design Guide", "OpenAPI 3.1"],
+      "standards": [
+        "Fielding REST",
+        "Google API Design Guide",
+        "OpenAPI 3.1"
+      ],
       "description": "REST, GraphQL, and gRPC API design -- resource naming, HTTP methods, status codes, error formats, pagination"
     },
     {
@@ -14,7 +18,11 @@
       "version": "1.0",
       "domain": "architecture",
       "rules_count": 22,
-      "standards": ["NIST SP 800-53", "Fowler PoEAA", "RFC 5280"],
+      "standards": [
+        "NIST SP 800-53",
+        "Fowler PoEAA",
+        "RFC 5280"
+      ],
       "description": "Threat modeling, data flow diagrams, trust boundaries, architecture governance"
     },
     {
@@ -22,7 +30,11 @@
       "version": "1.0",
       "domain": "compliance",
       "rules_count": 18,
-      "standards": ["NIST SP 800-53", "SOC2", "HIPAA"],
+      "standards": [
+        "NIST SP 800-53",
+        "SOC2",
+        "HIPAA"
+      ],
       "description": "Tamper-evident logging, retention, evidence collection, compliance controls"
     },
     {
@@ -30,7 +42,9 @@
       "version": "1.3",
       "domain": "ui-ux",
       "rules_count": 12,
-      "standards": ["WCAG 2.2"],
+      "standards": [
+        "WCAG 2.2"
+      ],
       "description": "Accessible UI patterns -- color contrast, focus order, ARIA landmarks"
     },
     {
@@ -38,7 +52,10 @@
       "version": "1.1",
       "domain": "code-quality",
       "rules_count": 18,
-      "standards": ["IEEE 1028", "OWASP Top 10 2025"],
+      "standards": [
+        "IEEE 1028",
+        "OWASP Top 10 2025"
+      ],
       "description": "Code review best practices -- security, correctness, style, gatekeeper workflows"
     },
     {
@@ -59,7 +76,11 @@
       "version": "1.0.0",
       "domain": "accounting",
       "rules_count": 16,
-      "standards": ["GAAP (ASC Codification)", "GAAS (AICPA)", "AICPA Code of Professional Conduct"],
+      "standards": [
+        "GAAP (ASC Codification)",
+        "GAAS (AICPA)",
+        "AICPA Code of Professional Conduct"
+      ],
       "description": "Certified Public Accountant standards -- GAAP, GAAS, AICPA ethics, audit procedures, tax preparation"
     },
     {
@@ -67,7 +88,11 @@
       "version": "1.0.0",
       "domain": "dental",
       "rules_count": 15,
-      "standards": ["ADA Code of Ethics", "CDC Infection Control", "OSHA Bloodborne Pathogens"],
+      "standards": [
+        "ADA Code of Ethics",
+        "CDC Infection Control",
+        "OSHA Bloodborne Pathogens"
+      ],
       "description": "Dental professional standards -- infection control, radiation safety, ethics, recordkeeping"
     },
     {
@@ -89,7 +114,11 @@
       "version": "1.0.0",
       "domain": "finance",
       "rules_count": 16,
-      "standards": ["Investment Advisers Act of 1940", "Securities Act of 1933", "Securities Exchange Act of 1934"],
+      "standards": [
+        "Investment Advisers Act of 1940",
+        "Securities Act of 1933",
+        "Securities Exchange Act of 1934"
+      ],
       "description": "Financial advisor/broker standards -- securities regulation, fiduciary duty, suitability, FINRA rules"
     },
     {
@@ -97,7 +126,11 @@
       "version": "1.0.0",
       "domain": "human-resources",
       "rules_count": 17,
-      "standards": ["FLSA", "FMLA", "ADA"],
+      "standards": [
+        "FLSA",
+        "FMLA",
+        "ADA"
+      ],
       "description": "Human resources professional standards -- employment law, benefits administration, labor relations, workplace safety"
     },
     {
@@ -105,7 +138,11 @@
       "version": "1.0.0",
       "domain": "legal",
       "rules_count": 16,
-      "standards": ["ABA Model Rules", "Restatement (3d) Law Governing Lawyers", "FRE"],
+      "standards": [
+        "ABA Model Rules",
+        "Restatement (3d) Law Governing Lawyers",
+        "FRE"
+      ],
       "description": "Attorney professional standards -- ethics, privilege, conflicts of interest, client communication"
     },
     {
@@ -113,7 +150,11 @@
       "version": "1.0.0",
       "domain": "journalism",
       "rules_count": 15,
-      "standards": ["SPJ Code of Ethics", "API Journalism Essentials", "AP Stylebook"],
+      "standards": [
+        "SPJ Code of Ethics",
+        "API Journalism Essentials",
+        "AP Stylebook"
+      ],
       "description": "Journalist/reporter standards -- truthfulness, independence, sourcing, attribution, corrections"
     },
     {
@@ -121,7 +162,11 @@
       "version": "1.0.0",
       "domain": "judicial",
       "rules_count": 15,
-      "standards": ["ABA Code of Judicial Conduct", "US Constitution (5th, 6th, 14th)", "Federal Rules of Evidence"],
+      "standards": [
+        "ABA Code of Judicial Conduct",
+        "US Constitution (5th, 6th, 14th)",
+        "Federal Rules of Evidence"
+      ],
       "description": "Judicial professional standards -- impartiality, recusal, ex parte communication, sentencing"
     },
     {
@@ -129,7 +174,11 @@
       "version": "1.0.0",
       "domain": "mental-health",
       "rules_count": 15,
-      "standards": ["NASW Code of Ethics", "APA Ethical Principles", "ACA Code of Ethics"],
+      "standards": [
+        "NASW Code of Ethics",
+        "APA Ethical Principles",
+        "ACA Code of Ethics"
+      ],
       "description": "Therapist/mental health professional standards -- confidentiality, mandatory reporting, dual relationships, informed consent"
     },
     {
@@ -137,7 +186,11 @@
       "version": "1.0.0",
       "domain": "medical",
       "rules_count": 15,
-      "standards": ["HIPAA Privacy Rule", "AMA Code of Medical Ethics", "EMTALA"],
+      "standards": [
+        "HIPAA Privacy Rule",
+        "AMA Code of Medical Ethics",
+        "EMTALA"
+      ],
       "description": "Physician medical standards -- patient confidentiality, informed consent, end-of-life care, mandatory reporting"
     },
     {
@@ -145,7 +198,11 @@
       "version": "1.0.0",
       "domain": "ems",
       "rules_count": 16,
-      "standards": ["NREMT Paramedic National Standards", "State EMS Protocols", "NHTSA EMS Agenda"],
+      "standards": [
+        "NREMT Paramedic National Standards",
+        "State EMS Protocols",
+        "NHTSA EMS Agenda"
+      ],
       "description": "Paramedic/EMS professional standards -- patient assessment, pain management, refusal, consent, mandatory reporting"
     },
     {
@@ -153,7 +210,11 @@
       "version": "1.0.0",
       "domain": "engineering",
       "rules_count": 16,
-      "standards": ["NSPE Code of Ethics", "ASCE Code of Ethics", "NCEES Model Law"],
+      "standards": [
+        "NSPE Code of Ethics",
+        "ASCE Code of Ethics",
+        "NCEES Model Law"
+      ],
       "description": "Professional engineer standards -- public safety, stamping, competence, conflicts of interest"
     },
     {
@@ -161,7 +222,11 @@
       "version": "1.0.0",
       "domain": "pharmacy",
       "rules_count": 15,
-      "standards": ["OBRA '90", "HIPAA (45 CFR 164)", "DEA Regulations (21 CFR 1300-1399)"],
+      "standards": [
+        "OBRA '90",
+        "HIPAA (45 CFR 164)",
+        "DEA Regulations (21 CFR 1300-1399)"
+      ],
       "description": "Pharmacy professional standards -- patient counseling, controlled substances, patient confidentiality, medication errors"
     },
     {
@@ -169,7 +234,11 @@
       "version": "1.0.0",
       "domain": "aviation",
       "rules_count": 16,
-      "standards": ["14 CFR Part 61", "14 CFR Part 91", "14 CFR Part 121"],
+      "standards": [
+        "14 CFR Part 61",
+        "14 CFR Part 91",
+        "14 CFR Part 121"
+      ],
       "description": "Pilot professional standards -- FAA regulations, cockpit resource management, weather minimums, flight planning"
     },
     {
@@ -177,7 +246,11 @@
       "version": "1.0.0",
       "domain": "project-management",
       "rules_count": 16,
-      "standards": ["PMBOK Guide 7th Ed", "PMP Code of Ethics", "PRINCE2 2023"],
+      "standards": [
+        "PMBOK Guide 7th Ed",
+        "PMP Code of Ethics",
+        "PRINCE2 2023"
+      ],
       "description": "Project management professional standards -- scope, schedule, cost, risk, stakeholder management"
     },
     {
@@ -185,7 +258,11 @@
       "version": "1.0.0",
       "domain": "architecture-licensed",
       "rules_count": 16,
-      "standards": ["AIA Code of Ethics", "IBC (International Building Code)", "ADA Standards for Accessible Design"],
+      "standards": [
+        "AIA Code of Ethics",
+        "IBC (International Building Code)",
+        "ADA Standards for Accessible Design"
+      ],
       "description": "Registered architect standards -- building codes, accessibility, life safety, structural integrity, ethics"
     },
     {
@@ -193,7 +270,11 @@
       "version": "1.0.0",
       "domain": "real-estate",
       "rules_count": 16,
-      "standards": ["NAR Code of Ethics", "Fair Housing Act", "RESPA"],
+      "standards": [
+        "NAR Code of Ethics",
+        "Fair Housing Act",
+        "RESPA"
+      ],
       "description": "Real estate agent standards -- fair housing, disclosure, fiduciary duty, agency relationships"
     },
     {
@@ -201,7 +282,11 @@
       "version": "1.0.0",
       "domain": "nursing",
       "rules_count": 16,
-      "standards": ["ANA Code of Ethics", "NPA (State Nurse Practice Acts)", "HIPAA (45 CFR 164)"],
+      "standards": [
+        "ANA Code of Ethics",
+        "NPA (State Nurse Practice Acts)",
+        "HIPAA (45 CFR 164)"
+      ],
       "description": "Registered nurse standards -- patient privacy, scope of practice, mandatory reporting, informed consent"
     },
     {
@@ -209,7 +294,11 @@
       "version": "1.0.0",
       "domain": "social-work",
       "rules_count": 15,
-      "standards": ["NASW Code of Ethics", "ASWB Model Practice Act", "HIPAA Privacy Rule"],
+      "standards": [
+        "NASW Code of Ethics",
+        "ASWB Model Practice Act",
+        "HIPAA Privacy Rule"
+      ],
       "description": "Social worker standards -- client confidentiality, mandatory reporting, cultural competence, informed consent"
     },
     {
@@ -217,7 +306,11 @@
       "version": "1.0.0",
       "domain": "veterinary",
       "rules_count": 15,
-      "standards": ["AVMA Principles of Ethics", "Animal Welfare Act", "DEA Controlled Substances Regulations"],
+      "standards": [
+        "AVMA Principles of Ethics",
+        "Animal Welfare Act",
+        "DEA Controlled Substances Regulations"
+      ],
       "description": "Veterinary professional standards -- animal welfare, controlled substances, informed consent, euthanasia protocols"
     },
     {
@@ -225,7 +318,9 @@
       "version": "0.5",
       "domain": "app-security",
       "rules_count": 19,
-      "standards": ["OWASP Top 10 2025"],
+      "standards": [
+        "OWASP Top 10 2025"
+      ],
       "description": "Defense-in-depth, WAF rules, rate limiting, anomaly detection"
     },
     {
@@ -233,7 +328,11 @@
       "version": "1.0.0",
       "domain": "devops",
       "rules_count": 17,
-      "standards": ["Google SRE", "DORA", "ITIL 4"],
+      "standards": [
+        "Google SRE",
+        "DORA",
+        "ITIL 4"
+      ],
       "description": "DevOps and SRE practices -- CI/CD pipelines, incident response, SLIs/SLOs, deployment strategies, monitoring"
     },
     {
@@ -241,7 +340,11 @@
       "version": "1.0.0",
       "domain": "javascript",
       "rules_count": 16,
-      "standards": ["MDN Web Docs", "ECMAScript Spec", "Airbnb JS Style Guide"],
+      "standards": [
+        "MDN Web Docs",
+        "ECMAScript Spec",
+        "Airbnb JS Style Guide"
+      ],
       "description": "JavaScript best practices -- ES6+ syntax, async/await, module patterns, type coercion avoidance"
     },
     {
@@ -249,7 +352,11 @@
       "version": "0.5",
       "domain": "performance",
       "rules_count": 18,
-      "standards": ["Web Vitals", "Lighthouse", "RAIL model"],
+      "standards": [
+        "Web Vitals",
+        "Lighthouse",
+        "RAIL model"
+      ],
       "description": "Response time budgets, caching strategy, query optimization, Core Web Vitals"
     },
     {
@@ -257,7 +364,9 @@
       "version": "1.0",
       "domain": "llm-safety",
       "rules_count": 17,
-      "standards": ["OWASP LLM Top 10"],
+      "standards": [
+        "OWASP LLM Top 10"
+      ],
       "description": "Prompt injection defense, output sanitization, role confinement, jailbreak prevention"
     },
     {
@@ -265,7 +374,11 @@
       "version": "1.0.0",
       "domain": "python",
       "rules_count": 16,
-      "standards": ["PEP 8", "PEP 257", "PEP 484"],
+      "standards": [
+        "PEP 8",
+        "PEP 257",
+        "PEP 484"
+      ],
       "description": "Python best practices -- PEP 8 style, type hints, docstrings, idiomatic Python patterns"
     },
     {
@@ -273,7 +386,9 @@
       "version": "2.0",
       "domain": "app-security",
       "rules_count": 20,
-      "standards": ["OWASP Top 10 2025"],
+      "standards": [
+        "OWASP Top 10 2025"
+      ],
       "description": "Input validation, auth, session management, crypto, secure configuration"
     },
     {
@@ -281,7 +396,11 @@
       "version": "0.5",
       "domain": "code-quality",
       "rules_count": 18,
-      "standards": ["xUnit Test Patterns", "FIRST Principles", "TDD"],
+      "standards": [
+        "xUnit Test Patterns",
+        "FIRST Principles",
+        "TDD"
+      ],
       "description": "Test pyramid, property-based testing, mutation testing, BDD, flaky test prevention"
     },
     {
@@ -289,8 +408,36 @@
       "version": "1.0.0",
       "domain": "typescript",
       "rules_count": 17,
-      "standards": ["TypeScript Handbook", "TypeScript ESLint", "Microsoft TS Coding Guidelines"],
+      "standards": [
+        "TypeScript Handbook",
+        "TypeScript ESLint",
+        "Microsoft TS Coding Guidelines"
+      ],
       "description": "TypeScript best practices -- strict types, generics, discriminated unions, type narrowing"
+    },
+    {
+      "id": "credential-psychiatry",
+      "version": "1.0.0",
+      "domain": "psychiatry",
+      "rules_count": 10,
+      "standards": [
+        "APA Principles of Medical Ethics (Psychiatry Annotations)",
+        "DSM-5-TR",
+        "HIPAA Privacy Rule (45 CFR 164)"
+      ],
+      "description": "Psychiatric/mental health professional standards -- no diagnosis without examination, crisis protocol, informed consent, confidentiality limits, no medication recommendations, scope boundaries"
+    },
+    {
+      "id": "credential-anthropology",
+      "version": "1.0.0",
+      "domain": "anthropology",
+      "rules_count": 10,
+      "standards": [
+        "AAA Code of Ethics",
+        "SfAA Ethical Guidelines",
+        "UNESCO Universal Declaration on Cultural Diversity"
+      ],
+      "description": "Anthropological/ethnographic professional standards -- do no harm, informed consent, cultural relativism, no cultural appropriation, positionality, data sovereignty, heritage sensitivity"
     }
   ]
 }
