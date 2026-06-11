@@ -13,6 +13,7 @@ could not be performed.
 """
 
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -127,7 +128,7 @@ def run(args) -> int:
                 history = EvalHistory()
                 history.record(model_id, {**payload, "syllabus": "+".join(syllabuses)})
             except Exception:
-                pass
+                logging.warning("eval: failed to record eval history: %s", sys.exc_info()[1])  # FIX: log instead of silent swallow
 
         return 0
 
@@ -148,6 +149,6 @@ def run(args) -> int:
             history = EvalHistory()
             history.record(model_id, payload)
         except Exception:
-            pass
+            logging.warning("eval: failed to record eval history: %s", sys.exc_info()[1])  # FIX: log instead of silent swallow
 
     return 0 if result.error is None else 2

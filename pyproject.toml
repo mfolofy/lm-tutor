@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lm-tutor"
 version = "0.1.0"
-description = "The School for LLMs — structured AI education for any model. Phase 0: skeleton + Layer 1 rules engine."
+description = "The School for LLMs -- structured AI education for any model. Phase 0: skeleton + Layer 1 rules engine."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -34,7 +34,6 @@ Homepage = "https://github.com/mfolofy/lm-tutor"
 Repository = "https://github.com/mfolofy/lm-tutor"
 
 # Single console script. Subcommands are dispatched by argparse in tutor.__main__.
-# tutor enroll | tutor learn | tutor eval | tutor mcp | tutor list
 [project.scripts]
 tutor = "tutor.__main__:main"
 
@@ -44,3 +43,4 @@ include = ["tutor*"]
 [tool.setuptools.package-data]
 "tutor.registry" = ["*.json"]
 "tutor.classes.brushes" = ["*.yaml"]
+"tutor.classes.*" = ["*.yaml"]

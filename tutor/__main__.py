@@ -5,7 +5,7 @@ One console script (``tutor``) with subcommands:
     tutor enroll            — identify a model, get its curriculum track
     tutor learn             — take a class (Phase 0: prints the injection prefix)
     tutor eval              — grade a submission read from stdin (Layer 1 rules engine)
-    tutor fix               — eval → fix → re-eval correction loop
+    tutor fix               — eval -> fix -> re-eval correction loop
     tutor mcp               — launch the MCP server (stdio) + HTTP health on :9090
     tutor list              — list available classes
     tutor booster <sub>     — Booster tools for small models
@@ -59,7 +59,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # tutor fix
-    p_fix = sub.add_parser("fix", help="Eval → fix → re-eval correction loop.")
+    p_fix = sub.add_parser("fix", help="Eval -> fix -> re-eval correction loop.")
     p_fix.add_argument(
         "--class", dest="class_name", default=None,
         help="Syllabus to grade against. If omitted, inferred from content.",

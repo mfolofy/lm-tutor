@@ -1,4 +1,4 @@
-"""``tutor fix`` — eval → fix → re-eval correction loop.
+"""``tutor fix`` — eval -> fix -> re-eval correction loop.
 
 Reads a submission from stdin, grades it, and if violations are found,
 prints concrete fix suggestions (PASS examples from the class syllabus)

@@ -55,14 +55,15 @@ def self_consistency_check(assumptions: list[str]) -> dict:
     if not assumptions:
         return {"mode": "sandbox", "results": []}
 
+    import json as _json
     lines = ["import json", "results = []"]
     for i, a in enumerate(assumptions):
-        safe = a.replace("\\", "\\\\").replace('"', '\\"')
+        safe = _json.dumps(a)
         lines.append("try:")
         lines.append(f"    _ok = bool({a})")
-        lines.append(f'    results.append({{"index": {i}, "assumption": "{safe}", "passed": _ok}})')
+        lines.append(f'    results.append({{"index": {i}, "assumption": {safe}, "passed": _ok}})')
         lines.append("except Exception as _e:")
-        lines.append(f'    results.append({{"index": {i}, "assumption": "{safe}", "passed": False, "error": str(_e)}})')
+        lines.append(f'    results.append({{"index": {i}, "assumption": {safe}, "passed": False, "error": str(_e)}})')
     lines.append("print(json.dumps(results))")
     script = "\n".join(lines)
 

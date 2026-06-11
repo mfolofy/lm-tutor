@@ -171,6 +171,12 @@ penalty of perjury. All output must include professional disclaimer.
 | **credential-pm** | Project Manager | PMBOK 7th Ed, PMP Code, PMI |
 | **credential-dentist** | Dentist | ADA Code, CDC/OSHA, DEA |
 | **credential-paramedic** | Paramedic/EMT | NREMT, NHTSA EMS Agenda |
+| **credential-adjuster** | Insurance Adjuster | AIC, state DOI regulations, fair claims practices |
+| **credential-electrician** | Electrician | NEC, NFPA 70E, state licensing boards |
+| **credential-hr** | HR Professional | SHRM/HRCI ethics, FLSA, EEOC, FMLA |
+| **credential-judge** | Judge/Judicial Officer | ABA Code of Judicial Conduct, USC Title 28 |
+| **credential-socialworker** | Social Worker | NASW Code of Ethics, state licensing, HIPAA |
+| **credential-vet** | Veterinarian | AVMA Code of Ethics, state practice acts, DEA |
 
 [See full attorney example >](docs/credential-example-attorney.md)
 
@@ -186,6 +192,11 @@ penalty of perjury. All output must include professional disclaimer.
 | **Harness** | `tutor eval` grades output against the same class.yaml. Selectors and regex — deterministic, no variance. |
 | **Tracker** | Every eval result saved per model. `tutor profile` shows pass rates, weakest rules, next-class suggestions. |
 | **Booster** | Scratchpad sandbox, self-consistency checks, few-shot exemplars, edge-case prediction. For models under the capability threshold. |
+| **Fix** | `tutor fix` — iterative correction loop. Eval → per-violation fix suggestions → re-eval. |
+| **Prefix** | `tutor prefix --classes a,b,c` — compose multiple class rule sets into a single injection prefix. |
+| **Curriculum** | `tutor curriculum --model <id>` — ordered class list per track. |
+| **Profile** | `tutor profile` — per-model eval history, pass rates, weakest rules, next-class suggestions. |
+| **Scaffold** | `tutor class --new` — auto-generates class.yaml + SOURCES.md + test file for new classes. |
 
 ---
 

@@ -1,19 +1,21 @@
-# lm-tutor — Master Reference Catalog
+﻿# lm-tutor -- Master Reference Catalog
 
-Every standard, framework, paper, and specification cited across all 30 classes.
+Every standard, framework, paper, and specification cited across all 35 classes.
+
+> **Note:** This file is being expanded to cover all 35 classes. Currently documented: the core 9. Credential class SOURCES.md files contain their own per-class references.
 
 ---
 
-## 1. brushes — Web Accessibility (WCAG 2.2)
+## 1. brushes -- Web Accessibility (WCAG 2.2)
 
 **Standard:** WCAG 2.2 (W3C Recommendation 2023-10-05)
 
 ### Primary standards
-- **WCAG 2.2** — W3C Recommendation. <https://www.w3.org/TR/WCAG22/>
-- **WCAG 2.2 Understanding** — Per-SC rationale and techniques. <https://www.w3.org/WAI/WCAG22/Understanding/>
-- **ARIA in HTML** — W3C, accessible-name computation. <https://www.w3.org/TR/html-aria/>
-- **WAI-ARIA 1.2** — Role taxonomy and states. <https://www.w3.org/TR/wai-aria-1.2/>
-- **HTML Living Standard** — WHATWG. <https://html.spec.whatwg.org/multipage/>
+- **WCAG 2.2** -- W3C Recommendation. <https://www.w3.org/TR/WCAG22/>
+- **WCAG 2.2 Understanding** -- Per-SC rationale and techniques. <https://www.w3.org/WAI/WCAG22/Understanding/>
+- **ARIA in HTML** -- W3C, accessible-name computation. <https://www.w3.org/TR/html-aria/>
+- **WAI-ARIA 1.2** -- Role taxonomy and states. <https://www.w3.org/TR/wai-aria-1.2/>
+- **HTML Living Standard** -- WHATWG. <https://html.spec.whatwg.org/multipage/>
 
 ### Research papers
 | Paper | Venue | Year |
@@ -29,23 +31,23 @@ Every standard, framework, paper, and specification cited across all 30 classes.
 | "Modeling the Equilibrium Effects of Vibe Coding" | Koren et al. | 2026 |
 | "Vibe Checker: Aligning Code Evaluation with Human Preference" | ICML | 2026 |
 | **WebAIM Million 2026** | WebAIM / AudioEye | 2026 |
-| **Impeccable anti-pattern catalog** (Paul Bakaus) | — | 2026 |
+| **Impeccable anti-pattern catalog** (Paul Bakaus) | -- | 2026 |
 
 ### Design system references
-- **Material Design M3** — Spacing system, card hierarchy
-- **Apple HIG** — Touch targets, card hierarchy
-- **NN/g** — Proximity principle, F-shaped pattern, heading hierarchy
+- **Material Design M3** -- Spacing system, card hierarchy
+- **Apple HIG** -- Touch targets, card hierarchy
+- **NN/g** -- Proximity principle, F-shaped pattern, heading hierarchy
 
 ---
 
-## 2. code-review — Code Review Standards
+## 2. code-review -- Code Review Standards
 
 **Standards:** ITIL v4, arXiv 2603.25773
 
 ### Primary sources
-- **ITIL Foundation, ITIL 4 Edition** (AXELOS, 2019) — Change enablement, incident management, problem management, release management
-- **arXiv 2603.25773** — "The Specification as Quality Gate" (March 2026)
-- **House/everybody-lies** — Code review gatekeeper implementation.
+- **ITIL Foundation, ITIL 4 Edition** (AXELOS, 2019) -- Change enablement, incident management, problem management, release management
+- **arXiv 2603.25773** -- "The Specification as Quality Gate" (March 2026)
+- **House/everybody-lies** -- Code review gatekeeper implementation.
 
 ### Research papers
 | Paper | Venue | Year |
@@ -62,17 +64,17 @@ Every standard, framework, paper, and specification cited across all 30 classes.
 
 ---
 
-## 3. audit — Audit & Compliance Evidence
+## 3. audit -- Audit & Compliance Evidence
 
 **Standards:** SOC2, HIPAA, CMMC 2.0, NIST SP 800-53
 
 ### Primary standards
-- **SOC2 — AICPA Trust Services Criteria** (TSC 2017). <https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2>
-- **HIPAA Security Rule** — 45 CFR Part 164 Subpart C. <https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C>
-- **CMMC 2.0** — DoD, Level 2 aligns with NIST SP 800-171. <https://www.acq.osd.mil/cmmc/>
+- **SOC2 -- AICPA Trust Services Criteria** (TSC 2017). <https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2>
+- **HIPAA Security Rule** -- 45 CFR Part 164 Subpart C. <https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C>
+- **CMMC 2.0** -- DoD, Level 2 aligns with NIST SP 800-171. <https://www.acq.osd.mil/cmmc/>
 - **NIST SP 800-53 Rev 5** (2020). <https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final>
-- **ISO 27001:2022** — Annex A controls for ISMS
-- **NIST CSF** — Cybersecurity Framework (2018, updated 2024)
+- **ISO 27001:2022** -- Annex A controls for ISMS
+- **NIST CSF** -- Cybersecurity Framework (2018, updated 2024)
 
 ### Controls cited
 | Framework | Controls |
@@ -82,23 +84,23 @@ Every standard, framework, paper, and specification cited across all 30 classes.
 | CMMC 2.0 | AC.L2-3.1.1, AC.L2-3.1.2, AC.L2-3.1.5, AU.L2-3.3.1, AU.L2-3.3.8, IA.L2-3.5.1, SC.L2-3.13.11, SC.L2-3.13.15 |
 
 ### Reference implementation
-Ghost Mesh — reference compliance implementation (SOC2, HIPAA, CMMC controls with automated checks and evidence export).
+Ghost Mesh -- reference compliance implementation (SOC2, HIPAA, CMMC controls with automated checks and evidence export).
 
 ### Rules cited: 19
 11 teaching-only, 8 check_regex
 
 ---
 
-## 4. defense — Security Defense (OWASP Top 10)
+## 4. defense -- Security Defense (OWASP Top 10)
 
 **Standards:** OWASP Top 10 2025, OWASP ASVS v5.0, CWE Top 25
 
 ### Primary standards
-- **OWASP Top 10 2025** — <https://owasp.org/Top10/>
+- **OWASP Top 10 2025** -- <https://owasp.org/Top10/>
 - **OWASP ASVS v5.0** (2025). <https://owasp.org/www-project-application-security-verification-standard/>
-- **CWE Top 25 (2024)** — MITRE. <https://cwe.mitre.org/top25/>
-- **NIST SP 800-175B** — Cryptographic Algorithm Selection. <https://csrc.nist.gov/publications/detail/sp/800-175b/>
-- **NIST SP 800-52 Rev 2** — TLS Implementations. <https://csrc.nist.gov/publications/detail/sp/800-52/rev-2/final>
+- **CWE Top 25 (2024)** -- MITRE. <https://cwe.mitre.org/top25/>
+- **NIST SP 800-175B** -- Cryptographic Algorithm Selection. <https://csrc.nist.gov/publications/detail/sp/800-175b/>
+- **NIST SP 800-52 Rev 2** -- TLS Implementations. <https://csrc.nist.gov/publications/detail/sp/800-52/rev-2/final>
 
 ### CWEs cited
 CWE-20, CWE-79, CWE-89, CWE-209, CWE-272, CWE-276, CWE-287, CWE-295, CWE-308, CWE-311, CWE-312, CWE-320, CWE-326, CWE-327, CWE-352, CWE-532, CWE-798, CWE-862, CWE-937, CWE-942, CWE-1104
@@ -118,17 +120,17 @@ CWE-20, CWE-79, CWE-89, CWE-209, CWE-272, CWE-276, CWE-287, CWE-295, CWE-308, CW
 
 ---
 
-## 5. security — Secure Coding (NIST SP 800-53)
+## 5. security -- Secure Coding (NIST SP 800-53)
 
 **Standards:** NIST SP 800-53 Rev 5, NIST SP 800-63B, OWASP, CWE
 
 ### Primary standards
-- **NIST SP 800-53 Rev 5** (2020) — 17 control families. <https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final>
-- **NIST SP 800-63B** — Digital Identity Guidelines. <https://pages.nist.gov/800-63-3/sp800-63b.html>
-- **OWASP Top 10 (2021)** — <https://owasp.org/www-project-top-ten/>
-- **OWASP ASVS v4.0** — Application Security Verification Standard
-- **CWE Top 25 (2023)** — <https://cwe.mitre.org/top25/>
-- **CERT Secure Coding Standards** — SEI CERT
+- **NIST SP 800-53 Rev 5** (2020) -- 17 control families. <https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final>
+- **NIST SP 800-63B** -- Digital Identity Guidelines. <https://pages.nist.gov/800-63-3/sp800-63b.html>
+- **OWASP Top 10 (2021)** -- <https://owasp.org/www-project-top-ten/>
+- **OWASP ASVS v4.0** -- Application Security Verification Standard
+- **CWE Top 25 (2023)** -- <https://cwe.mitre.org/top25/>
+- **CERT Secure Coding Standards** -- SEI CERT
 
 ### Control families covered
 AC (Access Control), IA (Identification/Authentication), SC (System/Communications Protection), SI (System/Information Integrity), AU (Audit/Accountability), CM (Configuration Management), CP (Contingency Planning), IR (Incident Response)
@@ -138,7 +140,7 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 
 ---
 
-## 6. architect — System Architecture Design
+## 6. architect -- System Architecture Design
 
 **Standards:** Fowler, Richards & Ford, Hohpe & Woolf, NIST SP 800-53, SOC2, RFC 5280/3647
 
@@ -153,12 +155,12 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 | Rozanski, N. & Woods, E. *Software Systems Architecture* 2nd ed. (2011) | Viewpoints, architectural decisions |
 
 ### PKI standards
-- **RFC 5280** — X.509 PKI Certificate and CRL Profile
-- **RFC 3647** — Certificate Policy / CPS Framework
-- **NIST SP 800-57 Part 1 Rev 5** — Key Management
+- **RFC 5280** -- X.509 PKI Certificate and CRL Profile
+- **RFC 3647** -- Certificate Policy / CPS Framework
+- **NIST SP 800-57 Part 1 Rev 5** -- Key Management
 
 ### Cloud patterns
-- **AWS Well-Architected Framework** — Reliability Pillar
+- **AWS Well-Architected Framework** -- Reliability Pillar
 - **Google SRE Books** (O'Reilly, 2016)
 - **Azure Well-Architected Framework**
 
@@ -178,7 +180,7 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 
 ---
 
-## 7. test — TDD & Testing Best Practices
+## 7. test -- TDD & Testing Best Practices
 
 **Standards:** xUnit Test Patterns, FIRST Principles, TDD by Example
 
@@ -193,11 +195,11 @@ AC (Access Control), IA (Identification/Authentication), SC (System/Communicatio
 | Chelimsky, D. et al. *The RSpec Book* (Pragmatic Bookshelf, 2010) | BDD with RSpec, Cucumber |
 
 ### Online references
-- **Practical Test Pyramid** — Ham Vocke (2018). <https://martinfowler.com/articles/practical-test-pyramid.html>
-- **Property-Based Testing** — Scott Wlaschin. <https://fsharpforfunandprofit.com/pbt/>
-- **Hypothesis** — Property-based testing for Python. <https://hypothesis.works/>
-- **Test Naming** — Martin Fowler (2020). <https://martinfowler.com/bliki/TestNaming.html>
-- **GivenWhenThen** — Martin Fowler (2013). <https://martinfowler.com/bliki/GivenWhenThen.html>
+- **Practical Test Pyramid** -- Ham Vocke (2018). <https://martinfowler.com/articles/practical-test-pyramid.html>
+- **Property-Based Testing** -- Scott Wlaschin. <https://fsharpforfunandprofit.com/pbt/>
+- **Hypothesis** -- Property-based testing for Python. <https://hypothesis.works/>
+- **Test Naming** -- Martin Fowler (2020). <https://martinfowler.com/bliki/TestNaming.html>
+- **GivenWhenThen** -- Martin Fowler (2013). <https://martinfowler.com/bliki/GivenWhenThen.html>
 
 ### Research
 | Paper | Venue | Year |
@@ -212,24 +214,24 @@ Testing anti-patterns derived from industry literature and practice.
 
 ---
 
-## 8. perf — Performance Optimization
+## 8. perf -- Performance Optimization
 
 **Standards:** Web Vitals, Lighthouse, MDN
 
 ### Primary standards
-- **Web Vitals (Google)** — <https://web.dev/articles/vitals>
-- **Lighthouse Performance Scoring** — <https://developer.chrome.com/docs/lighthouse/performance/>
-- **MDN Web Performance** — <https://developer.mozilla.org/en-US/docs/Web/Performance>
-- **HTTP Archive** — <https://httparchive.org/>
+- **Web Vitals (Google)** -- <https://web.dev/articles/vitals>
+- **Lighthouse Performance Scoring** -- <https://developer.chrome.com/docs/lighthouse/performance/>
+- **MDN Web Performance** -- <https://developer.mozilla.org/en-US/docs/Web/Performance>
+- **HTTP Archive** -- <https://httparchive.org/>
 
 ### Performance budget thresholds
 | Metric | Good | Poor |
 |--------|------|------|
-| LCP | ≤ 2.5s | > 4.0s |
-| FID → INP | ≤ 100ms → 200ms | > 300ms → 500ms |
-| CLS | ≤ 0.1 | > 0.25 |
-| TTFB | ≤ 800ms | > 1.8s |
-| TBT | ≤ 200ms | > 600ms |
+| LCP | <= 2.5s | > 4.0s |
+| FID -> INP | <= 100ms -> 200ms | > 300ms -> 500ms |
+| CLS | <= 0.1 | > 0.25 |
+| TTFB | <= 800ms | > 1.8s |
+| TBT | <= 200ms | > 600ms |
 
 ### Research
 | Paper | Source | Year |
@@ -247,14 +249,14 @@ Testing anti-patterns derived from industry literature and practice.
 
 ---
 
-## 9. prompt-design — Prompt Engineering
+## 9. prompt-design -- Prompt Engineering
 
 **Standards:** DAIR.AI Guide, OpenAI Guide, Anthropic Guide
 
 ### Primary guides
-- **DAIR.AI Prompt Engineering Guide** — <https://www.promptingguide.ai/>
-- **OpenAI Prompt Engineering Guide** — <https://platform.openai.com/docs/guides/prompt-engineering>
-- **Anthropic Prompt Engineering Guide** — <https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview>
+- **DAIR.AI Prompt Engineering Guide** -- <https://www.promptingguide.ai/>
+- **OpenAI Prompt Engineering Guide** -- <https://platform.openai.com/docs/guides/prompt-engineering>
+- **Anthropic Prompt Engineering Guide** -- <https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview>
 
 ### Research papers
 | Paper | Citation | Key Finding |
@@ -281,8 +283,8 @@ Testing anti-patterns derived from industry literature and practice.
 
 | Metric | Count |
 |--------|-------|
-| Total classes | 30 |
-| Total rules | 487 |
+| Total classes | 35 |
+| Total rules | 487+ |
 | Total checkable rules (selector/regex) | 130+ |
 | Total teaching-only rules | 350+ |
 | Total tests | 1,255+ |

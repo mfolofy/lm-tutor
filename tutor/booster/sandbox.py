@@ -108,36 +108,49 @@ class ScratchpadSandbox:
         # Enforce the disk quota *during* execution. The pre-run check only sees
         # the script source; without this a runaway that writes to its cwd blows
         # past MAX_DISK_BYTES unbounded — the exact "excessive output" case the
-        # limit is meant to bound. Poll the jail and kill the process if it
-        # exceeds the cap.
-        quota_hit = threading.Event()
+        # limit is meant to bound. Use a short-timeout communicate() loop so we
+        # can poll the jail between iterations. This avoids the Popen deadlock
+        # that would occur if a watcher thread started before communicate().
+        # FIX: Replaced watcher thread with a poll loop using small communicate
+        # timeouts, moving the quota check between segments to avoid deadlock.
+        quota_hit = False
+        deadline = time.monotonic() + self.MAX_DURATION_SECONDS
+        stdout_chunks: list[bytes] = []
+        stderr_chunks: list[bytes] = []
+        POLL_INTERVAL = 1.0
 
-        def _watch() -> None:
-            while proc.poll() is None:
-                if self._dir_size() > self.MAX_DISK_BYTES:
-                    quota_hit.set()
-                    proc.kill()
-                    return
-                time.sleep(0.25)
-
-        watcher = threading.Thread(target=_watch, daemon=True)
-        watcher.start()
-
-        try:
-            stdout, stderr = proc.communicate(timeout=self.MAX_DURATION_SECONDS)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                proc.kill()
                 proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
-            raise ScratchpadTimeout(
-                f"Scratchpad exceeded {self.MAX_DURATION_SECONDS}s limit"
-            )
-        finally:
-            watcher.join(timeout=1)
+                raise ScratchpadTimeout(
+                    f"Scratchpad exceeded {self.MAX_DURATION_SECONDS}s limit"
+                )
+            try:
+                seg_out, seg_err = proc.communicate(
+                    timeout=min(POLL_INTERVAL, remaining)
+                )
+                stdout_chunks.append(seg_out or b"")
+                stderr_chunks.append(seg_err or b"")
+                if proc.returncode is not None:
+                    break
+            except subprocess.TimeoutExpired as _te:
+                # communicate timed out — process still running; poll disk quota.
+                if self._dir_size() > self.MAX_DISK_BYTES:
+                    quota_hit = True
+                    proc.kill()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    break
+                continue
 
-        if quota_hit.is_set():
+        stdout = b"".join(stdout_chunks)
+        stderr = b"".join(stderr_chunks)
+
+        if quota_hit:  # FIX: bool now, not threading.Event
             raise ScratchpadQuotaExceeded(
                 f"Scratchpad exceeded {self.MAX_DISK_BYTES} bytes during run"
             )
