@@ -4,6 +4,21 @@
 
 **Curriculum-driven training for any language model. No fine-tuning required.**
 
+## ▶ Run it in 30 seconds — no install
+
+From this folder, use `python -m tutor` (no `pip install` needed):
+
+```bash
+python -m tutor list                                          # 37 classes
+python -m tutor learn --model deepseek-chat --class brushes   # get a teaching prefix
+echo "<html><img src=a.png></html>" | python -m tutor eval    # grade output from stdin
+python -m tutor --help                                        # every command
+```
+
+Want the shorter `tutor ...` command? `pip install -e .` once (see [Quick Start](#quick-start)), then drop the `python -m`.
+
+---
+
 A single `tutor learn` injection reduces output violations by 55-93% on
 mid-to-frontier models — and does so through correct-pattern steering,
 not structured prompting (placebo-controlled at 3x the format effect,
