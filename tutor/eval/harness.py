@@ -128,7 +128,7 @@ _SEL_RE = re.compile(
     $""",
     re.VERBOSE,
 )
-_COND_ATTR = re.compile(r"\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*\"([^\"]*)\")?\s*\]")
+_COND_ATTR = re.compile(r"\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*[\"']([^\"']*)[\"'])?\s*\]")
 _COND_NOT_ATTR = re.compile(r":not\(\[\s*([\w-]+)\s*\]\)")
 
 
