@@ -1,0 +1,1 @@
+"""web-animation — Web animation APIs and libraries: scroll-driven, Framer Motion, GSAP, Lottie."""

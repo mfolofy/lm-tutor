@@ -1,0 +1,1 @@
+"""design-tokens — Design Tokens Community Group (DTCG) v2025.10 specification and workflows."""

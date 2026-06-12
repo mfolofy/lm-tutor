@@ -1,0 +1,1 @@
+"""build-tooling — Modern build tooling: Biome, Oxlint, Lightning CSS, Vite, Turbopack."""

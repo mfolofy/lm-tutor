@@ -1,0 +1,1 @@
+"""react-server-components — React 19 Server Components architecture and patterns."""

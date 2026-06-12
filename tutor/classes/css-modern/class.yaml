@@ -1,0 +1,323 @@
+# css-modern — Modern CSS platform features that replace JavaScript patterns.
+#
+# Source standards: CSS Anchor Positioning (W3C WD), CSS Nesting (CR), CSS
+# Containment Level 3 (CR), Selectors Level 4 (CR), Scroll-driven Animations
+# (WD), CSS Text Level 4 (WD), CSS Grid Level 2 (CR), CSS Cascading Level 5
+# (CR). See SOURCES.md for per-rule citations. Every rule is self-contained:
+# it carries teaching examples AND, where detectable, a deterministic check
+# (check_selector / check_regex) that the Layer 1 harness runs. No drift
+# between teaching and testing.
+#
+# Selector dialect (Layer 1, stdlib): tag, tag[attr], tag[attr="v"],
+# tag:not([attr]), tag:empty. A match = a VIOLATION.
+# Regex dialect: Python re.search (multiline). A match = a VIOLATION.
+#
+# Coverage honesty:
+#   ~12 rules (55%) have deterministic checks — detectable patterns like
+#   !important, missing loading=lazy, :focus without :focus-visible, 100vh,
+#   hex colors, div-modal patterns, and old-style breakpoints.
+#   ~10 rules (45%) are teaching-only — cascade layers, nesting, :has(),
+#   logical properties, subgrid, scroll-driven animations, clamp(), and
+#   container queries require semantic judgement beyond selector/regex scope.
+#
+# Injected size: ~220 tokens for 22 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: css-modern
+  title: "Modern CSS — Platform Features That Replace JavaScript"
+  version: 1.0.0
+  sources:
+    - "CSS Anchor Positioning (W3C WD 2025-10-07)"
+    - "CSS Nesting Module (CR)"
+    - "CSS Containment Level 3 (CR)"
+    - "Selectors Level 4 (CR)"
+    - "Scroll-driven Animations (WD)"
+    - "CSS Text Level 4 (WD)"
+    - "CSS Grid Level 2 (CR)"
+    - "CSS Cascading Level 5 (CR)"
+    - "Interop 2026"
+  prerequisites: []
+  target_violations:
+    - "js-tooltip"
+    - "no-lazy-loading"
+    - "focus-not-focus-visible"
+    - "important-cascade-war"
+    - "div-modal"
+    - "100vh-viewport-bug"
+    - "hex-over-oklch"
+    - "no-accent-color"
+    - "no-inert"
+    - "no-fetchpriority-lcp"
+    - "px-font-size"
+    - "long-headline-no-balance"
+    - "popover-js-reimpl"
+    - "physical-not-logical"
+    - "no-color-scheme"
+    - "no-starting-style"
+    - "media-over-container"
+    - "flat-selectors-no-nesting"
+    - "no-cascade-layer"
+    - "js-has-workaround"
+    - "no-subgrid"
+    - "js-scroll-animation"
+  estimated_cost_tokens: 260
+  rule_count: 22
+
+rules:
+
+  # ── CSS REPLACES JAVASCRIPT (6 rules, 5 checkable) ─────────────────────
+
+  - id: js-tooltip
+    severity: fundamental
+    rule: "Use CSS Anchor Positioning for tooltips, popovers, and dropdown menus. The anchor() function in inset/top/left properties positions elements relative to an anchor element. No JavaScript positioning library needed."
+    check_selector: "div[data-tooltip], div[class*='tooltip']"
+    check_regex: '(?i)(popper|tippy|floating-ui|tooltip\.js|bootstrap.*tooltip)'
+    framework_html: |
+      <!-- FAIL: JS-positioned tooltip -->
+      <button data-tooltip="Help">?</button>
+      <div class="tooltip" style="position:absolute;top:...">Help text</div>
+      <!-- PASS: CSS anchor positioning -->
+      <button id="help-btn" anchor="help-tip">?</button>
+      <div id="help-tip" style="position:absolute;top:anchor(--help-btn bottom)">Help text</div>
+    framework_react: |
+      // FAIL: import Tippy from '@tippyjs/react'
+      //        <Tippy content="Help"><button>?</button></Tippy>
+      // PASS: <button id="help-btn">?</button>
+      //        <div style={{position:'absolute', top:'anchor(--help-btn bottom)'}}>Help</div>
+
+  - id: no-lazy-loading
+    severity: fundamental
+    rule: "Use loading=\"lazy\" on <img> and <iframe> elements that are below the fold. The browser natively defers loading — no Intersection Observer needed for lazy loading."
+    framework_html: |
+      <!-- FAIL: <img src="hero.jpg"> (above fold OK, but below fold wastes bandwidth) -->
+      <!-- FAIL: <img src="footer-logo.png"> (below fold, no lazy loading) -->
+      <!-- PASS: <img src="footer-logo.png" loading="lazy"> -->
+      <!-- PASS: <img src="hero.jpg" fetchpriority="high"> (above fold, eager is correct) -->
+
+  - id: focus-not-focus-visible
+    severity: fundamental
+    rule: "Use :focus-visible instead of :focus for focus ring styles. :focus fires on mouse clicks (ugly rings on buttons). :focus-visible only fires on keyboard navigation. Eliminates the need for JS focus-ring libraries or :focus + :not(:active) hacks."
+    framework_html: |
+      /* FAIL */ button:focus { outline: 2px solid blue; }
+      /* PASS */ button:focus-visible { outline: 2px solid blue; }
+      /* FAIL */ *:focus { box-shadow: 0 0 0 3px var(--focus-ring); }
+      /* PASS */ *:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); }
+
+  - id: important-cascade-war
+    severity: fundamental
+    rule: "Use @layer for cascade control instead of !important. !important creates specificity wars that make CSS unmaintainable. @layer lets you define precedence explicitly: base < components < utilities. A stylesheet with more than 2 !important rules is a cascade failure."
+    framework_html: |
+      /* FAIL: specificity war */
+      .btn { background: blue !important; }
+      .card .btn { background: red !important; }
+      /* PASS: cascade layers */
+      @layer base, components, utilities;
+      @layer components { .btn { background: blue; } }
+      @layer utilities { .bg-red { background: red; } }
+
+  - id: div-modal
+    severity: fundamental
+    rule: "Use the <dialog> element with showModal() for modals. <dialog> provides: native backdrop, ESC to close, focus trap, top-layer rendering (no z-index wars), and aria-modal automatically. Never build modals with <div role=\"dialog\">."
+    framework_html: |
+      <!-- FAIL: <div class="modal" role="dialog" style="position:fixed;z-index:9999"> -->
+      <!-- PASS: <dialog id="confirm-modal"><form method="dialog">...</form></dialog> -->
+    framework_react: |
+      // FAIL: <div className="modal" role="dialog" onClick={closeOnBackdrop}>
+      // PASS: <dialog ref={modalRef}><form method="dialog">...</form></dialog>
+
+  - id: 100vh-viewport-bug
+    severity: fundamental
+    rule: "Use dvh (dynamic viewport height) or svh (small viewport height) instead of 100vh for full-height layouts. 100vh does not account for mobile browser chrome (address bar), causing content to overflow behind it. dvh adapts as browser chrome appears/disappears. Use lvh only when you want the largest possible viewport."
+    framework_html: |
+      /* FAIL */ .hero { height: 100vh; }
+      /* PASS */ .hero { height: 100dvh; }
+      /* FAIL */ .sidebar { min-height: 100vh; }
+      /* PASS */ .sidebar { min-height: 100svh; }
+      /* PASS */ .fullscreen-overlay { height: 100lvh; } (largest viewport, overlay use case)
+
+  # ── MODERN COLOR (3 rules, 2 checkable) ────────────────────────────────
+
+  - id: hex-over-oklch
+    severity: advanced
+    rule: "Use oklch() for color definitions instead of hex codes. oklch is perceptually uniform (equal numeric changes look like equal visual changes), supports P3 wide gamut, and enables systematic color scales via lightness/chroma/hue manipulation. Hex is sRGB-only and non-uniform."
+    framework_html: |
+      /* FAIL */ --primary: #3b82f6;
+      /* FAIL */ --danger: #ef4444;
+      /* PASS */ --primary: oklch(0.62 0.22 265);   /* perceptually uniform blue */
+      /* PASS */ --danger: oklch(0.55 0.24 25);     /* perceptually uniform red */
+      /* PASS (brand colors with legacy requirements) */ --brand: #ff6600;
+      /* Note: hex is still acceptable for brand identity where exact values matter */
+
+  - id: no-accent-color
+    severity: fundamental
+    rule: "Use accent-color to theme native form controls (checkboxes, radio buttons, range sliders, progress bars). One CSS property replaces custom-styled controls that break accessibility, keyboard navigation, and platform consistency. Set on :root for global theming or per-component."
+    framework_html: |
+      /* FAIL: unstyled native controls or custom-styled replacements */
+      input[type="checkbox"] { /* no accent-color set anywhere */ }
+      /* PASS */
+      :root { accent-color: oklch(0.62 0.22 265); }
+      /* PASS: per-component override */
+      .danger-zone { accent-color: oklch(0.55 0.24 25); }
+
+  - id: no-color-scheme
+    severity: fundamental
+    rule: "Set color-scheme on :root to declare supported color schemes (light dark). This tells the browser to render native form controls, scrollbars, and system colors in the correct scheme. Without it, dark mode pages get light form controls."
+    check_negate: true
+    framework_html: |
+      /* FAIL: dark mode page with no color-scheme declaration */
+      :root { --bg: #000; --text: #fff; }
+      /* PASS */
+      :root { color-scheme: light dark; --bg: light-dark(#fff, #000); --text: light-dark(#000, #fff); }
+
+  # ── PLATFORM APIS IN CSS (3 rules, 2 checkable) ────────────────────────
+
+  - id: no-inert
+    severity: intermediate
+    rule: "Use the inert attribute to remove an element and its subtree from the accessibility tree, focus order, and pointer events. inert is a single HTML attribute — no aria-hidden + tabindex=-1 + pointer-events:none combos. Use on off-screen panels, closed sidebars, and inactive modal backgrounds."
+    framework_html: |
+      <!-- FAIL: three properties to remove from interaction -->
+      <div aria-hidden="true" tabindex="-1" style="pointer-events:none">
+      <!-- PASS: one attribute -->
+      <div inert>
+
+  - id: popover-js-reimpl
+    severity: fundamental
+    rule: "Use the Popover API ([popover] attribute) for popup UI. Declarative show/hide, light-dismiss (click outside closes), no z-index stacking issues, top-layer rendering. One HTML attribute replaces JS popover libraries."
+    framework_html: |
+      <!-- FAIL: JS-powered popover -->
+      <div class="popover" style="display:none;position:absolute;z-index:1000">
+      <!-- PASS: Popover API -->
+      <div popover id="help-popover">Help content</div>
+      <button popovertarget="help-popover">?</button>
+
+  - id: long-headline-no-balance
+    severity: intermediate
+    rule: "Use text-wrap: balance on headlines and hero text to prevent orphans (single words on the last line). The browser distributes text evenly across lines. No JS line-breaking library needed. Use text-wrap: pretty on body text for widow prevention."
+    framework_html: |
+      /* FAIL: no text-wrap on a long headline */
+      h1 { font-size: 3rem; }
+      /* PASS */
+      h1 { font-size: 3rem; text-wrap: balance; max-width: 20ch; }
+      /* PASS */
+      p { text-wrap: pretty; }
+
+  # ── LAYOUT MODERNIZATION (5 rules, 2 checkable) ────────────────────────
+
+  - id: physical-not-logical
+    severity: intermediate
+    rule: "Use CSS logical properties (inline-size, block-size, margin-inline, padding-block, border-inline-start) instead of physical properties (width, height, margin-left, padding-top, border-left). Logical properties adapt to writing mode (ltr/rtl/vertical) automatically. One declaration works for all languages."
+    framework_html: |
+      /* FAIL: physical properties that break in RTL */
+      .card { margin-left: 1rem; padding-left: 1rem; border-left: 3px solid blue; }
+      /* PASS: logical properties — work in RTL without overrides */
+      .card { margin-inline-start: 1rem; padding-inline-start: 1rem; border-inline-start: 3px solid blue; }
+      /* FAIL */
+      .sidebar { width: 250px; max-width: 80vw; }
+      /* PASS */
+      .sidebar { inline-size: 250px; max-inline-size: 80vi; }
+
+  - id: media-over-container
+    severity: intermediate
+    rule: "Use @container queries for component-level responsive styling. @media queries respond to viewport size. @container queries respond to the component's own container size — a card in a sidebar (narrow) gets different styles than a card in the main content (wide) without media query breakpoints."
+    framework_html: |
+      /* FAIL: component that breaks in narrow containers */
+      @media (min-width: 768px) { .card { display: flex; } }
+      /* PASS: container query — card adapts to its container, not viewport */
+      .card-wrapper { container-type: inline-size; }
+      @container (min-width: 400px) { .card { display: flex; } }
+
+  - id: no-subgrid
+    severity: advanced
+    rule: "Use subgrid to align nested grid items to the parent grid. Without subgrid, nested grids create independent tracks that drift out of alignment. subgrid inherits the parent's column/row definitions, keeping nested cards, form fields, and list items perfectly aligned."
+    framework_html: |
+      /* FAIL: nested grid with independent columns — cards won't align */
+      .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+      .card { display: grid; grid-template-columns: 1fr 1fr; } /* independent */
+      /* PASS: subgrid inherits parent columns */
+      .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+      .card { display: grid; grid-template-columns: subgrid; grid-row: span 2; }
+
+  - id: px-font-size
+    severity: fundamental
+    rule: "Use relative units (rem, clamp(), or container query units) for font-size. Pixel font-sizes override user preferences and break accessibility — users who set a larger default font size in their browser see no change. rem respects the user's root font size. Use clamp() for fluid scaling without breakpoints."
+    framework_html: |
+      /* FAIL */ body { font-size: 16px; }
+      /* FAIL */ h1 { font-size: 48px; }
+      /* PASS */ body { font-size: 1rem; }  /* respects user preference */
+      /* PASS */ h1 { font-size: clamp(2rem, 5cqi, 3rem); }  /* fluid, container-relative */
+
+  - id: no-fetchpriority-lcp
+    severity: intermediate
+    rule: "Use fetchpriority=\"high\" on the LCP (Largest Contentful Paint) image. This tells the browser to prioritize this resource over other images. Combine with loading=\"eager\" (the default, made explicit). Without fetchpriority, the browser may load below-fold images before the hero image."
+    framework_html: |
+      <!-- FAIL: hero image with default priority -->
+      <img src="hero.webp" alt="Hero">
+      <!-- PASS: LCP image gets high priority -->
+      <img src="hero.webp" alt="Hero" fetchpriority="high" loading="eager" decoding="sync">
+
+  # ── ANIMATION & MOTION (2 rules, 1 checkable) ──────────────────────────
+
+  - id: js-scroll-animation
+    severity: intermediate
+    rule: "Use CSS scroll-driven animations (animation-timeline: scroll() / view()) for scroll-linked effects instead of JavaScript scroll event listeners. Scroll-driven animations run on the compositor thread — no main-thread jank, no requestAnimationFrame, no IntersectionObserver for scroll-triggered reveals. Use @starting-style for entry animations."
+    check_regex: '(?i)(scroll\s+event\s+listener|window\.addEventListener\s*\(\s*[\"'']scroll[\"'']|IntersectionObserver.*animate|AOS\.init|ScrollReveal|sal\.js|wow\.js)'
+    framework_html: |
+      /* FAIL: JS scroll listener for animation */
+      window.addEventListener('scroll', () => { element.style.opacity = scrollY / 1000; });
+      /* PASS: CSS scroll-driven animation — compositor thread, no jank */
+      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+      .reveal { animation: fade-in linear; animation-timeline: view(); }
+
+  - id: no-starting-style
+    severity: intermediate
+    rule: "Use @starting-style for element entry animations. @starting-style defines the initial state of an element when it's first rendered or becomes visible (e.g., when a popover opens or a dialog shows). No JS needed to set initial opacity/transform before triggering a transition."
+    framework_html: |
+      /* FAIL: JS toggles a class to trigger entry animation */
+      popover.addEventListener('toggle', () => popover.classList.add('visible'));
+      /* PASS: @starting-style handles entry state */
+      [popover] { opacity: 1; transition: opacity 0.3s; }
+      @starting-style { [popover] { opacity: 0; } }
+
+  # ── STRUCTURAL CSS (3 rules, all teaching-only) ────────────────────────
+
+  - id: flat-selectors-no-nesting
+    severity: intermediate
+    rule: "Use native CSS Nesting to organize styles. Nest related selectors inside their parent using the & syntax: .card { & .title { ... } & .body { ... } }. This is CSS, not a preprocessor — no build step, no Sass/Less required. Browsers parse nested CSS natively."
+    framework_html: |
+      /* FAIL: flat, repetitive selectors */
+      .card { padding: 1rem; }
+      .card .title { font-weight: bold; }
+      .card .body { color: #333; }
+      .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+      /* PASS: native CSS nesting */
+      .card { padding: 1rem;
+        & .title { font-weight: bold; }
+        & .body { color: oklch(0.35 0 0); }
+        &:hover { box-shadow: 0 2px 8px oklch(0 0 0 / 0.1); }
+      }
+
+  - id: no-cascade-layer
+    severity: advanced
+    rule: "Use @layer to organize stylesheets by priority: reset → base → components → utilities. @layer provides explicit cascade ordering without specificity hacks. Third-party CSS goes in its own layer so it never overrides your utilities. Layers replace the need for BEM, scoped CSS, or CSS-in-JS for specificity management."
+    framework_html: |
+      /* FAIL: specificity-dependent ordering */
+      .btn { ... }
+      .btn-primary { ... }
+      .btn-primary.large { ... }  /* deeper specificity to override */
+      /* PASS: layers provide ordering */
+      @layer reset, base, components, utilities;
+      @layer utilities { .bg-blue { background: blue; } }  /* always wins */
+      /* Third-party: @layer thirdparty { @import 'tailwind.css'; } */
+
+  - id: js-has-workaround
+    severity: intermediate
+    rule: "Use the :has() selector for parent/ancestor-aware styling. :has() is the 'parent selector' — style a parent based on its children, or a previous sibling based on the next. Replaces JS class toggling for parent-state patterns (e.g., .card:has(img) to style cards differently when they contain images)."
+    framework_html: |
+      /* FAIL: JS toggles a parent class based on child state */
+      if (card.querySelector('img')) { card.classList.add('has-image'); }
+      /* PASS: :has() selector — no JS */
+      .card:has(img) { grid-column: span 2; }
+      .card:has(.sold-out) { opacity: 0.6; }
+      .form-field:has(input:invalid) { border-color: oklch(0.55 0.24 25); }
+      .form-field:has(input:focus-visible) { border-color: oklch(0.62 0.22 265); }

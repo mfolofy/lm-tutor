@@ -1,0 +1,43 @@
+# svelte-5 — Svelte 5 runes for fine-grained reactivity.
+class:
+  id: svelte-5
+  title: "Svelte 5 Runes — $state, $derived, $effect Fine-Grained Reactivity"
+  version: 1.0.0
+  sources: ["Svelte 5 Documentation (svelte.dev)"]
+  prerequisites: []
+  target_violations:
+    - "no-runes-legacy-store"
+    - "no-effect-cleanup"
+    - "no-let-reactivity"
+  estimated_cost_tokens: 70
+  rule_count: 3
+
+rules:
+  - id: no-runes-legacy-store
+    severity: fundamental
+    rule: "Use $state() instead of Svelte 4 stores (writable, readable, derived). $state creates reactive state directly in components and .svelte.js files — no store contract, no subscribe/unsubscribe, no $store auto-subscription syntax. Runes are compiled to direct DOM updates — stores are a runtime subscription layer."
+    framework_svelte: |
+      <!-- FAIL: Svelte 4 store -->
+      <script>import { writable } from 'svelte/store'; const count = writable(0);</script>
+      <button on:click={() => $count++}>{$count}</button>
+      <!-- PASS: Svelte 5 $state rune -->
+      <script>let count = $state(0);</script>
+      <button onclick={() => count++}>{count}</button>
+
+  - id: no-effect-cleanup
+    severity: fundamental
+    rule: "$effect() runs when dependencies change. Return a cleanup function for teardown. $effect(() => { const timer = setInterval(...); return () => clearInterval(timer); }). Without cleanup, effects leak: timers keep firing, event listeners accumulate, subscriptions duplicate. The cleanup runs before the next effect invocation or on component destroy."
+    framework_svelte: |
+      <!-- FAIL: effect with no cleanup -->
+      <script>$effect(() => { setInterval(() => update(), 1000); });</script>
+      <!-- PASS: effect with cleanup -->
+      <script>$effect(() => { const timer = setInterval(() => update(), 1000); return () => clearInterval(timer); });</script>
+
+  - id: no-let-reactivity
+    severity: fundamental
+    rule: "In Svelte 5, let is NOT reactive in .svelte.js files. Only $state() creates reactive variables. In .svelte files, top-level let is auto-converted to $state (backward compatibility). But in .svelte.js modules, let x = 0 is a plain JS variable — it won't trigger re-renders. Always use $state() for reactivity."
+    framework_svelte: |
+      <!-- FAIL: let without $state in .svelte.js — NOT reactive -->
+      <script module>let count = 0; function increment() { count++; }</script>
+      <!-- PASS: $state in .svelte.js — reactive -->
+      <script module>let count = $state(0); function increment() { count++; }</script>

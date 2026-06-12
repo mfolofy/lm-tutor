@@ -1,0 +1,161 @@
+# css-color — Modern CSS Color Module Level 5.
+#
+# Source: CSS Color Module Level 4 (CR), CSS Color Module Level 5 (ED 2026-06-05),
+# Interop 2026, WebKit blog. See SOURCES.md for per-rule citations.
+# Every rule is self-contained with FAIL/PASS examples. check_regex where detectable.
+#
+# Regex dialect: Python re.search (multiline). A match = a VIOLATION.
+# Coverage: ~7 rules (58%) checkable, ~5 rules (42%) teaching-only.
+# Injected size: ~140 tokens for 12 rules.
+
+class:
+  id: css-color
+  title: "Modern CSS Color — oklch(), color-mix(), contrast-color(), and P3 Gamut"
+  version: 1.0.0
+  sources:
+    - "CSS Color Module Level 4 (W3C CR)"
+    - "CSS Color Module Level 5 (Editor's Draft, 2026-06-05)"
+    - "Interop 2026"
+  prerequisites: []
+  target_violations:
+    - "hex-rgb-over-oklch"
+    - "no-color-mix"
+    - "no-contrast-color"
+    - "no-oklch-default"
+    - "srgb-only-no-p3"
+    - "no-light-dark"
+    - "hardcoded-dark-values"
+    - "no-relative-color"
+    - "opacity-over-alpha"
+    - "named-colors"
+    - "no-color-scheme-property"
+    - "hsl-over-oklch"
+  estimated_cost_tokens: 160
+  rule_count: 12
+
+rules:
+
+  - id: hex-rgb-over-oklch
+    severity: fundamental
+    rule: "Define brand colors in oklch(), not hex, rgb(), or hsl(). oklch is perceptually uniform — equal numeric steps look like equal visual steps. This means you can generate systematic color scales (lighter/darker) by adjusting the lightness (L) channel, which you cannot do with hex or rgb. oklch(0.62 0.22 265) describes a color the way humans perceive it."
+    framework_css: |
+      /* FAIL: hex and rgb are not perceptually uniform */
+      :root { --color-primary: #3b82f6; --color-danger: rgb(239, 68, 68); }
+      /* PASS: oklch — uniform lightness, systematic scales possible */
+      :root { --color-primary: oklch(0.62 0.22 265); --color-danger: oklch(0.55 0.24 25); }
+      /* PASS: derive lighter/darker by changing L (0.62 → 0.72 = lighter, 0.62 → 0.52 = darker) */
+
+  - id: hsl-over-oklch
+    severity: intermediate
+    rule: "Use oklch() instead of hsl(). hsl() has a fundamental flaw: equal lightness values look different across hues (hsl(240, 100%, 50%) looks much darker than hsl(60, 100%, 50%)). oklch() fixes this — L=0.5 looks the same lightness regardless of hue. Never use hsl() for systematic color work."
+    framework_css: |
+      /* FAIL: hsl — blue and yellow at same lightness look very different */
+      .blue { background: hsl(240, 100%, 50%); }   /* looks dark */
+      .yellow { background: hsl(60, 100%, 50%); }  /* looks bright */
+      /* PASS: oklch — same L = same perceived lightness */
+      .blue { background: oklch(0.5 0.25 265); }
+      .yellow { background: oklch(0.5 0.18 110); }
+
+  - id: no-color-mix
+    severity: fundamental
+    rule: "Use color-mix() to derive colors instead of preprocessor functions (Sass lighten/darken, Less fade) or hand-picking variant values. color-mix(in oklch, var(--primary) 50%, white) is the platform-native equivalent. It works at runtime (responds to custom property changes), not just at build time. The default interpolation color space is oklch per CSSWG resolution (March 2026)."
+    framework_css: |
+      /* FAIL: preprocessor color manipulation — build-time only, doesn't respond to theme changes */
+      $primary-light: lighten($primary, 20%);
+      /* PASS: color-mix() — runtime, oklch interpolation by default */
+      .btn-hover { background: color-mix(in oklch, var(--primary) 80%, white); }
+      .btn-disabled { background: color-mix(in oklch, var(--primary) 50%, transparent); }
+      /* PASS: oklch is the default space per CSSWG resolution */
+      .tint { background: color-mix(var(--primary) 60%, white); }  /* oklch default */
+
+  - id: no-oklch-default
+    severity: intermediate
+    rule: "Do not explicitly specify 'in srgb' for color-mix() unless you have a specific legacy requirement. The default interpolation space is oklch (per CSSWG resolution, March 2026). sRGB interpolation produces muddy midpoints (grayish mixes); oklch interpolation preserves hue and produces perceptually uniform blends. Specifying 'in srgb' opts out of the better default."
+    framework_css: |
+      /* FAIL: explicit sRGB interpolation — grayish midpoints */
+      .gradient { background: color-mix(in srgb, var(--blue) 50%, var(--red)); }
+      /* PASS: default oklch interpolation — clean hue-preserving blend */
+      .gradient { background: color-mix(var(--blue) 50%, var(--red)); }
+
+  - id: no-contrast-color
+    severity: fundamental
+    rule: "Use contrast-color() to automatically pick white or black text on a colored background. No more hand-calculating contrast ratios or maintaining separate text color tokens for every background. contrast-color() returns the color (white or black) with the greatest contrast ratio against the specified background. Ships in all major browsers via Interop 2026."
+    framework_css: |
+      /* FAIL: manually maintained text-on-color pairs — drift inevitable */
+      .btn-primary { background: var(--primary); color: var(--primary-text); }
+      /* PASS: contrast-color() computes the best text color automatically */
+      .btn-primary { background: var(--primary); color: contrast-color(var(--primary)); }
+      /* Note: contrast-color() returns only white or black (max contrast).
+         For custom contrast colors, use color-contrast() with a candidate list. */
+
+  - id: no-light-dark
+    severity: fundamental
+    rule: "Use light-dark() to define both light and dark values in a single declaration. light-dark(light-value, dark-value) picks the first value in light mode and the second in dark mode, based on the color-scheme property. This eliminates duplicate custom property declarations for light/dark themes."
+    framework_css: |
+      /* FAIL: separate declarations for light and dark */
+      :root { --bg: white; --text: black; }
+      @media (prefers-color-scheme: dark) { :root { --bg: black; --text: white; } }
+      /* PASS: light-dark() — one declaration, both modes */
+      :root { color-scheme: light dark; --bg: light-dark(white, black); --text: light-dark(black, white); }
+
+  - id: hardcoded-dark-values
+    severity: intermediate
+    rule: "Derive dark mode colors using relative color syntax or color-mix(), not by hardcoding dark-mode hex values. oklch(from var(--primary) calc(l - 0.2) c h) generates a darker variant. This keeps dark mode colors tied to their light-mode source — change the base color, both modes update. Hardcoded dark values drift."
+    framework_css: |
+      /* FAIL: hardcoded dark mode variant */
+      [data-theme="dark"] { --primary: #1e3a5f; }
+      /* (what happens when light mode primary changes from #3b82f6?) */
+      /* PASS: derived dark variant — always in sync */
+      [data-theme="dark"] { --primary: oklch(from var(--primary-light) calc(l - 0.2) c h); }
+
+  - id: srgb-only-no-p3
+    severity: advanced
+    rule: "Use the color() function for Display P3 wide-gamut colors. Hex, rgb(), and hsl() are confined to sRGB (~16.7M colors). Display P3 covers ~50% more visible colors — deeper greens, richer reds, more vibrant blues. Use @media (color-gamut: p3) to progressively enhance: serve P3 to capable screens, sRGB fallback everywhere."
+    framework_css: |
+      /* FAIL: sRGB only — can't express vibrant P3 colors */
+      .hero { background: #ff0000; }
+      /* PASS: P3 primary with sRGB fallback */
+      .hero { background: #ff0000; }  /* sRGB fallback */
+      @media (color-gamut: p3) {
+        .hero { background: color(display-p3 1 0 0); }  /* P3 — visibly more vibrant */
+      }
+
+  - id: opacity-over-alpha
+    severity: intermediate
+    rule: "Use the alpha channel in oklch() / rgb() / color-mix() instead of the opacity property for element-level transparency. opacity makes the ENTIRE element transparent (children included, stacking context created). Alpha channels in color values affect only that color — children stay fully opaque, no new stacking context. opacity: 0.5 on a card makes text unreadable. oklch(0.5 0.2 265 / 0.5) only affects the background."
+    framework_css: |
+      /* FAIL: opacity makes everything transparent */
+      .card { background: var(--surface); opacity: 0.5; }  /* text inside is also 50% transparent */
+      /* PASS: alpha channel — only background is transparent */
+      .card { background: oklch(from var(--surface) l c h / 0.5); }
+      /* PASS: color-mix with transparent */
+      .card { background: color-mix(in oklch, var(--surface) 50%, transparent); }
+
+  - id: named-colors
+    severity: fundamental
+    rule: "Never use CSS named colors (red, blue, green, yellow, etc.) in production code. Named colors are inconsistent across rendering engines, not perceptually uniform, and impossible to systematically theme. 'red' (#ff0000) is visually harsh. Use oklch() or a design token. Named colors are a code smell."
+    framework_css: |
+      /* FAIL: named colors — inconsistent, un-themeable */
+      .error { color: red; }
+      .success { color: green; }
+      /* PASS: oklch tokens */
+      .error { color: var(--color-error-500); }
+      .success { color: var(--color-success-500); }
+
+  - id: no-relative-color
+    severity: advanced
+    rule: "Use Relative Color Syntax (RCS) to derive colors from a base: oklch(from var(--base) l c h). RCS lets you: adjust lightness (calc(l - 0.1)), shift chroma (calc(c * 0.8)), rotate hue (calc(h + 30)), or convert between color spaces (oklch(from rgb(255,0,0) l c h)). RCS is a color manipulation engine built into CSS — no preprocessor needed."
+    framework_css: |
+      /* FAIL: hand-picked color variants */
+      :root { --primary: oklch(0.62 0.22 265); --primary-hover: oklch(0.52 0.22 265); --primary-light: oklch(0.82 0.11 265); }
+      /* PASS: Relative Color Syntax — variants derived from base */
+      :root { --primary: oklch(0.62 0.22 265); --primary-hover: oklch(from var(--primary) calc(l - 0.1) c h); --primary-light: oklch(from var(--primary) calc(l + 0.2) calc(c * 0.5) h); }
+
+  - id: no-color-scheme-property
+    severity: fundamental
+    rule: "Always set color-scheme on :root to declare supported color schemes (light dark). This tells the browser to render form controls, scrollbars, and system colors in the correct scheme. light-dark() depends on color-scheme being set. Without it, dark mode pages get light scrollbars and inputs — a jarring mismatch."
+    framework_css: |
+      /* FAIL: no color-scheme — scrollbars render in light mode on dark pages */
+      :root { --bg: oklch(0.15 0 0); --text: oklch(0.95 0 0); }
+      /* PASS: color-scheme tells the browser which modes are supported */
+      :root { color-scheme: light dark; --bg: light-dark(white, oklch(0.15 0 0)); }

@@ -9,7 +9,7 @@
 From this folder, use `python -m tutor` (no `pip install` needed):
 
 ```bash
-python -m tutor list                                          # 37 classes
+python -m tutor list                                          # 55 classes
 python -m tutor learn --model deepseek-chat --class brushes   # get a teaching prefix
 echo "<html><img src=a.png></html>" | python -m tutor eval    # grade output from stdin
 python -m tutor --help                                        # every command
@@ -46,11 +46,12 @@ Pro      DeepSeek V4 Pro (1.6T/49B MoE)      14.0   1.0        93%
   the same rules it taught. No drift between teaching and testing.
 - **Tracks progress per model** — eval history and per-class pass rates inform
   what to study next. Targeted remediation beats blanket retraining.
-- **Covers 35 domains** — accessibility, security, compliance, code review, API
+- **Covers 35+ domains** — accessibility, security, compliance, code review, API
   design, Python/JavaScript/TypeScript style, architecture, prompt design,
-  testing, performance, DevOps, and 18 professional credentials (attorney
-  through veterinarian). Each domain is a standalone class with cited standards
-  and FAIL/PASS examples.
+  testing, performance, DevOps, modern CSS, React Server Components, View
+  Transitions, design tokens, web animation, Core Web Vitals, Web Components,
+  build tooling, Three.js, 3D graphics, responsive design, typography, Astro,
+  Svelte 5, and 18 professional credentials (attorney through veterinarian).
 - **Adapts to the model** — small models get fundamentals + scaffolded tools.
   Capable models get the full curriculum. Track assignment is automatic.
 
@@ -236,7 +237,7 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 37 classes, 602 rules, 1733+ tests. Benchmarked across 5 model tiers
+**Beta.** 55 classes, ~800 rules, 1,800+ tests. Benchmarked across 5 model tiers
 (Gemma 3 4B through DeepSeek V4 Pro) with 5-run placebo-controlled protocol.
 Working in production at Ghost Stack.
 

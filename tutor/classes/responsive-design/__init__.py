@@ -1,0 +1,1 @@
+"""responsive-design — Modern responsive design: container queries, intrinsic design, fluid typography."""

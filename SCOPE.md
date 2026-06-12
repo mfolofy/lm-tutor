@@ -30,7 +30,7 @@
 | Curriculum tracks: remedial (fundamentals + Booster) / standard / honors | No external runtime dependencies |
 | Model registry: curated `models.json` with capability profiles | No modules without documented research sources in `SOURCES.md` |
 | Classes: YAML checklist format with rules, FAIL/PASS examples, check selectors/regex | No pricing, GTM, or sales materials |
-| 37 classes across core tracks (brushes, code-review, security, etc.), best-practices tracks (python, js, ts, api-design, devops), and credential tracks (md, jd, cpa, rn, psychiatry, anthropology, etc.) | No community infrastructure before v1 ships |
+| 55 classes across core tracks, best-practices tracks, credential tracks, and web-design & frontend tracks | No community infrastructure before v1 ships |
 | Eval harness: 3-layer hybrid (rules → LLM judge → adversarial verification). Layer 1 (selector/regex) ships in Phase 0. Layers 2-3 in Phase 1. | |
 | 8B Booster Protocol: remedial track only, multi-factor activation threshold, subprocess sandbox with documented limitations | |
 | Benchmark infrastructure (`tutor/benchmark.py`) — runs real model evaluations against class rules. Published results in README. | |
@@ -100,11 +100,13 @@ Each class is a directory with:
 - **`SOURCES.md`** — cited external standards (WCAG, OWASP, NIST, IEEE, etc.). Every rule must trace to a standard.
 - **`grader.py`** (optional) — custom grading logic for credential classes that need domain-specific scoring beyond Layer 1.
 
-**37 classes** across three families:
+**55 classes** across four families:
 
 **Core (10):** brushes, code-review, audit, security, architect, defense, perf, test, prompt-design, api-design
 
 **Best-Practices (4):** python-best-practices, javascript-best-practices, typescript-best-practices, devops
+
+**Web Design & Frontend (18):** css-modern, react-server-components, view-transitions, design-tokens, css-color, web-animation, frontend-architecture, web-vitals, web-components, build-tooling, three-js, html-apis, responsive-design, web-typography, astro, webgpu, webxr, svelte-5
 
 **Credential (23):** credential-jd (legal), credential-md (medical), credential-cpa (accounting), credential-pe (engineering), credential-lcsw (social work), credential-journalist, credential-finra (finance), credential-pharmacist, credential-ra (regulatory), credential-rn (nursing), credential-pilot, credential-realtor, credential-pm (project management), credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet, credential-hr, credential-psychiatry, credential-anthropology
 
@@ -129,7 +131,7 @@ Activated by multi-factor threshold: `f(context_window, param_count, tool_reliab
 
 | Layer | What it checks | Method | Phase |
 |-------|---------------|--------|-------|
-| 1. Rules Engine | Codifiable rules (WCAG, OWASP patterns, syntax) | Deterministic selectors, regex, AST checks. ~221 checkable rules across 37 classes. Fully testable. | Phase 0 |
+| 1. Rules Engine | Codifiable rules (WCAG, OWASP patterns, syntax) | Deterministic selectors, regex, AST checks. ~240 checkable rules across 55 classes. Fully testable. | Phase 0 |
 | 2. LLM Judge | Ambiguous criteria (semantic correctness, visual affordance) | Separate evaluator model (different family from student). Confidence-scored (>= 0.80 accepted, 0.60-0.80 weighted, < 0.60 human review). | Phase 1 |
 | 3. Adversarial Verification | Challenges the judge's own verdict | Same evaluator model, different prompt ("find what the judge missed"). Catches self-contradiction and position bias. | Phase 1 |
 
@@ -161,7 +163,7 @@ lm-tutor/
 │   │   ├── overrides.json        # Manual overrides (win over auto-synced data)
 │   │   └── sync.py               # Scrape OpenRouter/LMSys for updates (Phase 1)
 │   │
-    │   ├── classes/                  # 37 classes — see MANIFEST.json for full listing
+    │   ├── classes/                  # 55 classes — see MANIFEST.json for full listing
 
 │   ├── booster/                  # 8B Booster Protocol
 │   │   ├── sandbox.py            # ScratchpadSandbox + SandboxManager
@@ -366,7 +368,7 @@ in each class's `SOURCES.md`.
 - SDK scaffold, CLI entry points (12 commands)
 - Model registry: static `models.json` with capability profiles
 - `tutor/eval/worker_pool.py` — multiprocessing process pool
-- `tutor/eval/harness.py` — Layer 1 rules engine (~602 rules, 221 checkable)
+- `tutor/eval/harness.py` — Layer 1 rules engine (~800 rules, 240 checkable)
 - `tutor/booster/sandbox.py` — ScratchpadSandbox + SandboxManager
 - `tutor/_class_venv.py` — per-class virtual environment manager
 - `tutor/mcp/` — server, logging (stderr NDJSON), health (:9090), metrics (in-memory)
@@ -380,11 +382,13 @@ in each class's `SOURCES.md`.
 
 ### Phase 1 — Classes ✅ COMPLETE
 
-**37 classes built across three families:**
+**55 classes built across four families (37 original + 18 web design):**
 
 **Core (10):** brushes, code-review, audit, security, architect, defense, perf, test, prompt-design, api-design
 
-**Best-Practices (5):** python-best-practices, javascript-best-practices, typescript-best-practices, devops
+**Best-Practices (4):** python-best-practices, javascript-best-practices, typescript-best-practices, devops
+
+**Web Design & Frontend (18):** css-modern, react-server-components, view-transitions, design-tokens, css-color, web-animation, frontend-architecture, web-vitals, web-components, build-tooling, three-js, html-apis, responsive-design, web-typography, astro, webgpu, webxr, svelte-5
 
 **Credential (23):** credential-jd, credential-md, credential-cpa, credential-pe, credential-lcsw, credential-journalist, credential-finra, credential-pharmacist, credential-ra, credential-rn, credential-pilot, credential-realtor, credential-pm, credential-dentist, credential-paramedic, credential-adjuster, credential-electrician, credential-judge, credential-socialworker, credential-vet, credential-hr, credential-psychiatry, credential-anthropology
 
@@ -461,8 +465,8 @@ These decisions cannot be re-litigated without Miguel:
 
 ## Last Reviewed
 
-- **Date:** 2026-06-10
-- **Reviewer:** Mike (Claude Code / deepseek-v4-flash)
+- **Date:** 2026-06-11
+- **Reviewer:** Mike (Claude Code / claude-sonnet-4-6)
 - **Approved by:** Miguel
 
 ## Building Outward — Progress
@@ -471,3 +475,4 @@ These decisions cannot be re-litigated without Miguel:
 - **2026-06-09:** `tutor class --new` scaffold shipped. Class audit + hardening complete (all 34 classes verified at the time; expanded to 37 on 2026-06-11).
 - **2026-06-10:** Phase 1 complete — 37 classes, 602 rules, 1,733+ tests. Peer benchmarks published — core thesis validated. SCOPE updated with all 37 classes + credential tracks + Fable 5 validation.
 - **2026-06-11:** Phase 3 complete — Booster wired into remedial track (`tutor learn --auto`, `tutor fix --booster`). credential-psychiatry + credential-anthropology shipped (Mai dependency). 37 classes, 1,733+ tests.
+- **2026-06-11:** Web Design & Frontend curriculum shipped — 18 new classes (199 rules, 67 tests) across 4 tiers. Deep-research-validated (109 agents, 27 sources, 12 confirmed claims). Covers: modern CSS platform features, React 19 Server Components, View Transitions, Design Tokens (DTCG v2025.10), CSS Color Level 5, scroll-driven animations, frontend architecture patterns, Core Web Vitals, Web Components, Rust-era build tooling, Three.js, modern HTML APIs, responsive design, web typography, Astro islands, WebGPU, WebXR, Svelte 5 runes. Total: 55 classes.

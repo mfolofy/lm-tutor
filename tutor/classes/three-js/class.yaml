@@ -1,0 +1,116 @@
+# three-js — Three.js & 3D on the web.
+# Sources: Three.js docs, React Three Fiber docs, WebGPU spec, MDN.
+# Injected size: ~120 tokens for 10 rules.
+
+class:
+  id: three-js
+  title: "Three.js & 3D on the Web — Scene Graph, R3F & WebGPU"
+  version: 1.0.0
+  sources: ["Three.js Documentation", "React Three Fiber Docs", "WebGPU Spec (W3C)"]
+  prerequisites: []
+  target_violations:
+    - "no-r3f-for-react"
+    - "no-webgpu-backend"
+    - "no-instanced-mesh"
+    - "no-glb-compression"
+    - "no-frustum-culling"
+    - "no-dispose-cleanup"
+    - "no-a11y-3d"
+    - "no-fallback-2d"
+    - "no-responsive-canvas"
+    - "no-lod"
+  estimated_cost_tokens: 140
+  rule_count: 10
+
+rules:
+  - id: no-r3f-for-react
+    severity: fundamental
+    rule: "Use React Three Fiber (R3F) when building 3D in React. R3F is a declarative React renderer for Three.js — <mesh> maps to new THREE.Mesh(), <ambientLight> maps to new THREE.AmbientLight(). Imperative Three.js in useEffect is an anti-pattern in React. R3F handles the render loop, resize, and cleanup automatically."
+    framework_jsx: |
+      // FAIL: imperative Three.js in React useEffect
+      useEffect(() => { const scene = new THREE.Scene(); const mesh = new THREE.Mesh(geo, mat); scene.add(mesh); });
+      // PASS: React Three Fiber — declarative
+      <Canvas><ambientLight /><mesh><boxGeometry /><meshStandardMaterial color="hotpink" /></mesh></Canvas>
+
+  - id: no-dispose-cleanup
+    severity: fundamental
+    rule: "Always dispose Three.js resources when unmounting. Geometries, materials, textures, and render targets allocate GPU memory that is NOT garbage-collected by JavaScript. Without explicit dispose(), the GPU leaks memory. In R3F: auto-dispose is on by default. In vanilla Three.js: mesh.geometry.dispose(), mesh.material.dispose(), renderer.dispose()."
+    framework_js: |
+      // FAIL: no dispose — GPU memory leak
+      useEffect(() => { const mesh = new THREE.Mesh(geo, mat); scene.add(mesh); }, []);
+      // PASS: dispose on unmount
+      useEffect(() => { const mesh = new THREE.Mesh(geo, mat); scene.add(mesh); return () => { mesh.geometry.dispose(); mesh.material.dispose(); scene.remove(mesh); }; }, []);
+
+  - id: no-instanced-mesh
+    severity: intermediate
+    rule: "Use InstancedMesh for rendering many copies of the same geometry (>50 instances). InstancedMesh sends geometry to the GPU once and renders all instances in a single draw call. Creating 1000 individual Mesh objects = 1000 draw calls = single-digit FPS. 1000 instances in an InstancedMesh = 1 draw call = 60 FPS."
+    framework_js: |
+      // FAIL: 1000 individual meshes — 1000 draw calls
+      for (let i = 0; i < 1000; i++) { const m = new THREE.Mesh(geo, mat); m.position.set(i*2, 0, 0); scene.add(m); }
+      // PASS: InstancedMesh — 1 draw call
+      const im = new THREE.InstancedMesh(geo, mat, 1000);
+      for (let i = 0; i < 1000; i++) { const m = new THREE.Matrix4(); m.setPosition(i*2, 0, 0); im.setMatrixAt(i, m); }
+
+  - id: no-glb-compression
+    severity: intermediate
+    rule: "Use Draco or meshoptimizer compression for GLTF/GLB models. Uncompressed 3D models are enormous (50MB+ for a detailed scene). Draco compression typically reduces geometry by 10-20x with negligible visual difference. Use gltf-transform or gltf-pipeline in the build pipeline. Always compress before serving — never ship raw GLBs."
+    framework_js: |
+      // FAIL: uncompressed GLB — 50MB download
+      // PASS: Draco-compressed GLB — 3MB download
+      import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+      const loader = new GLTFLoader(); loader.setDRACOLoader(new DRACOLoader().setDecoderPath('/draco/'));
+
+  - id: no-responsive-canvas
+    severity: fundamental
+    rule: "Make the Three.js canvas responsive. The renderer must resize when the container resizes. Set renderer.setSize(container.clientWidth, container.clientHeight) on resize. Use renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) — never use the raw DPR (3x phones waste 9x the pixels with no visual benefit). R3F handles this automatically."
+    framework_js: |
+      // FAIL: fixed canvas size — broken on mobile/resize
+      const renderer = new THREE.WebGLRenderer(); renderer.setSize(800, 600);
+      // PASS: responsive canvas
+      renderer.setSize(container.clientWidth, container.clientHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      window.addEventListener('resize', () => { renderer.setSize(container.clientWidth, container.clientHeight); });
+
+  - id: no-frustum-culling
+    severity: intermediate
+    rule: "Enable automatic frustum culling (on by default in Three.js). Objects outside the camera's view are skipped in rendering — but only if they have proper bounding volumes. For custom geometries, call geometry.computeBoundingSphere() and geometry.computeBoundingBox(). If frustum culling is disabled (object.frustumCulled = false), the object renders even when behind the camera."
+    framework_js: |
+      // FAIL: custom geometry without bounding volume — culling can't work
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+      // PASS: compute bounds so frustum culling works
+      geo.computeBoundingSphere(); geo.computeBoundingBox();
+
+  - id: no-lod
+    severity: advanced
+    rule: "Use LOD (Level of Detail) for distant objects. THREE.LOD switches between high-poly, medium-poly, and low-poly versions based on camera distance. The high-poly version only renders when the camera is close. This reduces GPU load in complex scenes with many distant objects."
+    framework_js: |
+      // FAIL: high-poly model at all distances — waste
+      scene.add(highPolyModel);
+      // PASS: LOD — high detail close, low detail far
+      const lod = new THREE.LOD(); lod.addLevel(highPoly, 0); lod.addLevel(mediumPoly, 50); lod.addLevel(lowPoly, 150); scene.add(lod);
+
+  - id: no-a11y-3d
+    severity: fundamental
+    rule: "Provide accessible alternatives for 3D content. 3D scenes are invisible to screen readers and unusable with keyboard navigation. Provide: (1) a text description of the 3D content, (2) a 2D fallback for critical information, (3) keyboard controls as an alternative to mouse/pointer 3D navigation. 3D should enhance, not replace, accessible content."
+    framework_html: |
+      <!-- FAIL: 3D-only — inaccessible -->
+      <canvas id="scene"></canvas>
+      <!-- PASS: 3D with accessible fallback -->
+      <canvas id="scene" aria-label="Interactive 3D model of the product. Use arrow keys to rotate." role="img"></canvas>
+      <noscript><img src="product-2d-fallback.png" alt="Product — front, back, and side views"></noscript>
+
+  - id: no-webgpu-backend
+    severity: advanced
+    rule: "Use the WebGPU backend for Three.js when targeting modern browsers. WebGPURenderer (Three.js r170+) provides better performance for compute-heavy scenes, lower CPU overhead, and access to compute shaders. Fall back to WebGL for unsupported browsers. Check: if ('gpu' in navigator) → WebGPU, else → WebGL."
+    framework_js: |
+      // PASS: WebGPU with WebGL fallback
+      import WebGPURenderer from 'three/addons/renderers/webgpu/WebGPURenderer.js';
+      const renderer = 'gpu' in navigator ? new WebGPURenderer() : new THREE.WebGLRenderer();
+
+  - id: no-fallback-2d
+    severity: fundamental
+    rule: "Provide a 2D fallback for 3D content. Users on slow connections, low-end devices, or with motion sensitivity may not want 3D. Show a static image or interactive 2D view as the default, and load 3D on user activation (click 'View in 3D'). Never force 3D on page load — it consumes bandwidth, GPU, and battery without consent."
+    framework_html: |
+      <!-- FAIL: 3D auto-loads — 20MB download, GPU fans spin, user didn't ask -->
+      <!-- PASS: 2D first, 3D on demand -->
+      <img src="product.jpg" alt="Product">
+      <button onclick="load3D()">View in 3D</button>

@@ -1,0 +1,157 @@
+# web-animation — Web animation APIs, libraries, and motion design.
+#
+# Sources: MDN, Framer Motion docs, GSAP docs, Motion One docs, Lottie/Rive docs,
+# CSS Scroll-driven Animations (WD), WCAG 2.2 SC 2.3.3. See SOURCES.md.
+# Regex: Python re.search. A match = a VIOLATION.
+# Coverage: ~6 rules (50%) checkable, ~6 rules (50%) teaching-only.
+# Injected size: ~140 tokens for 12 rules.
+
+class:
+  id: web-animation
+  title: "Web Animation — CSS Scroll-Driven, Framer Motion, GSAP & Motion Design"
+  version: 1.0.0
+  sources:
+    - "CSS Scroll-driven Animations Level 1 (W3C WD)"
+    - "Framer Motion Documentation"
+    - "GSAP Documentation"
+    - "WCAG 2.2 SC 2.3.3"
+  prerequisites: []
+  target_violations:
+    - "js-scroll-animation"
+    - "no-prefers-reduced-motion"
+    - "layout-thrashing-animation"
+    - "no-will-change"
+    - "giant-gsap-bundle"
+    - "no-compositor-only"
+    - "no-lottie-alt"
+    - "animation-duration-too-long"
+    - "no-stagger-delay"
+    - "no-exit-animation"
+    - "infinite-animation-no-pause"
+    - "opacity-zero-hidden"
+  estimated_cost_tokens: 160
+  rule_count: 12
+
+rules:
+
+  - id: js-scroll-animation
+    severity: fundamental
+    rule: "Use CSS scroll-driven animations (animation-timeline: scroll() / view()) for scroll-linked effects instead of JavaScript scroll event listeners. Scroll-driven animations run on the compositor thread — no main-thread jank, no requestAnimationFrame, no passive: true workarounds. Intersection Observer + classList.toggle for reveals is a JS workaround for what the platform now does natively."
+    check_regex: '(?i)(window\.addEventListener\s*\(\s*[\"'']scroll[\"'']|IntersectionObserver.*classList\.(add|toggle).*visible|AOS\.init|ScrollReveal|sal\.js|wow\.js)'
+    framework_js: |
+      // FAIL: JS scroll listener or IntersectionObserver for animation
+      window.addEventListener('scroll', () => { box.style.opacity = scrollY / 1000; });
+      const obs = new IntersectionObserver(es => es.forEach(e => e.target.classList.add('visible')));
+      // PASS: CSS scroll-driven animation
+      .reveal { animation: fade-in linear; animation-timeline: view(); animation-range: entry 0% entry 80%; }
+
+  - id: no-prefers-reduced-motion
+    severity: fundamental
+    rule: "Wrap ALL animations and transitions in @media (prefers-reduced-motion: no-preference). Users with motion sensitivity get instant state changes. This is a WCAG 2.2 requirement (SC 2.3.3). Every animation library call must check motion preference first. GSAP: gsap.matchMedia(). Framer Motion: useReducedMotion(). CSS: @media (prefers-reduced-motion)."
+    framework_css: |
+      /* FAIL: animation without motion-respect */
+      .hero { animation: fade-in 0.5s; }
+      /* PASS: respect motion preference */
+      @media (prefers-reduced-motion: no-preference) { .hero { animation: fade-in 0.5s; } }
+    framework_jsx: |
+      // FAIL: <motion.div animate={{ opacity: 1 }} />
+      // PASS: const reducedMotion = useReducedMotion();
+      //       <motion.div animate={reducedMotion ? {} : { opacity: 1 }} />
+
+  - id: layout-thrashing-animation
+    severity: fundamental
+    rule: "Never animate properties that trigger layout: width, height, top, left, margin, padding, border-width. These force the browser to recalculate geometry on every frame (layout thrashing → jank). Animate ONLY compositor-safe properties: transform (translate, scale, rotate) and opacity. To change size, use scale(). To change position, use translate()."
+    framework_css: |
+      /* FAIL: animating width triggers layout on every frame */
+      @keyframes slide { from { width: 0; } to { width: 100%; } }
+      /* PASS: scaleX — compositor only, no layout recalculation */
+      @keyframes reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  - id: no-will-change
+    severity: intermediate
+    rule: "Use will-change sparingly — only on elements that WILL animate, and only set it just before the animation starts (then remove it after). will-change pre-allocates GPU layers. Setting it on everything wastes GPU memory (each layer = ~4MB). Setting it on too many elements causes layer explosion and crashes mobile browsers."
+    framework_css: |
+      /* FAIL: will-change on everything — GPU memory exhaustion */
+      * { will-change: transform, opacity; }
+      /* PASS: will-change on specific animating element, set/unset */
+      .card:hover { will-change: transform; }   /* set just before animation */
+      .card { transition: transform 0.3s; }      /* unset for the default state */
+
+  - id: no-compositor-only
+    severity: intermediate
+    rule: "When using JS animation libraries, favor libraries that animate compositor properties by default. Framer Motion and GSAP Context-aware mode animate transform/opacity. Avoid libraries that animate layout properties (jQuery .animate(), Anime.js defaults on some properties). Check: does the library guarantee compositor-only animations? If not, wrap with transform alternatives."
+    framework_js: |
+      // FAIL: jQuery animation on layout property
+      $('.panel').animate({ height: 'toggle' });  // layout thrashing
+      // PASS: Framer Motion — compositor only
+      <motion.div animate={{ scaleY: show ? 1 : 0 }} transition={{ type: 'spring' }} />
+
+  - id: animation-duration-too-long
+    severity: intermediate
+    rule: "Keep animation durations short: 100-300ms for micro-interactions (button hover, toggle), 200-500ms for UI transitions (page nav, modal open), 500-1000ms for narrative animations (onboarding, storytelling). Anything over 1 second feels slow and blocks the user. Animation should feel instant — the user should notice the change, not the animation."
+    check_regex: '(?s)\b(animation|transition)-duration\s*:\s*[2-9]\s*s\b'
+    framework_css: |
+      /* FAIL: 2-second animation blocks user */
+      .modal { transition: opacity 2s; }
+      /* PASS: fast, functional */
+      .modal { transition: opacity 0.2s; }
+
+  - id: no-exit-animation
+    severity: intermediate
+    rule: "Always animate both enter AND exit states. Elements that animate in but disappear instantly feel broken. Use: CSS @starting-style for entry + transition for exit, Framer Motion exit prop, GSAP .reverse(). Exit animations communicate where things went (dismissed, completed, navigated away). Without exits, the UI feels incomplete."
+    framework_jsx: |
+      // FAIL: enter animation only — element disappears instantly
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{content}</motion.div>
+      // PASS: enter + exit
+      <AnimatePresence><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /></AnimatePresence>
+
+  - id: infinite-animation-no-pause
+    severity: intermediate
+    rule: "Infinite animations (spinners, loaders, pulse effects) must pause when out of viewport or when the page is backgrounded. Use animation-play-state: paused on elements not in the viewport, or the CSS animation: with prefers-reduced-motion fallback. Infinite animations burning CPU in background tabs drain battery and waste GPU resources."
+    framework_css: |
+      /* FAIL: infinite spinner burns CPU when out of view */
+      .spinner { animation: spin 1s linear infinite; }
+      /* PASS: respect visibility and motion preference */
+      .spinner { animation: spin 1s linear infinite; animation-play-state: paused; }
+      @media (prefers-reduced-motion: no-preference) { .spinner:in-view { animation-play-state: running; } }
+
+  - id: no-stagger-delay
+    severity: advanced
+    rule: "Use staggerChildren with orchestration libraries (GSAP stagger, Framer Motion variants with staggerChildren). Staggered animations guide the user's eye through a list — items enter one at a time with ~30-80ms delay between each. Without stagger, all items appear simultaneously and the user can't track individual entries."
+    framework_jsx: |
+      // FAIL: all items animate simultaneously — visual overload
+      list.map(item => <motion.div animate={{ opacity: 1 }}>{item}</motion.div>)
+      // PASS: staggered — items enter one at a time
+      const list = { animate: { transition: { staggerChildren: 0.05 } } };
+      const item = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } };
+
+  - id: no-lottie-alt
+    severity: fundamental
+    rule: "Every Lottie/Rive animation must have a static fallback (image or text) and accessible alternative. Lottie animations are rendered to <canvas> or inline SVG — screen readers see nothing. Add aria-label to the container, role=\"img\" if decorative, and a text equivalent for meaningful animations. Animations that convey information are content — they need alt text."
+    framework_html: |
+      <!-- FAIL: Lottie animation with no accessibility -->
+      <lottie-player src="success.json" autoplay></lottie-player>
+      <!-- PASS: Lottie with alt text and fallback -->
+      <lottie-player src="success.json" autoplay aria-label="Task completed successfully"></lottie-player>
+      <!-- Static fallback for reduced motion: <img src="success-static.png" alt="Task completed"> -->
+
+  - id: opacity-zero-hidden
+    severity: intermediate
+    rule: "Elements with opacity: 0 are still in the accessibility tree and receive focus. To hide an animated element completely: add visibility: hidden after the opacity transition ends, or use pointer-events: none with aria-hidden. An opacity-zero element that's still focusable creates invisible tab stops — a WCAG 2.4.3 Focus Order violation."
+    framework_css: |
+      /* FAIL: invisible but still focusable and in a11y tree */
+      .modal-backdrop { opacity: 0; }  /* focusable, screen readers still see it */
+      /* PASS: completely remove from interaction */
+      .modal-backdrop { opacity: 0; visibility: hidden; pointer-events: none; }
+      /* Or for transitions: transition opacity 0.3s, visibility 0s 0.3s; */
+
+  - id: giant-gsap-bundle
+    severity: intermediate
+    rule: "Tree-shake GSAP — import only the plugins you use. A full GSAP import (~60KB gzipped) pulls in ScrollTrigger, Draggable, SplitText, Flip, Observer, and more. Most pages use only 1-2 plugins. import gsap from 'gsap' imports the core only (~10KB). Add plugins explicitly: import ScrollTrigger from 'gsap/ScrollTrigger'; gsap.registerPlugin(ScrollTrigger)."
+    framework_js: |
+      // FAIL: full GSAP bundle
+      import * as gsap from 'gsap';
+      // PASS: tree-shaken — core + only what you use
+      import gsap from 'gsap';
+      import { ScrollTrigger } from 'gsap/ScrollTrigger';
+      gsap.registerPlugin(ScrollTrigger);

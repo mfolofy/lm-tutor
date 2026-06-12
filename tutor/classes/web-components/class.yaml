@@ -1,0 +1,167 @@
+# web-components — Web Components: Custom Elements, Shadow DOM, Catalyst, Lit.
+#
+# Sources: WHATWG HTML, MDN, Catalyst docs, Lit docs. See SOURCES.md.
+# Regex: Python re.search. A match = a VIOLATION.
+# Coverage: ~5 rules (42%) checkable, ~7 rules (58%) teaching-only.
+# Injected size: ~130 tokens for 12 rules.
+
+class:
+  id: web-components
+  title: "Web Components — Custom Elements, Shadow DOM, Catalyst & Lit"
+  version: 1.0.0
+  sources:
+    - "WHATWG HTML Living Standard"
+    - "MDN Web Docs"
+    - "GitHub Catalyst Documentation"
+    - "Lit Documentation"
+  prerequisites: []
+  target_violations:
+    - "div-framework-component"
+    - "no-shadow-dom-encapsulation"
+    - "inline-styles-global-leak"
+    - "no-slots"
+    - "custom-element-no-lifecycle"
+    - "no-declarative-shadow-dom"
+    - "no-form-participation"
+    - "no-aria-in-shadow"
+    - "catalyst-no-observe"
+    - "named-slots-missing"
+    - "no-css-parts"
+    - "no-elem-internals"
+  estimated_cost_tokens: 160
+  rule_count: 12
+
+rules:
+
+  - id: div-framework-component
+    severity: fundamental
+    rule: "Use Web Components (Custom Elements) for framework-agnostic, reusable UI components. A <custom-button> works in React, Vue, Svelte, Astro, and plain HTML with zero framework glue code. Framework components (<Button> in React) only work in their ecosystem. Web Components are native HTML elements — they work everywhere, forever, without npm install."
+    framework_html: |
+      <!-- FAIL: framework-specific — works only in one ecosystem -->
+      <Button variant="primary">Submit</Button>  <!-- React component -->
+      <!-- PASS: framework-agnostic Web Component — works in any HTML -->
+      <custom-button variant="primary">Submit</custom-button>
+
+  - id: no-shadow-dom-encapsulation
+    severity: fundamental
+    rule: "Use Shadow DOM for style encapsulation when building reusable components. Without Shadow DOM, your component's styles leak out (affect the host page) and the host page's styles leak in (break your component). Shadow DOM creates a style boundary — CSS inside doesn't get out, CSS outside doesn't get in. This is THE reason to use Web Components."
+    framework_html: |
+      // FAIL: no Shadow DOM — styles leak in both directions
+      class MyButton extends HTMLElement { connectedCallback() { this.innerHTML = `<style>button{color:red}</style><button>Click</button>`; } }
+      // PASS: Shadow DOM — encapsulated styles
+      class MyButton extends HTMLElement { constructor() { super(); this.attachShadow({mode:'open'}).innerHTML = `<style>button{color:red}</style><button><slot></slot></button>`; } }
+
+  - id: no-slots
+    severity: fundamental
+    rule: "Use <slot> for component children. Slots are the Web Components composition model — they define where the user's content goes. A <custom-card> with a <slot> lets consumers write: <custom-card><h2>Title</h2><p>Body</p></custom-card>. Without slots, the component's internal structure is inaccessible to consumers."
+    framework_html: |
+      <!-- FAIL: component with no slots — can't accept user content -->
+      <custom-card></custom-card>
+      <!-- PASS: slots enable composition -->
+      <custom-card>
+        <h2 slot="title">Card Title</h2>
+        <p>Card body content</p>
+      </custom-card>
+      <!-- Inside: <slot name="title"></slot><slot></slot> -->
+
+  - id: named-slots-missing
+    severity: intermediate
+    rule: "Use named slots for multi-region components. A card has a title region, body region, and footer region — use <slot name='title'>, <slot> (default), <slot name='footer'>. Named slots let consumers target specific regions. The default (unnamed) slot catches everything without a slot attribute. Always provide a default slot as the catch-all."
+    framework_html: |
+      <!-- PASS: named slots for multi-region layout -->
+      <template id="card-template">
+        <header><slot name="title">Default Title</slot></header>
+        <main><slot>Default body content</slot></main>
+        <footer><slot name="footer"></slot></footer>
+      </template>
+
+  - id: no-css-parts
+    severity: intermediate
+    rule: "Expose `::part()` for intentional style customization. Shadow DOM blocks all external CSS by design — parts are the controlled escape hatch. Add part='button' to your shadow DOM element, and consumers style with custom-button::part(button) { border-radius: 8px; }. This gives consumers customization without breaking encapsulation."
+    framework_html: |
+      /* FAIL: no parts — consumers can't style anything */
+      /* PASS: parts expose intentional customization points */
+      /* Component: <button part="button"><slot></slot></button> */
+      custom-button::part(button) { background: var(--brand); border-radius: var(--radius-sm); }
+
+  - id: no-form-participation
+    severity: intermediate
+    rule: "Use ElementInternals for form-associated custom elements. A custom input/select/checkbox should participate in HTML forms: it should have a value, validate, and submit with the form. Without ElementInternals (this.attachInternals()), your custom element is invisible to <form> — FormData won't include it, validation skips it, and reset() ignores it."
+    framework_js: |
+      // FAIL: custom input that doesn't participate in forms
+      class CustomInput extends HTMLElement { /* no form association */ }
+      // PASS: form-associated custom element
+      class CustomInput extends HTMLElement {
+        static formAssociated = true;
+        constructor() { super(); this.internals = this.attachInternals(); }
+        get value() { return this.input.value; }
+      }
+
+  - id: no-declarative-shadow-dom
+    severity: advanced
+    rule: "Use Declarative Shadow DOM for server-rendered Web Components. <template shadowrootmode='open'> renders Shadow DOM in HTML without JavaScript — the browser attaches the shadow root from the parser. This enables: SSR for Web Components, no FOUC (Flash of Unstyled Content) for shadow DOM, and works without JS. Imperative attachShadow() is client-only; declarative works everywhere."
+    framework_html: |
+      <!-- FAIL: imperative shadow DOM — JS-only, FOUC before JS runs -->
+      <!-- PASS: declarative shadow DOM — server-rendered, no FOUC -->
+      <custom-card>
+        <template shadowrootmode="open">
+          <style>:host { display: block; border: 1px solid #ccc; }</style>
+          <slot></slot>
+        </template>
+        Card content — styled immediately, no FOUC
+      </custom-card>
+
+  - id: catalyst-no-observe
+    severity: intermediate
+    rule: "When using GitHub Catalyst, use the @controller decorator + data-action attributes for event binding. Catalyst's three primitives: (1) observe elements via querySelector, (2) listen to events via data-action, (3) query children via data-target. This is simpler than full Custom Elements boilerplate but still produces standard Web Components."
+    framework_html: |
+      // FAIL: manual addEventListener in connectedCallback
+      this.querySelector('.btn').addEventListener('click', this.handleClick);
+      // PASS: Catalyst data-action binding
+      // <button data-action="click:my-component#handleClick">Click</button>
+      @controller
+      class MyComponent extends HTMLElement { handleClick(e) { /* bound automatically */ } }
+
+  - id: no-aria-in-shadow
+    severity: fundamental
+    rule: "Shadow DOM creates accessibility boundaries. aria-label on the host element is not automatically propagated to shadow children. Use aria-label on the host (custom element itself), and use the aria-element-reflection properties (ariaActiveDescendantElement, ariaControlsElements) to cross the shadow boundary for complex relationships. Test with screen readers — shadow DOM a11y is still uneven."
+    framework_html: |
+      <!-- FAIL: no accessible name on custom element -->
+      <custom-tabs></custom-tabs>
+      <!-- PASS: aria-label on the host element -->
+      <custom-tabs aria-label="Product information tabs"></custom-tabs>
+
+  - id: no-elem-internals
+    severity: advanced
+    rule: "Use ElementInternals for accessibility states. setFormValue(), states.add('--checked'), ariaChecked. ElementInternals lets custom elements expose states and values to the accessibility tree and form system. Without it, custom elements are opaque: screen readers can't tell a custom checkbox is checked, forms can't get its value."
+    framework_js: |
+      // PASS: ElementInternals exposes state to a11y tree
+      class CustomCheckbox extends HTMLElement {
+        static formAssociated = true;
+        constructor() { super(); this.internals = this.attachInternals(); }
+        set checked(v) { this.internals.states[Symbol.for(v ? '--checked' : '--unchecked')] = true; }
+      }
+
+  - id: custom-element-no-lifecycle
+    severity: fundamental
+    rule: "Implement Custom Element lifecycle callbacks: connectedCallback (added to DOM), disconnectedCallback (removed — clean up!), adoptedCallback (moved to new document), and attributeChangedCallback (observed attribute changes). Without disconnectedCallback cleanup (event listeners, timers, observers), your component leaks memory every time it's removed from the DOM."
+    framework_js: |
+      // FAIL: no cleanup — memory leak on remove
+      class LeakyCounter extends HTMLElement { connectedCallback() { setInterval(() => this.update(), 1000); } }
+      // PASS: cleanup in disconnectedCallback
+      class CleanCounter extends HTMLElement {
+        connectedCallback() { this.timer = setInterval(() => this.update(), 1000); }
+        disconnectedCallback() { clearInterval(this.timer); }
+      }
+
+  - id: inline-styles-global-leak
+    severity: fundamental
+    rule: "Never inject global styles from a Web Component. A <style> tag added to document.head from within a component leaks styles to the entire page. Always place styles inside the Shadow DOM (this.shadowRoot.innerHTML = '<style>...</style>'). For shared design tokens, use CSS custom properties (var(--token)) — they pierce Shadow DOM boundaries."
+    framework_html: |
+      // FAIL: global style injection — affects entire page
+      document.head.insertAdjacentHTML('beforeend', '<style>button{color:red}</style>');
+      // PASS: styles in Shadow DOM — encapsulated
+      this.shadowRoot.innerHTML = '<style>button{color:red}</style><button><slot></slot></button>';
+      // PASS: CSS custom properties pierce Shadow DOM for theming
+      :root { --brand-color: oklch(0.62 0.22 265); }
+      // Inside shadow: button { color: var(--brand-color); }

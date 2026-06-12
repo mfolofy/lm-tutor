@@ -1,0 +1,155 @@
+# web-vitals — Core Web Vitals & performance optimization.
+#
+# Sources: web.dev/vitals, MDN, Chrome DevTools, W3C. See SOURCES.md.
+# Regex: Python re.search. A match = a VIOLATION.
+# Coverage: ~6 rules (50%) checkable, ~6 rules (50%) teaching-only.
+# Injected size: ~130 tokens for 12 rules.
+
+class:
+  id: web-vitals
+  title: "Core Web Vitals — INP, LCP, CLS & Performance Optimization"
+  version: 1.0.0
+  sources:
+    - "web.dev/vitals (Google)"
+    - "MDN Web Docs"
+    - "W3C Event Timing API"
+  prerequisites: []
+  target_violations:
+    - "no-lcp-priority"
+    - "no-image-dimensions"
+    - "no-font-display"
+    - "render-blocking-scripts"
+    - "no-preconnect"
+    - "long-task-over-50ms"
+    - "no-srcset"
+    - "no-speculation-rules"
+    - "no-bfcache-test"
+    - "no-lazy-below-fold"
+    - "hydration-blocking-tti"
+    - "no-inp-measurement"
+  estimated_cost_tokens: 160
+  rule_count: 12
+
+rules:
+
+  - id: no-lcp-priority
+    severity: fundamental
+    rule: "Set fetchpriority='high' on the LCP (Largest Contentful Paint) element. The LCP is usually the hero image or main heading text block. Without fetchpriority, the browser's default priority may load below-fold images before the hero, delaying LCP by seconds. Identify your LCP in Lighthouse/PageSpeed Insights and tag it."
+    framework_html: |
+      <!-- FAIL: hero image with default priority -->
+      <img src="hero.webp" alt="Hero">
+      <!-- PASS: LCP image gets high priority -->
+      <img src="hero.webp" alt="Hero" fetchpriority="high" loading="eager" decoding="sync">
+
+  - id: no-image-dimensions
+    severity: fundamental
+    rule: "Always set explicit width and height on images to prevent Cumulative Layout Shift (CLS). Without dimensions, the browser doesn't know the image's aspect ratio until it loads — content below the image jumps down when the image arrives. width/height (or aspect-ratio CSS) reserves space early, eliminating the shift."
+    framework_html: |
+      <!-- FAIL: no dimensions — CLS when image loads -->
+      <img src="hero.webp" alt="Hero">
+      <!-- PASS: dimensions reserve space — zero CLS -->
+      <img src="hero.webp" alt="Hero" width="1200" height="600">
+      <!-- PASS: aspect-ratio with width 100% -->
+      <img src="hero.webp" alt="Hero" style="width:100%;aspect-ratio:2/1">
+
+  - id: no-font-display
+    severity: fundamental
+    rule: "Always set font-display: swap on @font-face declarations. Without it, the browser uses 'block' (invisible text for up to 3 seconds while font loads, then fallback). 'swap' shows text immediately in the fallback font, then swaps to the web font when loaded. Invisible text = user sees nothing = high bounce rate. Never block rendering on font load."
+    framework_css: |
+      /* FAIL: @font-face without font-display — invisible text timeout */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); }
+      /* PASS: font-display: swap — text is visible immediately */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); font-display: swap; }
+
+  - id: render-blocking-scripts
+    severity: fundamental
+    rule: "Use defer or async on non-critical <script> tags. Scripts without defer/async block HTML parsing — the browser stops building the DOM until the script downloads and executes. defer: execute after HTML parsing, in order. async: execute as soon as downloaded, order not guaranteed. Default to defer; use async for independent scripts (analytics, ads)."
+    framework_html: |
+      <!-- FAIL: render-blocking script -->
+      <script src="/app.js"></script>
+      <!-- PASS: deferred — doesn't block parsing -->
+      <script src="/app.js" defer></script>
+      <!-- PASS: module scripts are deferred by default -->
+      <script type="module" src="/app.js"></script>
+
+  - id: no-preconnect
+    severity: intermediate
+    rule: "Use <link rel='preconnect'> for third-party origins the page will definitely request (fonts, CDNs, analytics, APIs). preconnect performs DNS + TCP + TLS handshake early, saving 100-300ms on the first request to that origin. Pair with dns-prefetch for less-critical origins (preconnect does everything dns-prefetch does plus TLS). Use sparingly — only 2-3 preconnects max."
+    framework_html: |
+      <!-- FAIL: no preconnect to known critical origins -->
+      <!-- (browser discovers font CDN late → waterfall delay) -->
+      <!-- PASS: preconnect critical origins early -->
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link rel="preconnect" href="https://api.example.com">
+
+  - id: long-task-over-50ms
+    severity: intermediate
+    rule: "Break long JavaScript tasks (>50ms) into smaller chunks. The browser can't respond to user input during a long task — a button click during a 300ms task is queued until the task finishes. This IS Interaction to Next Paint (INP). Use: setTimeout chunking, requestIdleCallback for non-critical work, Web Workers for heavy computation, or scheduler.postTask() for prioritized scheduling."
+    framework_js: |
+      // FAIL: 300ms synchronous loop — blocks all interaction
+      data.forEach(item => processItem(item));  // 300ms long task, INP = 300ms
+      // PASS: chunked — browser can interleave user input
+      async function processChunked(items, chunkSize = 10) {
+        for (let i = 0; i < items.length; i += chunkSize) {
+          items.slice(i, i + chunkSize).forEach(processItem);
+          await new Promise(r => setTimeout(r, 0));  // yield to browser
+        }
+      }
+
+  - id: no-srcset
+    severity: intermediate
+    rule: "Use srcset and sizes on images to serve resolution-appropriate files. A 2400px-wide image on a 400px-wide mobile screen wastes bandwidth and decoding time. srcset lets the browser choose the best file. sizes tells the browser how wide the image will be at each breakpoint. Without srcset, every device downloads the same high-res file."
+    framework_html: |
+      <!-- FAIL: one size for all devices -->
+      <img src="hero-2400w.webp" alt="Hero">
+      <!-- PASS: resolution-appropriate images -->
+      <img srcset="hero-400w.webp 400w, hero-800w.webp 800w, hero-1200w.webp 1200w"
+           sizes="(max-width: 600px) 400px, (max-width: 1200px) 800px, 1200px"
+           src="hero-1200w.webp" alt="Hero">
+
+  - id: no-bfcache-test
+    severity: advanced
+    rule: "Test that pages work with the browser's back/forward cache (bfcache). bfcache serves an instant, frozen snapshot of the page when users click back — no network requests, no JS execution, sub-100ms navigation. Pages that break bfcache: unload event listeners, Cache-Control: no-store, pages with beforeunload handlers. Test in Chrome DevTools → Application → Back/forward cache."
+    framework_js: |
+      // FAIL: unload handler — disables bfcache
+      window.addEventListener('unload', () => { saveState(); });
+      // PASS: use pagehide instead — bfcache compatible
+      window.addEventListener('pagehide', (e) => { if (!e.persisted) saveState(); });
+
+  - id: no-speculation-rules
+    severity: advanced
+    rule: "Use Speculation Rules API to prerender or prefetch pages the user is likely to navigate to. A <script type='speculationrules'> with 'prerender' eagerness loads the full page (HTML + CSS + JS + images) before the user clicks — navigation is instant (<50ms). Use for: most-visited next pages, checkout flows, documentation next-page links. This replaces <link rel='prerender'>."
+    framework_html: |
+      <!-- FAIL: no speculation — every navigation waits for network -->
+      <!-- PASS: speculation rules prerender the next likely page -->
+      <script type="speculationrules">{"prerender": [{"source": "document", "where": {"href_matches": "/checkout"}, "eagerness": "moderate"}]}</script>
+
+  - id: no-lazy-below-fold
+    severity: fundamental
+    rule: "Set loading='lazy' on all images and iframes below the fold. The browser defers loading until the element is near the viewport. Above-fold images should be loading='eager' (the default). Never lazy-load the LCP image — it delays the most important paint. The rule: LCP image = eager + fetchpriority=high. Below-fold = lazy. Above-fold non-LCP = eager (default)."
+    framework_html: |
+      <!-- FAIL: below-fold image loaded immediately — wastes bandwidth -->
+      <img src="footer-logo.png" alt="Footer logo">
+      <!-- PASS: above-fold LCP = eager high priority; below-fold = lazy -->
+      <img src="hero.webp" fetchpriority="high" loading="eager"> <!-- LCP -->
+      <img src="footer-logo.png" loading="lazy"> <!-- below fold -->
+
+  - id: no-inp-measurement
+    severity: intermediate
+    rule: "Measure INP (Interaction to Next Paint) in the field — not just lab data. INP is the responsiveness metric (replaced FID in March 2024). Lab tests (Lighthouse) can't simulate real user interactions. Use: web-vitals.js library, Chrome UX Report (CrUX), or RUM (Real User Monitoring). Target: INP < 200ms for good, < 500ms for needs improvement."
+    framework_js: |
+      // FAIL: only measuring load metrics (LCP, FCP) — missing responsiveness
+      // PASS: measure INP in the field
+      import { onINP } from 'web-vitals';
+      onINP((metric) => { console.log('INP:', metric.value); /* <200ms = good */ });
+
+  - id: hydration-blocking-tti
+    severity: intermediate
+    rule: "Avoid hydration blocking Time to Interactive (TTI). Large hydration bundles (full React/Vue hydration of a page) block the main thread for seconds on slow devices. Mitigate: islands architecture (hydrate only interactive parts), Qwik resumability (no hydration), React Server Components (zero client JS for static parts), or partial hydration (hydrate on interaction, not on load)."
+    framework_jsx: |
+      // FAIL: hydrate the entire page — TTI blocked by 500KB JS parse + hydration
+      hydrateRoot(document.getElementById('root'), <App />);
+      // PASS: islands — TTI only waits for interactive components
+      <Header /> {/* static — no JS, instant TTI */}
+      <SearchBox client:load />  {/* interactive — hydration cost isolated to this component */}

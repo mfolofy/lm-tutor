@@ -1,0 +1,1 @@
+"""css-modern — Modern CSS platform features that replace JavaScript patterns."""

@@ -1,0 +1,1 @@
+"""frontend-architecture — Modern frontend patterns: islands, resumability, streaming SSR, signals."""

@@ -1,0 +1,41 @@
+# webxr — WebXR Device API for immersive experiences.
+class:
+  id: webxr
+  title: "WebXR — Immersive AR/VR on the Web"
+  version: 1.0.0
+  sources: ["WebXR Device API (W3C)", "MDN"]
+  prerequisites: []
+  target_violations:
+    - "no-xr-detection"
+    - "no-reference-space"
+    - "no-hit-test-ar"
+  estimated_cost_tokens: 70
+  rule_count: 3
+
+rules:
+  - id: no-xr-detection
+    severity: fundamental
+    rule: "Feature-detect WebXR before use. if (!navigator.xr) { showFallback(); }. WebXR requires compatible hardware and browser — it's the least universally available web API. Always provide a non-XR fallback experience. Check isSessionSupported('immersive-vr') or ('immersive-ar') for specific modes."
+    framework_js: |
+      // FAIL: assumes XR is available
+      const session = await navigator.xr.requestSession('immersive-vr');
+      // PASS: feature detection with fallback
+      if (!navigator.xr) { return showFallback(); }
+      navigator.xr.isSessionSupported('immersive-vr').then(supported => supported ? startXR() : showFallback());
+
+  - id: no-reference-space
+    severity: fundamental
+    rule: "Request the right reference space for the XR experience. 'local' = seated/standing, origin at initial position. 'local-floor' = standing with floor-level origin. 'viewer' = head-locked. 'bounded-floor' = room-scale with safe boundary. Wrong reference space = wrong coordinate system = disoriented user."
+    framework_js: |
+      // FAIL: wrong reference space
+      const space = await session.requestReferenceSpace('viewer');  // head-locked for room-scale
+      // PASS: match space to experience
+      const space = await session.requestReferenceSpace('local-floor');  // standing/room-scale
+
+  - id: no-hit-test-ar
+    severity: intermediate
+    rule: "Use hit-test for AR surface placement. requestHitTestSource() finds real-world surfaces (floors, tables, walls) for placing virtual objects. Without hit-testing, objects float in space with no relation to the real environment — breaking AR immersion. Always provide visual feedback during hit-test: show a reticle."
+    framework_js: |
+      // PASS: AR hit-test for surface placement
+      const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      session.requestAnimationFrame((time, frame) => { const hits = frame.getHitTestResults(hitTestSource); if (hits.length) placeObject(hits[0]); });

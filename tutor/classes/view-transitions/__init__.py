@@ -1,0 +1,1 @@
+"""view-transitions — View Transitions API (Levels 1 & 2) for page and element animations."""

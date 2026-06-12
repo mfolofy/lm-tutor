@@ -1,0 +1,1 @@
+"""webxr — WebXR Device API for immersive AR/VR experiences."""

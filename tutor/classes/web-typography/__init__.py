@@ -1,0 +1,1 @@
+"""web-typography — Modern web typography: variable fonts, font-palette, text-wrap."""

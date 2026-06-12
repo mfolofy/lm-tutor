@@ -1,0 +1,272 @@
+# design-tokens — Design Tokens Community Group (DTCG) v2025.10 specification.
+#
+# Source: DTCG v2025.10 (W3C Community Group Report), Style Dictionary,
+# Tokens Studio, Figma Dev Mode. See SOURCES.md for per-rule citations.
+# Every rule is self-contained: it carries teaching examples AND, where
+# detectable, a deterministic check (check_regex) that the Layer 1 harness
+# runs. No drift between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.search (multiline).
+# A match = a VIOLATION. Rules without check_regex are teaching-only.
+#
+# Coverage honesty:
+#   ~7 rules (47%) have deterministic checks — hardcoded hex/rgb values
+#   in components, flat token naming, missing theme mode, px values in
+#   spacing, and CSS :root bloat.
+#   ~8 rules (53%) are teaching-only — token architecture, DTCG structure,
+#   build pipeline, Figma sync, composite types, and validation.
+#
+# Injected size: ~160 tokens for 15 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: design-tokens
+  title: "Design Tokens — DTCG v2025.10 Specification & Workflows"
+  version: 1.0.0
+  sources:
+    - "DTCG v2025.10 (W3C Community Group Report)"
+    - "Style Dictionary (amzn.github.io/style-dictionary)"
+    - "Figma Dev Mode & Tokens Studio"
+    - "W3C Design Tokens Community Group"
+  prerequisites: []
+  target_violations:
+    - "hardcoded-colors"
+    - "hardcoded-spacing"
+    - "flat-token-names"
+    - "no-dark-mode-tokens"
+    - "no-token-file"
+    - "inline-magic-values"
+    - "inconsistent-token-scale"
+    - "no-token-alias"
+    - "no-composite-types"
+    - "css-root-bloat"
+    - "no-token-docs"
+    - "no-build-pipeline"
+    - "figma-code-drift"
+    - "no-validation"
+    - "token-platform-mismatch"
+  estimated_cost_tokens: 200
+  rule_count: 16
+
+rules:
+
+  # ── TOKEN ARCHITECTURE (5 rules, 3 checkable) ──────────────────────────
+
+  - id: hardcoded-colors
+    severity: fundamental
+    rule: "Never hardcode color values (#hex, rgb(), hsl()) in components. Reference design tokens via CSS custom properties: var(--color-primary-500). Tokens are the single source of truth. Hardcoded colors create drift between design and code, make dark mode impossible, and require find-replace to update a brand color."
+    framework_css: |
+      /* FAIL: hardcoded color */
+      .btn { background: #3b82f6; color: #ffffff; }
+      /* PASS: token reference */
+      .btn { background: var(--color-primary-500); color: var(--color-neutral-0); }
+    framework_jsx: |
+      // FAIL: <button style={{ background: '#3b82f6', color: '#fff' }}>Submit</button>
+      // PASS: <button className="bg-primary-500 text-neutral-0">Submit</button>
+
+  - id: hardcoded-spacing
+    severity: fundamental
+    rule: "Never hardcode spacing values (px, rem, em) for layout properties. Reference token scales: var(--space-2), var(--space-4). Spacing tokens ensure consistent rhythm across the application. A padding of 12px in one component and 16px in another looks broken — tokens enforce the scale."
+    framework_css: |
+      /* FAIL: hardcoded spacing */
+      .card { padding: 16px; margin-bottom: 24px; gap: 12px; }
+      /* PASS: token references */
+      .card { padding: var(--space-4); margin-bottom: var(--space-6); gap: var(--space-3); }
+
+  - id: flat-token-names
+    severity: fundamental
+    rule: "Use hierarchical token naming: group.category.variant.grade (e.g., color.primary.500, space.component.gap.md). Flat names (blue-500, space-4) don't communicate what the token is FOR. DTCG groups tokens into a JSON hierarchy — use it to organize by purpose, not just by value."
+    framework_json: |
+      // FAIL: flat naming — what is blue-500 for?
+      { "blue-500": { "$value": "#3b82f6" } }
+      // PASS: DTCG hierarchical naming by purpose
+      {
+        "color": {
+          "primary": {
+            "500": { "$value": "#3b82f6", "$type": "color" },
+            "600": { "$value": "#2563eb", "$type": "color" }
+          },
+          "neutral": {
+            "0": { "$value": "#ffffff", "$type": "color" },
+            "900": { "$value": "#111827", "$type": "color" }
+          }
+        }
+      }
+
+  - id: no-dark-mode-tokens
+    severity: fundamental
+    rule: "Every design token system must define light and dark mode values. DTCG supports modes: use `$extensions.mode` or separate theme files. Without mode definitions, dark mode is hacked together with CSS overrides that diverge from the token source. Define both themes in tokens, generate both CSS files, toggle with data-theme."
+    check_regex: 'prefers-color-scheme.*#[0-9a-fA-F]'
+    framework_css: |
+      /* FAIL: dark mode hacked in CSS with hardcoded color overrides */
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #111; --text: #eee; }
+      }
+      /* PASS: tokens define both modes, CSS imports both */
+      /* tokens/color-light.json → --color-bg: #fff; */
+      /* tokens/color-dark.json  → --color-bg: #111; */
+      [data-theme="light"] { /* light token values */ }
+      [data-theme="dark"] { /* dark token values */ }
+
+  - id: no-token-file
+    severity: fundamental
+    rule: "Store tokens in a version-controlled tokens/ directory as structured JSON (DTCG format). Token files are source code — they define the design language. Commit them with the codebase, review changes in PRs, and generate platform outputs from them. Tokens are not a Figma-only concern — they're the bridge between design and code."
+    framework_json: |
+      // FAIL: tokens only in Figma, no committed source of truth
+      // (no tokens/ directory in the repo)
+      // PASS: committed token source
+      // tokens/color.json — the canonical color palette
+      // tokens/typography.json — font sizes, weights, line heights
+      // tokens/spacing.json — the spacing scale
+      // All platform outputs (CSS, Swift, Kotlin, XML) generated from these
+
+  # ── TOKEN USAGE & REFERENCES (4 rules, 2 checkable) ────────────────────
+
+  - id: inline-magic-values
+    severity: intermediate
+    rule: "Extract any value used 3+ times into a design token. Magic values (border-radius: 8px, box-shadow values, font-weight: 600) that repeat across components should be tokens. The threshold is 3 occurrences: fewer = probably local, more = deserves a name. Named tokens communicate intent — border-radius-round vs 8px."
+    check_regex: 'border-radius\s*:\s*\d+px\s*(?!.*var\()'
+    framework_css: |
+      /* FAIL: repeated magic values */
+      .card { border-radius: 8px; }
+      .modal { border-radius: 8px; }
+      .btn { border-radius: 8px; }
+      /* PASS: extracted token */
+      :root { --radius-md: 8px; }
+      .card, .modal, .btn { border-radius: var(--radius-md); }
+
+  - id: no-token-alias
+    severity: advanced
+    rule: "Use token aliases (references to other tokens) for derived values. In DTCG: `{color.primary.500}` references another token. Aliases create a dependency graph — change the source token, all aliases update. Use for: semantic tokens (color.surface.brand → {color.primary.500}), component tokens (button.bg.primary → {color.primary.500})."
+    framework_json: |
+      // FAIL: duplicated values — changing primary means finding all copies
+      {
+        "color": { "primary": { "500": { "$value": "#3b82f6" } } },
+        "button": { "bg": { "primary": { "$value": "#3b82f6" } } }
+      }
+      // PASS: aliases create a dependency graph
+      {
+        "color": { "primary": { "500": { "$value": "#3b82f6", "$type": "color" } } },
+        "button": { "bg": { "primary": { "$value": "{color.primary.500}", "$type": "color" } } }
+      }
+
+  - id: inconsistent-token-scale
+    severity: intermediate
+    rule: "Define a consistent numeric scale for each token type. Colors: 50-900 (50=lightest, 900=darkest). Spacing: 0-16 (or 0-96) with 4px base unit. Font sizes: named scale (xs, sm, md, lg, xl, 2xl) mapped to rem. Inconsistent scales (8px, 13px, 17px, 22px) are hard to remember and compose poorly."
+    framework_css: |
+      /* FAIL: inconsistent scale — what comes between 13 and 17? */
+      :root { --space-sm: 8px; --space-md: 13px; --space-lg: 17px; --space-xl: 22px; }
+      /* PASS: consistent 4px base unit */
+      :root { --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem; }
+
+  - id: css-root-bloat
+    severity: intermediate
+    rule: "Keep :root lean — export only the core token scale as CSS custom properties. Component-specific tokens go in component-level stylesheets or are generated per-component. A :root with 500 custom properties is a design system smell — it means tokens aren't scoped to where they're used, and every page pays the parse cost for tokens it never references."
+    framework_css: |
+      /* FAIL: :root with every token — bloated, no scoping */
+      :root {
+        --color-primary-50: ...; --color-primary-100: ...; /* 500 lines */
+      }
+      /* PASS: core tokens in :root, component tokens scoped */
+      :root { --color-primary-500: oklch(0.62 0.22 265); --space-4: 1rem; }
+      .card { --card-padding: var(--space-4); padding: var(--card-padding); }
+
+  # ── BUILD PIPELINE (3 rules, 1 checkable) ──────────────────────────────
+
+  - id: no-build-pipeline
+    severity: intermediate
+    rule: "Set up a build pipeline: DTCG JSON tokens → Style Dictionary (or equivalent) → platform outputs (CSS, SCSS, JS/TS, Swift, Kotlin, Android XML). Write tokens once, generate everywhere. Without a pipeline, tokens drift across platforms — iOS uses different values than web. The pipeline is the enforcement mechanism."
+    framework_js: |
+      // FAIL: manually written CSS tokens, manually translated to other platforms
+      // (token drift across platforms is inevitable)
+      // PASS: Style Dictionary config
+      // sd.config.js
+      module.exports = {
+        source: ["tokens/**/*.json"],
+        platforms: {
+          css: { transformGroup: "css", buildPath: "dist/css/", files: [{ destination: "tokens.css", format: "css/variables" }] },
+          scss: { transformGroup: "scss", buildPath: "dist/scss/", files: [{ destination: "tokens.scss", format: "scss/variables" }] },
+          js: { transformGroup: "js", buildPath: "dist/js/", files: [{ destination: "tokens.js", format: "javascript/es6" }] }
+        }
+      };
+
+  - id: no-token-docs
+    severity: intermediate
+    rule: "Document every token's purpose, not just its value. The token name should be descriptive, but the `$description` field in DTCG provides context: when to use, when NOT to use, and design rationale. Undocumented tokens become cargo-cult design — developers use them because they exist, not because they're right for the context."
+    framework_json: |
+      // FAIL: token with no context
+      { "color": { "error": { "500": { "$value": "#ef4444", "$type": "color" } } } }
+      // PASS: token with $description
+      {
+        "color": { "error": {
+          "500": {
+            "$value": "#ef4444",
+            "$type": "color",
+            "$description": "Error/destructive action color. Use for: error messages, delete buttons, invalid form states. Do NOT use for: warnings (use warning.500), branding, or informational states."
+          }
+        }}
+      }
+
+  - id: no-validation
+    severity: advanced
+    rule: "Validate tokens before they ship: check for broken aliases (references to non-existent tokens), missing $type fields, unused tokens, and value mismatches (a token named 'red' with a blue value). Style Dictionary validates aliases automatically. Add custom validators for naming conventions, scale consistency, and contrast ratios."
+    framework_json: |
+      // FAIL: broken alias — no token at color.primary.800
+      { "button": { "hover": { "$value": "{color.primary.800}", "$type": "color" } } }
+      // (if color.primary.800 doesn't exist, the alias breaks silently)
+      // PASS: validation catches broken aliases at build time
+      // SD throws: 'Reference error: color.primary.800 not found'
+      // Fix: either create the token or alias to an existing one
+
+  # ── COMPOSITE & ADVANCED (3 rules, 1 checkable) ────────────────────────
+
+  - id: no-composite-types
+    severity: advanced
+    rule: "Use DTCG composite token types for multi-value properties: typography (fontFamily, fontSize, fontWeight, lineHeight), shadow (color, offsetX, offsetY, blur, spread), border (color, width, style). Composite tokens group related values that must stay in sync. Don't split them into individual tokens that drift independently."
+    framework_json: |
+      // FAIL: individual tokens that can drift independently
+      { "font": { "heading": { "size": { "$value": "2rem" }, "weight": { "$value": 700 }, "lineHeight": { "$value": 1.2 } } } }
+      // PASS: composite typography token
+      {
+        "typography": { "heading": {
+          "$type": "typography",
+          "$value": { "fontFamily": "Inter", "fontSize": "2rem", "fontWeight": 700, "lineHeight": 1.2 }
+        }}
+      }
+
+  - id: figma-code-drift
+    severity: intermediate
+    rule: "Sync tokens bidirectionally between Figma and code. Tokens Studio (Figma plugin) pushes tokens to a GitHub repo. Figma Dev Mode reads token names from code. Without sync, Figma shows one set of values and the live app shows another. The token JSON in git is the source of truth — Figma reads from it, code generates from it."
+    framework_json: |
+      // FAIL: Figma has the "real" values, code has stale copies
+      // (manual sync is always out of date)
+      // PASS: Git is the source of truth
+      // tokens/ → Tokens Studio syncs to Figma → designers use tokens in Figma
+      // tokens/ → Style Dictionary generates CSS → developers use tokens in code
+      // Both sides read from the same commit. No drift.
+
+  - id: token-platform-mismatch
+    severity: advanced
+    rule: "Map token types to platform-specific output formats correctly. DTCG color → CSS custom property, Swift UIColor, Kotlin Compose Color. DTCG dimension → rem in CSS, CGFloat in Swift, dp in Android. Each platform has idiomatic representations — the build pipeline handles the mapping. Don't force one platform's conventions onto another."
+    framework_css: |
+      /* FAIL: using CSS-specific syntax in token values */
+      { "spacing": { "4": { "$value": "1rem", "$type": "dimension" } } }
+      /* Note: 'rem' is CSS-specific. In Swift, it should be 16pt. In Android, 16dp. */
+      /* PASS: platform-agnostic token value */
+      { "spacing": { "4": { "$value": 16, "$type": "dimension" } } }
+      /* Build pipeline transforms: CSS → 1rem, Swift → 16.0, Android → 16.dp */
+
+  - id: no-color-token-enough
+    severity: intermediate
+    rule: "Color tokens alone are not a design system. A complete DTCG token set includes: color, dimension (spacing, sizing), typography (composite), duration (animation timings), cubic-bezier (easing curves), strokeStyle (borders), and shadow (composite). Each token type constrains a design decision. A system with only color tokens is a palette, not a design system."
+    framework_json: |
+      // FAIL: only color tokens
+      { "color": { "primary": { "500": { "$value": "#3b82f6" } } } }
+      // PASS: complete token type coverage
+      {
+        "color": { "primary": { "500": { "$value": "#3b82f6", "$type": "color" } } },
+        "dimension": { "space": { "4": { "$value": 16, "$type": "dimension" } } },
+        "duration": { "fast": { "$value": "150ms", "$type": "duration" } },
+        "cubicBezier": { "ease-out": { "$value": [0, 0, 0.2, 1], "$type": "cubicBezier" } },
+        "typography": { "body": { "$type": "typography", "$value": { "fontFamily": "Inter", "fontSize": "1rem" } } }
+      }

@@ -1,0 +1,130 @@
+# astro — Astro framework for content & multi-framework sites.
+# Sources: Astro docs. 10 rules. ~110 tokens.
+
+class:
+  id: astro
+  title: "Astro — Islands Architecture, View Transitions & Content Collections"
+  version: 1.0.0
+  sources: ["Astro Documentation (docs.astro.build)"]
+  prerequisites: []
+  target_violations:
+    - "no-client-directives"
+    - "all-js-by-default"
+    - "no-content-collections"
+    - "no-view-transitions-astro"
+    - "no-image-optimization-astro"
+    - "framework-island-overload"
+    - "no-hybrid-rendering"
+    - "no-island-interactivity"
+    - "static-paths-only"
+    - "no-middleware-edge"
+  estimated_cost_tokens: 130
+  rule_count: 10
+
+rules:
+  - id: no-client-directives
+    severity: fundamental
+    rule: "Use Astro client directives to control when islands hydrate: client:load (immediately), client:idle (when browser is idle — default choice for below-fold), client:visible (when scrolled into view — default for below-fold), client:media (match media query), client:only (skip SSR, client-only). Without a directive, the component renders to static HTML with zero JavaScript."
+    framework_astro: |
+      <!-- FAIL: no directive — component never hydrates (stays static) -->
+      <LikeButton />
+      <!-- PASS: directive controls hydration timing -->
+      <LikeButton client:idle />  <!-- hydrate when browser is idle — best for most cases -->
+      <CommentSection client:visible />  <!-- hydrate on scroll -- saves JS for below-fold -->
+
+  - id: all-js-by-default
+    severity: fundamental
+    rule: "Astro is zero JavaScript by default — every component renders to static HTML unless you add a client: directive. This is the opposite of React/Vue where JS ships with every component. Leverage this: 90%+ of a typical content site should be static HTML (zero JS). Only interactive components (forms, buttons, search) need a client: directive."
+    framework_astro: |
+      <!-- FAIL: client:load on everything — no different than an SPA -->
+      <!-- PASS: static by default, JS only where needed -->
+      <Header />  <!-- static — zero JS -->
+      <SearchBox client:idle />  <!-- interactive — JS when idle -->
+      <Footer />  <!-- static — zero JS -->
+
+  - id: no-content-collections
+    severity: fundamental
+    rule: "Use Astro Content Collections for type-safe Markdown/MDX. Define a schema with Zod: const posts = defineCollection({ schema: z.object({ title: z.string(), date: z.date(), draft: z.boolean().default(false) }) }). Astro validates every frontmatter entry at build time, provides autocomplete in your editor, and filters drafts automatically. No more 'why is this post not showing up?'"
+    framework_astro: |
+      // FAIL: untyped glob import — no validation
+      const posts = await Astro.glob('./posts/*.md');
+      // PASS: Content Collections — type-safe, validated
+      // src/content/config.ts
+      const postsCollection = defineCollection({ schema: z.object({ title: z.string(), pubDate: z.date(), tags: z.array(z.string()).optional() }) });
+      export const collections = { posts: postsCollection };
+
+  - id: no-view-transitions-astro
+    severity: fundamental
+    rule: "Enable Astro's built-in View Transitions with one import: import { ViewTransitions } from 'astro:transitions'. Add <ViewTransitions /> to your head or layout. This enables MPA page transitions with no JavaScript — navigate between Astro pages and elements with view-transition-name animate between them. Opt-in per-page with transition:animate or globally."
+    framework_astro: |
+      <!-- FAIL: no page transitions — pages snap -->
+      <!-- PASS: one import enables MPA View Transitions -->
+      ---
+      import { ViewTransitions } from 'astro:transitions';
+      ---
+      <html><head><ViewTransitions /></head><body><slot /></body></html>
+      <!-- Elements with matching view-transition-name morph between pages -->
+
+  - id: no-image-optimization-astro
+    severity: fundamental
+    rule: "Use Astro's built-in <Image /> component for all images. It provides: automatic WebP/AVIF conversion, responsive srcset generation, lazy loading, width/height for CLS prevention, and blur-up placeholders. Images in src/ are processed at build time. Remote images are optimized at build or runtime. Never use raw <img> in Astro."
+    framework_astro: |
+      <!-- FAIL: raw img — no optimization -->
+      <img src="/hero.jpg" alt="Hero">
+      <!-- PASS: Astro Image — optimized, responsive, lazy -->
+      <Image src="/hero.jpg" alt="Hero" width={1200} height={600} loading="eager" />
+      <!-- PASS: remote image -->
+      <Image src="https://cdn.example.com/photo.jpg" alt="Photo" width={800} height={600} />
+
+  - id: framework-island-overload
+    severity: intermediate
+    rule: "Each framework island in Astro ships its own runtime. A page with a React island (React runtime, ~45KB), a Vue island (Vue runtime, ~33KB), and a Svelte island (Svelte runtime, ~4KB) loads ~82KB of framework code — before any component code. Use islands sparingly. Prefer one framework per page, and use Astro components (.astro) for everything else."
+    framework_astro: |
+      <!-- FAIL: three frameworks on one page — ~82KB of runtimes -->
+      <ReactChart client:load /> <VueCalendar client:idle /> <SveltePoll client:visible />
+      <!-- PASS: one framework per page, or native web components -->
+      <ReactChart client:idle />  <!-- choose one framework -->
+
+  - id: no-hybrid-rendering
+    severity: advanced
+    rule: "Use Astro's hybrid rendering (SSG + SSR) for content sites with dynamic features. Static by default (SSG) for content pages. SSR per-route for: user dashboards, search results, authenticated pages. Add export const prerender = false to a page for SSR. This gives you the performance of static + the flexibility of server rendering where needed."
+    framework_astro: |
+      // FAIL: all-static — can't handle authenticated pages
+      // PASS: hybrid — static content, SSR for dynamic pages
+      // src/pages/dashboard.astro (SSR)
+      export const prerender = false;
+      const user = await getUser(Astro.cookies.get('session').value);
+
+  - id: no-island-interactivity
+    severity: intermediate
+    rule: "Choose the right client directive for each island based on user priority. Above-fold interactive element (search, CTA) → client:load or client:idle. Below-fold (comments, related posts) → client:visible. Screen-width-dependent (mobile nav) → client:media. No SSR needed (admin panel widgets) → client:only. Wrong directive = wasted JS or broken interactivity."
+    framework_astro: |
+      <!-- Above-fold: idle is usually right — loads after initial render -->
+      <SearchBox client:idle />
+      <!-- Below-fold: visible saves bandwidth unless user scrolls -->
+      <CommentSection client:visible />
+      <!-- Mobile-only: media query avoids loading on desktop -->
+      <MobileNav client:media="(max-width: 768px)" />
+
+  - id: static-paths-only
+    severity: intermediate
+    rule: "Use getStaticPaths() for static route generation from data. For a blog, getStaticPaths() returns one path per post. Each path generates a static HTML file at build time. Use for: blog posts, product pages, documentation — any page where content is known at build time. SSR is for truly dynamic content, not for pages that could have been static."
+    framework_astro: |
+      // PASS: static generation from data
+      export async function getStaticPaths() {
+        const posts = await getCollection('posts');
+        return posts.map(post => ({ params: { slug: post.slug }, props: { post } }));
+      }
+
+  - id: no-middleware-edge
+    severity: advanced
+    rule: "Use Astro middleware for request-level logic: auth checks, geolocation, A/B testing, redirects. Middleware runs before every request (or matched routes) and can modify headers, redirect, or add locals. Define in src/middleware.ts. Use for: authentication guards, i18n locale detection, feature flags, bot blocking."
+    framework_astro: |
+      // PASS: middleware for auth guard
+      // src/middleware.ts
+      export const onRequest = defineMiddleware((ctx, next) => {
+        if (ctx.url.pathname.startsWith('/admin') && !ctx.cookies.has('session')) {
+          return ctx.redirect('/login');
+        }
+        return next();
+      });

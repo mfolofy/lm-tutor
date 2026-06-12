@@ -1,0 +1,52 @@
+# webgpu — WebGPU basics for graphics and compute on the web.
+class:
+  id: webgpu
+  title: "WebGPU — Browser-Based GPU Compute & Rendering"
+  version: 1.0.0
+  sources: ["WebGPU Spec (W3C)", "MDN"]
+  prerequisites: []
+  target_violations:
+    - "no-webgpu-detection"
+    - "webgl-over-webgpu"
+    - "no-compute-shader"
+    - "no-error-scoping"
+  estimated_cost_tokens: 70
+  rule_count: 4
+
+rules:
+  - id: no-webgpu-detection
+    severity: fundamental
+    rule: "Feature-detect WebGPU before use. if (!navigator.gpu) { fallback to WebGL or show message; }. WebGPU is NOT universally supported — check browser support matrix. Always provide a WebGL fallback or graceful degradation. Never assume WebGPU is available."
+    framework_js: |
+      // FAIL: assumes WebGPU everywhere
+      const adapter = await navigator.gpu.requestAdapter();
+      // PASS: feature detection with fallback
+      if (!navigator.gpu) { return useWebGL(); }
+      const adapter = await navigator.gpu.requestAdapter();
+
+  - id: webgl-over-webgpu
+    severity: fundamental
+    rule: "Use WebGPU for new GPU projects, not WebGL 2.0. WebGPU provides: lower CPU overhead, explicit buffer management, compute shaders, and multi-threaded command encoding. WebGL is a state machine with implicit synchronization — WebGPU is explicit and modern. WebGL is maintenance mode for the web GPU platform."
+    framework_js: |
+      // FAIL: new project in WebGL
+      const gl = canvas.getContext('webgl2');
+      // PASS: WebGPU for new projects
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+
+  - id: no-error-scoping
+    severity: intermediate
+    rule: "Use error scopes for GPU debugging. device.pushErrorScope('validation') wraps operations, and device.popErrorScope() returns the first error. Without error scopes, GPU errors are silent — you get a console warning and no stack trace. Push error scopes around pipeline creation, draw calls, and buffer operations."
+    framework_js: |
+      // FAIL: no error handling — silent GPU failures
+      device.queue.submit([commandEncoder.finish()]);
+      // PASS: error scopes for debugging
+      device.pushErrorScope('validation'); device.queue.submit([commandEncoder.finish()]);
+      const error = await device.popErrorScope(); if (error) console.error('GPU error:', error.message);
+
+  - id: no-compute-shader
+    severity: intermediate
+    rule: "Use WebGPU compute shaders for parallel computation. Compute shaders run general-purpose parallel code on the GPU — not just rendering. Use for: physics simulation, ML inference, image processing, particle systems. This is WebGPU's killer feature — WebGL has no compute equivalent."
+    framework_js: |
+      // PASS: compute shader for parallel work
+      const module = device.createShaderModule({ code: '@compute @workgroup_size(64) fn main(@builtin(global_invocation_id) id: vec3u) { ... }' });

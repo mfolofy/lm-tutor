@@ -27,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version", action="version", version=_version_string()
     )
-    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster,curriculum,profile,prefix,install-opencode,class}")
+    sub = parser.add_subparsers(dest="command", metavar="{enroll,learn,eval,fix,mcp,list,booster,curriculum,profile,prefix,install-opencode,class,session}")
 
     # tutor enroll
     p_enroll = sub.add_parser("enroll", help="Identify a model, get its track.")
@@ -179,6 +179,56 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional context surrounding the choice.",
     )
 
+    # tutor session — Session Book lifecycle
+    p_session = sub.add_parser("session", help="Session Book — decision freeze + adherence measurement.")
+    session_sub = p_session.add_subparsers(
+        dest="session_cmd",
+        metavar="{start,checkpoint,inject,adherence,close,list,export}",
+    )
+
+    # session start
+    p_ss_start = session_sub.add_parser("start", help="Start a new session book.")
+    p_ss_start.add_argument("--session-id", default=None, help="Explicit session ID (auto-generated if omitted).")
+    p_ss_start.add_argument("--model", default=None, help="Model ID (auto-detected if omitted).")
+    p_ss_start.add_argument("--trip-type", default="local", help="Trip type: sprint|local|long_haul|cross_country|patrol|ghost")
+    p_ss_start.add_argument("--task", default="", help="Task description.")
+    p_ss_start.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session checkpoint
+    p_ss_check = session_sub.add_parser("checkpoint", help="Freeze a confirmed decision.")
+    p_ss_check.add_argument("--session-id", default=None, help="Session ID (from TUTOR_SESSION_ID env if omitted).")
+    p_ss_check.add_argument("--id", default=None, help="Decision ID (auto-assigned if omitted).")
+    p_ss_check.add_argument("--text", required=True, help="The decision text, e.g. 'Use FastAPI over Flask'.")
+    p_ss_check.add_argument("--rationale", default="", help="Why this decision was made.")
+    p_ss_check.add_argument("--by", default="auto", help="Who confirmed: human|reviewer|auto")
+    p_ss_check.add_argument("--type", default="general", help="Decision type: architectural|convention|security|naming|general")
+    p_ss_check.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session inject
+    p_ss_inject = session_sub.add_parser("inject", help="Output the session book as injection prefix.")
+    p_ss_inject.add_argument("--session-id", default=None, help="Session ID.")
+    p_ss_inject.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session adherence
+    p_ss_adh = session_sub.add_parser("adherence", help="Show EAW profile and drift events.")
+    p_ss_adh.add_argument("--session-id", default=None, help="Session ID.")
+    p_ss_adh.add_argument("--task-type", default=None, help="Override task type for EAW profile.")
+    p_ss_adh.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session close
+    p_ss_close = session_sub.add_parser("close", help="Archive the session book (becomes training data).")
+    p_ss_close.add_argument("--session-id", default=None, help="Session ID.")
+    p_ss_close.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session list
+    p_ss_list = session_sub.add_parser("list", help="List active and closed sessions.")
+    p_ss_list.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    # session export
+    p_ss_export = session_sub.add_parser("export", help="Export drift data as training preference pairs.")
+    p_ss_export.add_argument("--session-id", default=None, help="Export only this session.")
+    p_ss_export.add_argument("--output", default=None, help="Write to file instead of stdout.")
+
     return parser
 
 
@@ -230,6 +280,9 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.command == "class":
         return _run_class(args)
+    if args.command == "session":
+        from tutor.cli.session import run
+        return run(args)
 
     parser.print_help()
     return 1

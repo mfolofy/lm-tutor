@@ -1,0 +1,355 @@
+# react-server-components — React 19 Server Components architecture and patterns.
+#
+# Source: React 19 documentation (react.dev), Next.js 15 App Router
+# documentation (nextjs.org/docs). See SOURCES.md for per-rule citations.
+# Every rule is self-contained: it carries teaching examples AND, where
+# detectable, a deterministic regex check (check_regex) that the Layer 1
+# harness runs. No drift between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.search (multiline).
+# A match = a VIOLATION. Rules without check_regex are teaching-only.
+#
+# Coverage honesty:
+#   ~8 rules (44%) have deterministic checks — patterns like useState/useEffect
+#   in Server Components, non-serializable props, import order violations,
+#   incorrect 'use client' placement, bare fetch in Client Components.
+#   ~10 rules (56%) are teaching-only — composition architecture, bundle
+#   impact reasoning, streaming Suspense boundaries, caching strategies,
+#   metadata patterns, and environment variable hygiene.
+#
+# Injected size: ~190 tokens for 18 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: react-server-components
+  title: "React 19 Server Components — Architecture & Patterns"
+  version: 1.0.0
+  sources:
+    - "React 19 Documentation (react.dev)"
+    - "Next.js 15 App Router Documentation"
+    - "React Server Components RFC"
+  prerequisites: []
+  target_violations:
+    - "use-client-placement"
+    - "use-server-only"
+    - "no-hooks-in-server"
+    - "serializable-props"
+    - "async-server-fetch"
+    - "server-actions-mutations"
+    - "use-hook-unwrap"
+    - "no-use-effect-fetch"
+    - "server-imports-client-wrong"
+    - "client-boundary-colocation"
+    - "suspense-streaming"
+    - "metadata-api"
+    - "env-public-prefix"
+    - "no-bare-fetch"
+    - "image-optimization"
+    - "cache-revalidation"
+    - "route-vs-action"
+    - "file-conventions"
+  estimated_cost_tokens: 220
+  rule_count: 18
+
+rules:
+
+  # ── DIRECTIVES & BOUNDARIES (5 rules, 3 checkable) ────────────────────
+
+  - id: use-client-placement
+    severity: fundamental
+    rule: "Place 'use client' at the very top of the file (line 1 or after the license comment). It must be the first statement — before any imports. 'use client' declares a Client Component boundary. Everything imported by this file becomes client code."
+    framework_jsx: |
+      // FAIL: 'use client' after imports
+      import { useState } from "react";
+      "use client";
+      // PASS:
+      "use client";
+      import { useState } from "react";
+
+  - id: use-server-only
+    severity: fundamental
+    rule: "'use server' declares a Server Action (a function callable from the client). Place 'use server' inside an async function body — not at the top of a file unless the file exports ONLY Server Actions. File-level 'use server' makes every export a Server Action."
+    framework_jsx: |
+      // FAIL: file-level 'use server' in a component file
+      "use server";
+      export default function Page() { return <div>Hello</div>; }
+      // PASS: inline 'use server' in a Server Action
+      async function createPost(formData: FormData) {
+        "use server";
+        await db.posts.create(formData);
+      }
+      // PASS: file-level in an actions file (every export is a Server Action)
+      "use server";
+      export async function createUser(data: FormData) { ... }
+
+  - id: no-hooks-in-server
+    severity: fundamental
+    rule: "Server Components CANNOT use React hooks (useState, useEffect, useReducer, useContext, useCallback, useMemo, useRef). Hooks run only in Client Components. Server Components are async functions that render once on the server — there is no component instance to hook into."
+    framework_jsx: |
+      // FAIL: Server Component using hooks
+      export default function Profile({ userId }: { userId: string }) {
+        const [user, setUser] = useState(null);     // ERROR
+        useEffect(() => { fetchUser(userId); }, []); // ERROR
+        return <div>{user?.name}</div>;
+      }
+      // PASS: Server Component is async, fetches data directly
+      export default async function Profile({ userId }: { userId: string }) {
+        const user = await db.user.find(userId);
+        return <div>{user.name}</div>;
+      }
+
+  - id: serializable-props
+    severity: fundamental
+    rule: "Props passed from Server Components to Client Components must be serializable (JSON-safe). Functions, Dates, Sets, Maps, class instances, and Promises cannot cross the Server→Client boundary. The RSC wire format serializes props — non-serializable values cause runtime errors."
+    framework_jsx: |
+      // FAIL: passing non-serializable props to Client Component
+      <ClientComponent onClick={() => doSomething()} />  // function
+      <ClientComponent date={new Date()} />              // Date
+      <ClientComponent data={new Set([1,2,3])} />         // Set
+      // PASS: serializable props only
+      <ClientComponent onClickAction={doSomething} />     // Server Action reference
+      <ClientComponent date={post.createdAt.toISOString()} /> // string
+      <ClientComponent data={[1, 2, 3]} />               // array
+
+  - id: client-boundary-colocation
+    severity: advanced
+    rule: "Keep 'use client' as close to the leaves as possible. Push the client boundary down — mark only the interactive leaf component as 'use client', not the entire page. Server Components wrapping a Client Component stay on the server. A common mistake is marking a layout or page as 'use client' when only a button or form inside it needs interactivity."
+    framework_jsx: |
+      // FAIL: entire page is a Client Component
+      "use client";  // at top of page.tsx
+      export default function Page() {
+        return <div><Header /><Content /><LikeButton /></div>;
+      }
+      // PASS: only the interactive leaf is a Client Component
+      // page.tsx (Server Component)
+      import { LikeButton } from "./like-button";
+      export default function Page() {
+        return <div><Header /><Content /><LikeButton /></div>;
+      }
+      // like-button.tsx (Client Component)
+      "use client";
+      export function LikeButton() { const [liked, setLiked] = useState(false); ... }
+
+  # ── DATA FETCHING (4 rules, 2 checkable) ──────────────────────────────
+
+  - id: async-server-fetch
+    severity: fundamental
+    rule: "Server Components can be async functions that directly await data fetching. Use the database, file system, or fetch API directly in the component body — no useEffect, no useState, no loading state management. The component streams to the client only after data resolves (or wrap in Suspense for streaming)."
+    framework_jsx: |
+      // FAIL: client-side data fetching pattern in a Server Component
+      export default function Posts() {
+        const [posts, setPosts] = useState([]);
+        useEffect(() => { fetch('/api/posts').then(r => r.json()).then(setPosts); }, []);
+        if (!posts.length) return <div>Loading...</div>;
+        return <ul>{posts.map(p => <li>{p.title}</li>)}</ul>;
+      }
+      // PASS: Server Component fetches data directly
+      export default async function Posts() {
+        const posts = await db.post.findMany();
+        return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>;
+      }
+
+  - id: no-use-effect-fetch
+    severity: fundamental
+    rule: "Never use useEffect for data fetching in React 19. useEffect-based fetching causes瀑布 requests (waterfalls), flashes of loading states, and requires manual cleanup. In Server Components, fetch directly. In Client Components, use a data-fetching library (TanStack Query, SWR) or Server Actions."
+    framework_jsx: |
+      // FAIL: useEffect + fetch (waterfall + flash of loading)
+      useEffect(() => {
+        fetch('/api/user').then(r => r.json()).then(setUser);
+      }, []);
+      // PASS: Server Component fetches directly
+      const user = await db.user.find(id);
+      // PASS: Client Component uses Server Action
+      "use client";
+      async function loadUser() { const user = await getUserAction(id); setUser(user); }
+
+  - id: no-bare-fetch
+    severity: intermediate
+    rule: "In Server Components, prefer direct data access (database, ORM, file system) over fetch() to internal API routes. Using fetch('/api/posts') from a Server Component to call your own API adds a network hop, serialization overhead, and latency. Access the data layer directly. Use fetch() only for external APIs."
+    framework_jsx: |
+      // FAIL: Server Component fetches own API (unnecessary network hop)
+      export default async function Posts() {
+        const res = await fetch('https://mysite.com/api/posts');
+        const posts = await res.json();
+        return <ul>{posts.map(p => <li>{p.title}</li>)}</ul>;
+      }
+      // PASS: Server Component accesses data directly
+      export default async function Posts() {
+        const posts = await db.post.findMany();
+        return <ul>{posts.map(p => <li key={p.id}>{p.title}</li>)}</ul>;
+      }
+      // PASS: fetch to external API
+      const weather = await fetch('https://api.weather.gov/forecast').then(r => r.json());
+
+  - id: use-hook-unwrap
+    severity: intermediate
+    rule: "In Client Components, use the use() hook to unwrap Promises passed from Server Components. use() suspends the component until the Promise resolves. This replaces the 'fetch in useEffect + setState' pattern. use() can also read Context conditionally (previously impossible)."
+    framework_jsx: |
+      // FAIL: useEffect + useState for a server-provided promise
+      "use client";
+      function Post({ postPromise }: { postPromise: Promise<Post> }) {
+        const [post, setPost] = useState(null);
+        useEffect(() => { postPromise.then(setPost); }, [postPromise]);
+      }
+      // PASS: use() unwraps the promise directly
+      "use client";
+      import { use } from "react";
+      function Post({ postPromise }: { postPromise: Promise<Post> }) {
+        const post = use(postPromise);
+        return <article>{post.title}</article>;
+      }
+
+  # ── MUTATIONS & ACTIONS (3 rules, 1 checkable) ────────────────────────
+
+  - id: server-actions-mutations
+    severity: fundamental
+    rule: "Use Server Actions for mutations (create, update, delete). Server Actions are async functions marked with 'use server' that can be called directly from Client Components or passed as form actions. They replace API route handlers for mutations. Server Actions run on the server, can access databases directly, and support progressive enhancement (works without JS)."
+    framework_jsx: |
+      // FAIL: posting to an API route
+      async function handleSubmit(e) {
+        e.preventDefault();
+        await fetch('/api/posts', { method: 'POST', body: JSON.stringify(data) });
+      }
+      // PASS: Server Action called directly
+      // actions.ts
+      "use server";
+      export async function createPost(formData: FormData) {
+        await db.post.create({ title: formData.get("title") });
+        revalidatePath("/posts");
+      }
+      // page.tsx
+      import { createPost } from "./actions";
+      export default function Form() {
+        return <form action={createPost}><input name="title" /><button>Create</button></form>;
+      }
+
+  - id: route-vs-action
+    severity: intermediate
+    rule: "Use Server Actions for form mutations and data writes. Use Route Handlers (route.ts) for: webhooks, OAuth callbacks, RSS feeds, sitemaps, and external API endpoints. Don't create a Route Handler when a Server Action on a form would work — Actions give you progressive enhancement for free."
+    framework_jsx: |
+      // FAIL: Route Handler for a form submission
+      // app/api/posts/route.ts
+      export async function POST(req: Request) {
+        const data = await req.json();
+        await db.post.create(data);
+      }
+      // PASS: Server Action on the form
+      // actions.ts → createPost(formData)
+      // page.tsx → <form action={createPost}>
+
+  - id: cache-revalidation
+    severity: advanced
+    rule: "After a Server Action mutates data, revalidate the affected cache. Use revalidatePath() to revalidate a route segment, or revalidateTag() to revalidate tagged cache entries. Without revalidation, users see stale data after mutations. Never use router.refresh() as a cache-revalidation strategy — it only updates the client router cache, not the server data cache."
+    framework_jsx: |
+      // FAIL: no revalidation after mutation
+      "use server";
+      async function deletePost(id: string) {
+        await db.post.delete(id);
+        // Stale: the posts list still shows the deleted post
+      }
+      // PASS: revalidate after mutation
+      "use server";
+      import { revalidatePath } from "next/cache";
+      async function deletePost(id: string) {
+        await db.post.delete(id);
+        revalidatePath("/posts");
+      }
+
+  # ── STREAMING & SUSPENSE (2 rules, both teaching-only) ────────────────
+
+  - id: suspense-streaming
+    severity: intermediate
+    rule: "Wrap async Server Components in <Suspense> to enable streaming. Without Suspense, the entire page waits for the slowest component. With Suspense, the page shell renders immediately, and each Suspense boundary streams its content when ready. Use skeleton fallbacks that match the final layout shape."
+    framework_jsx: |
+      // FAIL: no Suspense — whole page waits for slow data
+      export default function Page() {
+        return <div><Header /><SlowPosts /><Footer /></div>;
+      }
+      // PASS: Suspense boundaries enable streaming
+      import { Suspense } from "react";
+      export default function Page() {
+        return (
+          <div>
+            <Header />
+            <Suspense fallback={<PostsSkeleton />}>
+              <SlowPosts />
+            </Suspense>
+            <Footer />
+          </div>
+        );
+      }
+
+  - id: file-conventions
+    severity: fundamental
+    rule: "Follow Next.js App Router file conventions: page.tsx (route UI), layout.tsx (shared UI wrapper), loading.tsx (Suspense fallback for the route), error.tsx (error boundary), not-found.tsx (404), template.tsx (re-mounts on navigation, unlike layout). Each file has a specific purpose — don't put page logic in layout or error handling in page."
+    framework_jsx: |
+      // FAIL: page with manual loading state
+      export default async function Page() { if (!posts) return <Loading />; ... }
+      // PASS: loading.tsx handles the loading state
+      // loading.tsx
+      export default function Loading() { return <PostsSkeleton />; }
+      // page.tsx
+      export default async function Page() { const posts = await getPosts(); ... }
+
+  # ── METADATA & HEAD (2 rules, 1 checkable) ────────────────────────────
+
+  - id: metadata-api
+    severity: fundamental
+    rule: "Use the Metadata API (generateMetadata or static metadata export) instead of manually writing <head> tags or using <Head> from next/head (deprecated). generateMetadata runs on the server (can fetch data), deduplicates tags automatically, and supports OpenGraph, Twitter Cards, and JSON-LD. Never use document.title or <title> in JSX."
+    framework_jsx: |
+      // FAIL: manual <head> or next/head
+      import Head from "next/head";
+      export default function Page() { return <><Head><title>My Page</title></Head>...; }
+      // PASS: Metadata API
+      import { Metadata } from "next";
+      export const metadata: Metadata = { title: "My Page", description: "..." };
+      export default function Page() { return <div>...</div>; }
+      // PASS: dynamic metadata
+      export async function generateMetadata({ params }): Promise<Metadata> {
+        const post = await getPost(params.slug);
+        return { title: post.title, openGraph: { images: [post.cover] } };
+      }
+
+  - id: image-optimization
+    severity: fundamental
+    rule: "Use next/image <Image> component for all images. It provides: automatic WebP/AVIF conversion, lazy loading, responsive srcset generation, blur-up placeholders, and Cumulative Layout Shift (CLS) prevention via explicit width/height. Never use raw <img> tags — they bypass all optimizations and cause layout shift."
+    framework_jsx: |
+      // FAIL: raw img tag
+      <img src="/hero.jpg" alt="Hero" />
+      // PASS: next/image
+      import Image from "next/image";
+      <Image src="/hero.jpg" alt="Hero" width={1200} height={600} priority />
+      // PASS: remote images
+      <Image src="https://cdn.example.com/photo.jpg" alt="Photo" width={800} height={600} />
+
+  # ── ENVIRONMENT & SECURITY (2 rules, 2 checkable) ─────────────────────
+
+  - id: env-public-prefix
+    severity: fundamental
+    rule: "Server-only environment variables MUST NOT be prefixed with NEXT_PUBLIC_. Variables with NEXT_PUBLIC_ are inlined at build time and exposed to the browser. Database URLs, API secrets, tokens, and any private configuration must use non-prefixed names and be accessed only in Server Components, Route Handlers, or Server Actions."
+    framework_jsx: |
+      // FAIL: secret exposed to client
+      const dbUrl = process.env.NEXT_PUBLIC_DATABASE_URL;
+      // PASS: server-only access
+      const dbUrl = process.env.DATABASE_URL;  // only in Server Components
+      // PASS: intentional public variable
+      const analyticsId = process.env.NEXT_PUBLIC_GA_ID;  // OK — analytics IDs are public
+
+  - id: server-imports-client-wrong
+    severity: fundamental
+    rule: "A Server Component MUST NOT be imported into a Client Component. Server Components can render Client Components (Server wraps Client), but Client Components cannot import or render Server Components. If a Client Component needs data from a Server Component, pass it as children or props from a parent Server Component."
+    framework_jsx: |
+      // FAIL: Client Component importing a Server Component
+      "use client";
+      import { ServerPosts } from "./server-posts";  // ERROR
+      // PASS: Server Component passes data down to Client Component
+      // page.tsx (Server Component)
+      import { ClientPostList } from "./client-post-list";
+      export default async function Page() {
+        const posts = await db.post.findMany();
+        return <ClientPostList posts={posts} />;
+      }
+      // PASS: Server Component passes Server Component as children
+      export default function Layout({ children }: { children: React.ReactNode }) {
+        return <ClientWrapper>{children}</ClientWrapper>;
+      }

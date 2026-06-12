@@ -1,0 +1,129 @@
+# build-tooling — Modern build tooling: Rust-era linters, bundlers, formatters.
+#
+# Sources: Biome docs, Oxlint (oxc.rs), Lightning CSS, Vite, Turbopack, Bun.
+# See SOURCES.md.
+# Regex: Python re.search. A match = a VIOLATION.
+# Coverage: ~5 rules (50%) checkable, ~5 rules (50%) teaching-only.
+# Injected size: ~120 tokens for 10 rules.
+
+class:
+  id: build-tooling
+  title: "Modern Build Tooling — Biome, Oxlint, Lightning CSS, Vite & Turbopack"
+  version: 1.0.0
+  sources:
+    - "Biome Documentation (biomejs.dev)"
+    - "Oxlint / oxc (oxc.rs)"
+    - "Lightning CSS (lightningcss.dev)"
+    - "Vite Documentation (vitejs.dev)"
+  prerequisites: []
+  target_violations:
+    - "eslint-legacy"
+    - "prettier-legacy"
+    - "postcss-over-lightning"
+    - "webpack-over-vite"
+    - "no-lint-autofix"
+    - "tsc-for-linting"
+    - "dual-eslint-biome"
+    - "all-lint-rules-on"
+    - "no-cache-in-ci"
+    - "js-tooling-default"
+  estimated_cost_tokens: 130
+  rule_count: 10
+
+rules:
+
+  - id: eslint-legacy
+    severity: fundamental
+    rule: "Replace ESLint with Biome or Oxlint for JavaScript/TypeScript linting. ESLint (JavaScript) takes seconds to minutes on large codebases. Biome (Rust) lints the same code in <100ms. Oxlint (Rust via tsgo) adds type-aware rules. Both are drop-in replacements: same rules, same severity levels, 10-100x faster. ESLint's plugin ecosystem is the only reason to stay — Biome covers ~80% of rules."
+    framework_yaml: |
+      # FAIL: ESLint config — slow, complex plugin chain
+      # .eslintrc.js — 200 lines, 15 plugins, 500ms cold lint
+      # PASS: Biome config — fast, one binary
+      # biome.json
+      { "linter": { "rules": { "recommended": true } } }
+
+  - id: prettier-legacy
+    severity: fundamental
+    rule: "Replace Prettier with Biome for formatting. Biome's formatter is 97%+ compatible with Prettier's output, runs 25-35x faster, and is the same binary as the linter — one tool for linting + formatting. Prettier's plugin API (for non-standard file types) is the only reason to stay. Eliminates: prettier + eslint-config-prettier + eslint-plugin-prettier dependency chain."
+    framework_yaml: |
+      # FAIL: three tools for format + lint
+      # .prettierrc + .eslintrc.js + eslint-config-prettier + eslint-plugin-prettier
+      # PASS: one tool, one config
+      # biome.json — linter + formatter in one binary
+      { "formatter": { "indentStyle": "space", "lineWidth": 100 }, "linter": { "rules": { "recommended": true } } }
+
+  - id: postcss-over-lightning
+    severity: intermediate
+    rule: "Replace PostCSS with Lightning CSS for CSS processing. Lightning CSS (Rust) parses, transforms, and minifies CSS 100x faster than PostCSS (JavaScript). It supports: CSS nesting, custom media queries, color() function, vendor prefixing, and minification — all in one pass. PostCSS's plugin ecosystem (Tailwind CSS, Autoprefixer) is the migration path: Tailwind CSS v4 uses Lightning CSS internally via Oxide engine."
+    framework_yaml: |
+      # FAIL: PostCSS pipeline — slow, multiple passes
+      # postcss.config.js — 5 plugins, each re-parses CSS
+      # PASS: Lightning CSS — single pass, 100x faster
+      # Built into Vite via css.lightningcss: true
+
+  - id: webpack-over-vite
+    severity: fundamental
+    rule: "Use Vite for new projects instead of webpack. Vite's dev server starts in <500ms (ESBuild pre-bundles dependencies, serves native ESM to the browser). webpack cold starts take 5-30 seconds on medium projects. Vite's build uses Rollup for optimized production bundles. webpack's configuration complexity is its main liability — Vite works out of the box with zero config."
+    framework_yaml: |
+      # FAIL: webpack — slow dev server, complex config
+      # webpack.config.js — 100+ lines, loaders, plugins
+      # PASS: Vite — fast, zero-config
+      # npm create vite@latest  →  dev server starts in <500ms
+
+  - id: tsc-for-linting
+    severity: fundamental
+    rule: "Don't use tsc --noEmit for linting in CI. tsc is a type checker, not a linter — it's 10-50x slower than Oxlint's type-aware rules. Use tsc for type checking, Oxlint for linting. Running tsc --noEmit on every commit adds 10-60 seconds. Run tsc in CI once (on push/PR), use Oxlint/Biome for fast commit-time checks (<100ms)."
+    check_regex: '(?s)tsc\s+--noEmit.*lint|"lint"\s*:\s*".*tsc'
+    framework_yaml: |
+      # FAIL: tsc as linter — 30s every commit
+      # "lint": "tsc --noEmit && eslint ."
+      # PASS: separate type-check from lint
+      # "lint": "biome lint ."           # <100ms, every commit
+      # "typecheck": "tsc --noEmit"       # CI only (push/PR)
+
+  - id: js-tooling-default
+    severity: fundamental
+    rule: "Default to Rust-based tooling for new projects. Biome (lint + format), Oxlint (type-aware lint), Lightning CSS (CSS processing), Vite (dev server + build, ESBuild pre-bundle), Turbopack (Next.js dev server). JavaScript tooling (ESLint, Prettier, PostCSS, webpack) is legacy — Rust tooling is 10-100x faster, single-binary, and zero-dependency. The migration is one config file."
+    framework_yaml: |
+      # FAIL: JavaScript toolchain — slow, complex, multi-tool
+      # ESLint + Prettier + PostCSS + webpack = 4 config files, 500+ npm deps
+      # PASS: Rust toolchain — fast, simple, integrated
+      # Biome + Lightning CSS + Vite = 1-2 config files, zero npm deps for the tools themselves
+
+  - id: dual-eslint-biome
+    severity: intermediate
+    rule: "Don't run both ESLint and Biome simultaneously in CI. Choose one linter. Running both doubles CI time and creates rule conflicts (Biome says pass, ESLint says fail on the same code). If migrating: run Biome, identify missing rules, add them via Oxlint or wait for Biome parity. Running both is waste — either you trust Biome or you don't."
+    framework_yaml: |
+      # FAIL: double linting — CI time doubled, conflicting results
+      # CI: biome lint . && eslint .
+      # PASS: choose one, migrate rules, run once
+      # CI: biome lint .
+
+  - id: all-lint-rules-on
+    severity: intermediate
+    rule: "Don't enable all lint rules at once. Start with 'recommended' preset, fix violations, then gradually enable more rules. Enabling all rules on a legacy codebase throws 5000+ violations — overwhelming and demotivating. Incremental adoption: biome migrate eslint (auto-apply), biome lint --apply (auto-fix safe rules), then incrementally enable stricter rules."
+    framework_yaml: |
+      # FAIL: all rules on — 5000 violations, team gives up
+      { "linter": { "rules": { "all": true } } }
+      # PASS: incremental — recommended first, then stricter
+      { "linter": { "rules": { "recommended": true } } }  # Phase 1
+      { "linter": { "rules": { "recommended": true, "correctness": { "all": true } } } }  # Phase 2
+
+  - id: no-lint-autofix
+    severity: fundamental
+    rule: "Use lint auto-fix for safe, non-semantic rule violations. Biome lint --apply (or --fix) auto-corrects: unused variables (prefix with _), unnecessary semicolons, wrong quote style, incorrect indentation. These are safe — they don't change logic. Enable auto-fix on save in the editor. Auto-fix eliminates 30-50% of lint violations instantly with zero manual work."
+    framework_yaml: |
+      # FAIL: manual fixing of auto-fixable violations
+      # Developer fixes 200 semicolons by hand
+      # PASS: auto-fix safe rules, review the rest
+      # biome check --apply .   →   auto-fixes 150 of 300 violations in 80ms
+
+  - id: no-cache-in-ci
+    severity: advanced
+    rule: "Use lint caching for local development, but NEVER in CI. biome lint . (no cache in CI) ensures a clean run every time. Local: biome lint --use-server (persistent daemon, 10ms re-lints). CI: always cold, always from scratch. Cached CI runs can hide regressions if the cache key is wrong or stale. CI is the source of truth — it must be deterministic."
+    framework_yaml: |
+      # FAIL: cached lint in CI — can hide regressions
+      # CI: biome lint --cache .
+      # PASS: no cache in CI — deterministic, always correct
+      # CI: biome lint .
+      # Local: biome lint --use-server  (persistent daemon, instant re-lints)

@@ -1,0 +1,116 @@
+# html-apis — Modern HTML platform APIs.
+# Sources: WHATWG HTML, MDN. 10 rules. Injected ~110 tokens.
+
+class:
+  id: html-apis
+  title: "Modern HTML APIs — Popover, Dialog, inert & Platform Primitives"
+  version: 1.0.0
+  sources: ["WHATWG HTML Living Standard", "MDN Web Docs"]
+  prerequisites: []
+  target_violations:
+    - "div-popover-not-native"
+    - "div-modal-not-dialog"
+    - "no-inert-attribute"
+    - "custom-select-not-selectmenu"
+    - "no-lazy-loading-native"
+    - "details-summary-missed"
+    - "no-fetchpriority"
+    - "no-inputmode"
+    - "no-enterkeyhint"
+    - "custom-toggle-missed"
+  estimated_cost_tokens: 130
+  rule_count: 10
+
+rules:
+  - id: div-popover-not-native
+    severity: fundamental
+    rule: "Use the Popover API ([popover] attribute) instead of JS-built dropdowns. [popover] provides: declarative show/hide, light-dismiss (click outside closes), top-layer rendering (above everything, no z-index), and keyboard support (ESC closes). One HTML attribute replaces popover libraries. Button toggles with popovertarget."
+    check_selector: "div[class*='popover']:not([popover]), div[class*='dropdown']:not([popover])"
+    framework_html: |
+      <!-- FAIL: JS popover -->
+      <div class="popover" style="position:absolute;z-index:1000;display:none">Content</div>
+      <!-- PASS: Popover API -->
+      <div popover id="help">Content</div> <button popovertarget="help">?</button>
+
+  - id: div-modal-not-dialog
+    severity: fundamental
+    rule: "Use <dialog> with showModal() for modals. <dialog> natively provides: backdrop (::backdrop), ESC to close, focus trap, top-layer rendering, aria-modal automatically, and form integration (method='dialog'). A <div role='dialog'> is a fragile approximation — it gets none of these for free."
+    check_selector: "div[role='dialog'], div[aria-modal='true']"
+    framework_html: |
+      <!-- FAIL: div-based modal -->
+      <!-- PASS: native dialog -->
+      <dialog id="confirm"><form method="dialog"><p>Are you sure?</p><button>Yes</button></form></dialog>
+
+  - id: no-inert-attribute
+    severity: fundamental
+    rule: "Use the inert attribute to remove elements from all interaction. inert disables: focusability, click/pointer events, accessibility tree presence, and text selection — all with one attribute. Replaces: aria-hidden='true' + tabindex='-1' + pointer-events:none + user-select:none combos that always miss something."
+    framework_html: |
+      <!-- FAIL: four properties to remove from interaction -->
+      <div aria-hidden="true" tabindex="-1" style="pointer-events:none;user-select:none">
+      <!-- PASS: one attribute -->
+      <div inert>
+
+  - id: custom-select-not-selectmenu
+    severity: intermediate
+    rule: "Use <selectmenu> (customizable select) instead of JS-built custom selects. <selectmenu> provides: native keyboard navigation, form participation, option filtering, and accessibility — while being fully styleable via CSS parts. Custom JS <div> selects break: form submission, screen readers, keyboard navigation, and mobile pickers."
+    framework_html: |
+      <!-- FAIL: JS-built custom select — breaks keyboard, form, a11y -->
+      <div class="custom-select" onclick="toggle()"><div class="options">...</div></div>
+      <!-- PASS: styleable native selectmenu -->
+      <selectmenu><button slot="button" behavior="button"><selectedoption></selectedoption></button><option>One</option><option>Two</option></selectmenu>
+
+  - id: no-lazy-loading-native
+    severity: fundamental
+    rule: "Use loading='lazy' for native lazy loading. No Intersection Observer, no JS library, no data-src swap. The browser defers loading of <img loading='lazy'> and <iframe loading='lazy'> until they're near the viewport. Works in all modern browsers. One attribute replaces 20 lines of JS."
+    check_selector: "img:not([loading])"
+    framework_html: |
+      <!-- FAIL: <img src="footer.jpg"> (below fold, no lazy loading) -->
+      <!-- PASS: <img src="footer.jpg" loading="lazy" decoding="async"> -->
+
+  - id: details-summary-missed
+    severity: intermediate
+    rule: "Use <details>/<summary> for native accordions and disclosure widgets. <details> provides: open/close toggle, keyboard accessibility, and no JS required. A custom <div onclick='toggle()'> accordion breaks: keyboard navigation, screen reader announcement of expanded/collapsed state, and searchability (hidden content in details is still findable with Ctrl+F)."
+    framework_html: |
+      <!-- FAIL: JS accordion -->
+      <div class="accordion" onclick="toggle()"><div class="header">FAQ</div><div class="content" hidden>Answer</div></div>
+      <!-- PASS: native disclosure -->
+      <details><summary>FAQ</summary><p>Answer</p></details>
+
+  - id: no-fetchpriority
+    severity: intermediate
+    rule: "Use fetchpriority='high' on LCP images and fetchpriority='low' on below-fold images. This tells the browser which requests to prioritize before the page renders. Without it, the browser uses heuristics that often get it wrong — loading a footer logo before the hero image."
+    framework_html: |
+      <!-- FAIL: all images equal priority -->
+      <img src="hero.jpg"> <img src="footer-logo.jpg">
+      <!-- PASS: priority hints -->
+      <img src="hero.jpg" fetchpriority="high"> <img src="footer-logo.jpg" fetchpriority="low" loading="lazy">
+
+  - id: no-inputmode
+    severity: intermediate
+    rule: "Use inputmode to show the right keyboard on mobile. inputmode='numeric' shows a number pad, inputmode='email' shows the email keyboard with @, inputmode='url' shows the URL keyboard with / and .com. Without inputmode, mobile users get the full text keyboard for numeric fields — frustrating and error-prone."
+    framework_html: |
+      <!-- FAIL: text keyboard for numeric input -->
+      <input type="text" placeholder="Enter amount">
+      <!-- PASS: numeric keyboard -->
+      <input type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Enter amount">
+      <!-- PASS: email keyboard -->
+      <input type="text" inputmode="email" placeholder="you@example.com">
+
+  - id: no-enterkeyhint
+    severity: advanced
+    rule: "Use enterkeyhint to show the right action label on the mobile keyboard Enter key. enterkeyhint='send' shows a send icon, 'search' shows a magnifying glass, 'done' shows Done, 'next' shows an arrow. This guides users on what the Enter key will do. Without it, the key label is generic."
+    framework_html: |
+      <!-- FAIL: generic Enter key -->
+      <input type="text" placeholder="Search...">
+      <!-- PASS: contextual Enter key -->
+      <input type="search" enterkeyhint="search" placeholder="Search...">
+      <input type="text" enterkeyhint="send" placeholder="Type a message...">
+
+  - id: custom-toggle-missed
+    severity: fundamental
+    rule: "Use <input type='checkbox' switch> or the CSS :has() toggle pattern instead of JS toggle switches. A native checkbox with the switch attribute looks and behaves like a toggle, is keyboard-accessible, form-participating, and screen-reader-friendly. JS div-toggles are invisible to forms and assistive technology."
+    framework_html: |
+      <!-- FAIL: JS toggle switch -->
+      <div class="toggle" onclick="this.classList.toggle('active')" role="switch"></div>
+      <!-- PASS: native switch -->
+      <input type="checkbox" switch id="dark-mode"> <label for="dark-mode">Dark mode</label>

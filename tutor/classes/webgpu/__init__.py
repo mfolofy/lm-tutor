@@ -1,0 +1,1 @@
+"""webgpu — WebGPU basics: compute shaders, rendering, migration from WebGL."""

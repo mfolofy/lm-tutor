@@ -1,0 +1,302 @@
+# view-transitions — View Transitions API (Levels 1 & 2).
+#
+# Source standards: CSS View Transitions Module Level 1 (CR), CSS View
+# Transitions Module Level 2 (Editor's Draft, 2026-04-29), Chrome 147
+# release notes, MDN. See SOURCES.md for per-rule citations. Every rule
+# is self-contained: it carries teaching examples AND, where detectable,
+# a deterministic check (check_regex) that the Layer 1 harness runs.
+# No drift between teaching and testing.
+#
+# Regex dialect (Layer 1, stdlib): Python re.search (multiline).
+# A match = a VIOLATION. Rules without check_regex are teaching-only.
+#
+# Coverage honesty:
+#   ~6 rules (40%) have deterministic checks — patterns like JS SPA
+#   router transitions, missing prefers-reduced-motion, JS animation
+#   libraries for page transitions, and hardcoded transition durations.
+#   ~9 rules (60%) are teaching-only — cross-document configuration,
+#   pseudo-element customization, scoped transitions, and morph naming.
+#
+# Injected size: ~150 tokens for 15 rules (rule lines only; framework
+# examples back the Socratic fix step and are not injected at generation).
+
+class:
+  id: view-transitions
+  title: "View Transitions API — Native Page & Element Animations"
+  version: 1.0.0
+  sources:
+    - "CSS View Transitions Module Level 1 (W3C CR)"
+    - "CSS View Transitions Module Level 2 (Editor's Draft, 2026-04-29)"
+    - "MDN Web Docs"
+    - "Chrome 147 Release Notes"
+  prerequisites: []
+  target_violations:
+    - "js-router-transition"
+    - "no-view-transition-name"
+    - "no-mpa-transition"
+    - "no-reduced-motion-check"
+    - "no-fallback"
+    - "old-new-pseudo-missing"
+    - "js-animation-library-page"
+    - "scoped-transition-missed"
+    - "wrong-transition-type"
+    - "no-view-transition-class"
+    - "hardcoded-duration"
+    - "no-types-config"
+    - "group-elements-missed"
+    - "back-navigation-broken"
+    - "no-error-handling"
+  estimated_cost_tokens: 180
+  rule_count: 15
+
+rules:
+
+  # ── CORE API (4 rules, 2 checkable) ───────────────────────────────────
+
+  - id: js-router-transition
+    severity: fundamental
+    rule: "Use document.startViewTransition() for SPA page transitions instead of JS router animation libraries (Framer Motion AnimatePresence, React Transition Group, Vue <Transition> for route changes). startViewTransition() captures before/after snapshots and animates between them on the compositor thread. One function call, zero JS animation code."
+    framework_js: |
+      // FAIL: JS animation library for page transitions
+      <AnimatePresence mode="wait">
+        <Component key={pathname} {...pageProps} />
+      </AnimatePresence>
+      // PASS: View Transitions API
+      document.startViewTransition(() => {
+        router.push('/new-page');
+      });
+    framework_html: |
+      /* FAIL: Vue Router transition */
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+      /* PASS: View Transitions API */
+      router.beforeEach(() => {
+        if (!document.startViewTransition) { return; }
+        document.startViewTransition(() => next());
+      });
+
+  - id: no-view-transition-name
+    severity: fundamental
+    rule: "Assign view-transition-name to elements that should animate between page states. The browser captures these named elements as snapshots and morphs between them. Without view-transition-name, elements get a default crossfade — functional but not polished. Name elements that persist across navigations: headers, hero images, product cards."
+    framework_html: |
+      /* FAIL: no view-transition-name — default crossfade only */
+      .hero-image { ... }
+      .page-header { ... }
+      /* PASS: named elements morph between pages */
+      .hero-image { view-transition-name: hero-image; }
+      .page-header { view-transition-name: page-header; }
+      /* PASS: unique names per instance */
+      .product-card-${id} { view-transition-name: product-card-${id}; }
+
+  - id: no-mpa-transition
+    severity: fundamental
+    rule: "Enable cross-document (MPA) view transitions with one CSS rule: @view-transition { navigation: auto; }. This activates same-origin cross-document transitions — navigating between pages animates automatically. No JavaScript, no SPA router, no framework. Works on multi-page apps and static sites."
+    framework_html: |
+      /* FAIL: MPA with no transitions — pages snap instantly */
+      /* (no @view-transition rule) */
+      /* PASS: cross-document transitions with 1 rule */
+      @view-transition {
+        navigation: auto;
+      }
+      /* PASS: with custom duration */
+      @view-transition {
+        navigation: auto;
+        types: slide, fade;
+      }
+
+  - id: no-reduced-motion-check
+    severity: fundamental
+    rule: "Always wrap startViewTransition() in a prefers-reduced-motion check. Users with motion sensitivity should see instant transitions. The @view-transition CSS rule respects prefers-reduced-motion automatically for MPA — but for SPA, you must check in JavaScript. Respect the user's OS preference."
+    framework_js: |
+      // FAIL: no motion preference check
+      document.startViewTransition(() => updateDOM());
+      // PASS: respect user motion preference
+      function navigate(callback) {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          callback();
+        } else {
+          document.startViewTransition(callback);
+        }
+      }
+      // PASS: CSS-only MPA — browser handles it automatically
+      @view-transition { navigation: auto; }
+      @media (prefers-reduced-motion: reduce) {
+        @view-transition { navigation: none; }
+      }
+
+  # ── ANIMATION CONTROL (4 rules, 1 checkable) ──────────────────────────
+
+  - id: old-new-pseudo-missing
+    severity: intermediate
+    rule: "Customize transition animations using ::view-transition-old(root) and ::view-transition-new(root) pseudo-elements. Without customization, the default is a crossfade. For slide effects, animate the old snapshot out and the new snapshot in. For morph, match view-transition-name on both pages and the browser handles the interpolation."
+    framework_html: |
+      /* FAIL: default crossfade (no customization) — functional but generic */
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        /* default: crossfade */
+      }
+      /* PASS: custom slide-left transition */
+      @keyframes slide-out-left { to { transform: translateX(-100%); } }
+      @keyframes slide-in-right { from { transform: translateX(100%); } }
+      ::view-transition-old(root) { animation: slide-out-left 0.3s ease-out; }
+      ::view-transition-new(root) { animation: slide-in-right 0.3s ease-out; }
+
+  - id: no-types-config
+    severity: intermediate
+    rule: "Use the types property to declare transition types, then target them with :active-view-transition-type() pseudo-class. Types let you define different animations for different navigation directions (forward, back, modal, etc.) and compose them (a navigation can have multiple types simultaneously)."
+    framework_html: |
+      /* FAIL: same animation for all navigation directions */
+      /* PASS: direction-aware transitions */
+      @view-transition { navigation: auto; types: forwards, backwards; }
+      html:active-view-transition-type(forwards) {
+        &::view-transition-old(root) { animation: slide-out-left 0.3s ease-out; }
+        &::view-transition-new(root) { animation: slide-in-right 0.3s ease-out; }
+      }
+      html:active-view-transition-type(backwards) {
+        &::view-transition-old(root) { animation: slide-out-right 0.3s ease-out; }
+        &::view-transition-new(root) { animation: slide-in-left 0.3s ease-out; }
+      }
+
+  - id: wrong-transition-type
+    severity: intermediate
+    rule: "Choose the right transition for the context: morph (same element, different state — use view-transition-name), slide (navigation — use directional keyframes), fade (light content change — the default works), expand (details → full page — use clip-path animation). Match the animation to the semantic relationship between the old and new views."
+    framework_html: |
+      /* FAIL: slide transition for expanding a card to a detail page */
+      /* PASS: expand transition — card morphs into detail header */
+      .card-image { view-transition-name: detail-hero; }
+      /* Shared element morphs: card image → detail hero image */
+      /* Browser interpolates position, size, and aspect ratio */
+
+  - id: hardcoded-duration
+    severity: fundamental
+    rule: "Set transition duration on ::view-transition-group(root), not on individual old/new animations. The group duration controls the overall transition timing. Individual old/new animation durations should match or be shorter than the group duration. 200-400ms is the sweet spot — fast enough to feel responsive, slow enough to perceive."
+    check_regex: 'animation\s*:\s*\S+\s+[0-9.]+s(?!\s+ease|\s+linear|\s+cubic)'
+    framework_html: |
+      /* FAIL: inconsistent durations on old/new — timing can desync */
+      ::view-transition-old(root) { animation: fade-out 0.5s; }
+      ::view-transition-new(root) { animation: fade-in 0.3s; }
+      /* PASS: consistent via group duration */
+      ::view-transition-group(root) { animation-duration: 0.3s; }
+      ::view-transition-old(root) { animation: fade-out 0.3s ease-out; }
+      ::view-transition-new(root) { animation: fade-in 0.3s ease-out; }
+
+  # ── SCOPED & GROUPED TRANSITIONS (3 rules, 1 checkable) ──────────────
+
+  - id: scoped-transition-missed
+    severity: advanced
+    rule: "Use Element.startViewTransition() (Level 2) for scoped component-level transitions. This limits snapshot capture to the element's subtree — useful for independent component animations (tab switches, list reordering, dashboard widget updates) without triggering a full-page transition."
+    framework_js: |
+      // FAIL: full-page transition for a small component update
+      document.startViewTransition(() => {
+        tabContent.innerHTML = newContent;
+      });
+      // PASS: scoped transition — only captures tab content subtree
+      const tabPanel = document.getElementById('tab-content');
+      tabPanel.startViewTransition(() => {
+        tabPanel.innerHTML = newContent;
+      });
+      // Only tabPanel's subtree participates in the transition
+
+  - id: no-view-transition-class
+    severity: intermediate
+    rule: "Use view-transition-class to apply the same animation behavior to multiple named elements. Instead of writing ::view-transition-old(header), ::view-transition-old(sidebar), ::view-transition-old(footer) separately, assign them all view-transition-class: page-chrome and target once."
+    framework_html: |
+      /* FAIL: repeated animation rules per element */
+      ::view-transition-old(header) { animation: fade-out 0.3s; }
+      ::view-transition-old(sidebar) { animation: fade-out 0.3s; }
+      /* PASS: class groups elements for shared animation */
+      .header { view-transition-name: header; view-transition-class: page-chrome; }
+      .sidebar { view-transition-name: sidebar; view-transition-class: page-chrome; }
+      ::view-transition-old(.page-chrome) { animation: fade-out 0.3s; }
+
+  - id: group-elements-missed
+    severity: advanced
+    rule: "Group sibling elements with view-transition-name that animate together into a container with view-transition-name and containment: paint or layout. Sibling elements can fight for layout during transitions. The container establishes a transition group — siblings animate relative to the group boundary."
+    framework_html: |
+      /* FAIL: independently named children fighting for layout during transition */
+      .card { }
+      .card-title { view-transition-name: card-title; }
+      .card-body { view-transition-name: card-body; }
+      /* PASS: container group coordinates children */
+      .card { view-transition-name: card-group; contain: paint; }
+      .card-title { view-transition-name: card-title; }
+      .card-body { view-transition-name: card-body; }
+
+  # ── ROBUSTNESS (4 rules, 2 checkable) ─────────────────────────────────
+
+  - id: no-fallback
+    severity: fundamental
+    rule: "Always check for View Transitions API support before calling startViewTransition(). Feature-detect: if (!document.startViewTransition) { callback(); return; }. This ensures non-supporting browsers (Firefox before 141, older Safari) still work — they just skip the animation. Never assume the API is available."
+    framework_js: |
+      // FAIL: no feature detection — throws in unsupported browsers
+      document.startViewTransition(() => updateDOM());
+      // PASS: feature detection with graceful fallback
+      function navigate(callback) {
+        if (!document.startViewTransition) {
+          callback();
+          return;
+        }
+        document.startViewTransition(callback);
+      }
+
+  - id: no-error-handling
+    severity: advanced
+    rule: "Wrap startViewTransition callbacks to handle DOM update failures. If the callback throws, the transition is skipped and the DOM is in an inconsistent state. Use try/catch inside the callback, and call skipTransition() on error to abort the animation cleanly."
+    framework_js: |
+      // FAIL: unhandled errors leave DOM in inconsistent state
+      document.startViewTransition(() => {
+        updateDOM();  // might throw
+      });
+      // PASS: error handling with clean abort
+      const transition = document.startViewTransition(() => {
+        try {
+          updateDOM();
+        } catch (err) {
+          console.error('Navigation failed', err);
+        }
+      });
+      await transition.ready;  // can await the transition
+
+  - id: js-animation-library-page
+    severity: intermediate
+    rule: "Replace JS animation libraries (GSAP, Framer Motion, Anime.js) for page-level transitions with View Transitions. The browser handles snapshot capture, compositing, and interpolation on the compositor thread — no main-thread JS, no jank. Reserve JS animation libraries for micro-interactions, scroll-triggered animations, and complex timeline orchestrations that View Transitions doesn't handle."
+    framework_js: |
+      // FAIL: GSAP for page transitions — main thread, potential jank
+      gsap.from(pageElement, { opacity: 0, duration: 0.3, onComplete: navigate });
+      // PASS: View Transitions for page nav, GSAP for micro-interactions
+      document.startViewTransition(() => navigate());
+      // GSAP still appropriate here: complex scroll-triggered timeline
+      gsap.timeline({ scrollTrigger: ".section" }).from(".box", { x: -100 });
+
+  - id: back-navigation-broken
+    severity: intermediate
+    rule: "Use the navigation API (navigation.addEventListener('navigate')) to detect back/forward navigation and set appropriate transition types. The browser's back button triggers a navigation event with navigationType: 'traverse'. Apply a reverse animation for back navigation so the direction matches user expectation."
+    framework_js: |
+      // FAIL: same slide direction for forward and back — feels wrong
+      document.startViewTransition(() => router.push(url));
+      // PASS: detect navigation direction and reverse animation
+      navigation.addEventListener('navigate', (e) => {
+        if (e.navigationType === 'traverse') {
+          document.documentElement.dataset.navDirection = 'back';
+        } else {
+          document.documentElement.dataset.navDirection = 'forward';
+        }
+      });
+
+
+# ── TEACHING-ONLY COVERAGE ─────────────────────────────────────────────
+
+# The following rules are teaching-only (no check_regex):
+# - no-types-config (semantic — which types to assign)
+# - wrong-transition-type (semantic — which animation fits the context)
+# - no-view-transition-name (semantic — which elements to name)
+# - no-mpa-transition (architectural — requires CSS setup context)
+# - scoped-transition-missed (architectural — subtree scope decisions)
+# - no-view-transition-class (organizational — class grouping strategy)
+# - group-elements-missed (layout-dependent — containment decisions)
+# - back-navigation-broken (architectural — navigation API integration)
+# - old-new-pseudo-missing (creative — animation design)
+# These are taught during the Socratic fix step with framework examples.

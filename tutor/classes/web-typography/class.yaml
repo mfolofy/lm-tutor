@@ -1,0 +1,115 @@
+# web-typography — Modern web typography.
+# Sources: CSS Fonts 4/5, MDN. 10 rules. ~110 tokens.
+
+class:
+  id: web-typography
+  title: "Web Typography — Variable Fonts, font-palette & Modern Text Rendering"
+  version: 1.0.0
+  sources: ["CSS Fonts Module Level 4 (CR)", "CSS Fonts Module Level 5 (WD)", "MDN"]
+  prerequisites: []
+  target_violations:
+    - "no-variable-fonts"
+    - "no-font-display-swap"
+    - "no-size-adjust"
+    - "text-wrap-missing"
+    - "no-font-optical-sizing"
+    - "system-fonts-only"
+    - "no-line-height-unitless"
+    - "font-face-no-unicode-range"
+    - "no-hyphens"
+    - "letter-spacing-caps"
+  estimated_cost_tokens: 130
+  rule_count: 10
+
+rules:
+  - id: no-variable-fonts
+    severity: fundamental
+    rule: "Use variable fonts when multiple weights/styles are needed. A variable font is ONE file that contains all weights (100-900), widths, slants, and optical sizes. Five static fonts (regular, bold, italic, bold-italic, light) = 5 HTTP requests, ~500KB. One variable font = 1 request, ~150KB. The weight axis alone pays for the conversion."
+    framework_css: |
+      /* FAIL: 5 static font files */
+      @font-face { font-family: 'Inter'; src: url('Inter-Regular.woff2'); font-weight: 400; }
+      @font-face { font-family: 'Inter'; src: url('Inter-Bold.woff2'); font-weight: 700; }
+      /* PASS: one variable font covers all weights */
+      @font-face { font-family: 'Inter'; src: url('Inter-Variable.woff2') format('woff2-variations'); font-weight: 100 900; }
+
+  - id: no-font-display-swap
+    severity: fundamental
+    rule: "Always set font-display: swap on @font-face. Without it, the browser blocks text rendering for up to 3 seconds while the font loads (invisible text). 'swap' renders text immediately in a fallback font, then swaps to the web font when loaded. The user can read immediately. font-display: optional is for low-priority fonts (icons, decorative)."
+    framework_css: |
+      /* FAIL: no font-display — invisible text timeout */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); }
+      /* PASS: font-display: swap — text visible immediately */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); font-display: swap; }
+
+  - id: no-size-adjust
+    severity: intermediate
+    rule: "Use size-adjust in @font-face for fallback font metric alignment. When the web font hasn't loaded yet, the fallback font has different metrics (wider/narrower characters). size-adjust scales the fallback font's glyphs to match the web font's advance width — eliminating layout shift when fonts swap. Use with ascent-override, descent-override, line-gap-override."
+    framework_css: |
+      /* FAIL: fallback font metrics drift — CLS when font swaps */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); font-display: swap; }
+      /* PASS: metric-adjusted fallback — no layout shift */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); font-display: swap; size-adjust: 105%; ascent-override: 95%; }
+
+  - id: text-wrap-missing
+    severity: intermediate
+    rule: "Use text-wrap: balance on headlines and text-wrap: pretty on body text. balance distributes words evenly across lines to prevent orphans (single words on last line). pretty prevents widows (single words at top of new column/page). The browser does typographic quality work that previously required manual line-breaking."
+    framework_css: |
+      /* FAIL: no text-wrap — orphans and widows */
+      h1 { font-size: 3rem; }
+      /* PASS: balanced headlines, pretty paragraphs */
+      h1, h2, h3 { text-wrap: balance; }
+      p { text-wrap: pretty; }
+
+  - id: no-font-optical-sizing
+    severity: intermediate
+    rule: "Enable font-optical-sizing for variable fonts with an optical size axis (opsz). Optical sizing adjusts letterforms for readability at different sizes: tighter spacing and higher contrast at display sizes, looser spacing and lower contrast at text sizes. Without it, the same letterform is used at 10px and 72px — one of them looks wrong."
+    framework_css: |
+      /* FAIL: same glyph shape at all sizes */
+      /* PASS: optical sizing — glyphs adapt to size */
+      body { font-optical-sizing: auto; }
+      h1 { font-variation-settings: 'opsz' 72; }  /* display: tighter, higher contrast */
+
+  - id: no-line-height-unitless
+    severity: fundamental
+    rule: "Use unitless line-height values (line-height: 1.5, not 1.5em or 24px). Unitless values multiply by the element's own font-size — a child with a smaller font gets proportionally smaller line-height. Unit-based values (em, px) are inherited as a fixed computed value — a child gets the same line-height regardless of its own font-size, causing cramped or loose text."
+    framework_css: |
+      /* FAIL: fixed line-height — inherited incorrectly by children */
+      body { line-height: 24px; }
+      /* PASS: unitless — scales with element's font-size */
+      body { line-height: 1.5; }
+
+  - id: system-fonts-only
+    severity: fundamental
+    rule: "Use system font stacks as the base, then enhance with web fonts. font-family: system-ui, -apple-system, sans-serif gives the user their OS-native font (San Francisco on Mac/iOS, Segoe UI on Windows, Roboto on Android). It renders instantly (zero download, zero FOUT) and is designed for its platform. Web fonts are an enhancement, not a requirement."
+    framework_css: |
+      /* FAIL: web font only — no fallback, FOUT */
+      body { font-family: 'CustomFont', sans-serif; }
+      /* PASS: system font base, web font enhancement */
+      body { font-family: 'CustomFont', system-ui, -apple-system, sans-serif; }
+
+  - id: font-face-no-unicode-range
+    severity: advanced
+    rule: "Use unicode-range in @font-face to subset fonts by character set. A font for Latin text shouldn't download Greek and Cyrillic glyphs. unicode-range: U+0020-007F loads only Basic Latin. The browser only downloads the font file if the page contains characters in that range. This saves ~40% bandwidth for Latin-only pages using full-character-set fonts."
+    framework_css: |
+      /* FAIL: full font download even if only using Latin */
+      @font-face { font-family: 'Inter'; src: url('Inter.woff2'); }
+      /* PASS: subset by character range */
+      @font-face { font-family: 'Inter'; src: url('Inter-Latin.woff2'); unicode-range: U+0020-007F; font-display: swap; }
+
+  - id: no-hyphens
+    severity: intermediate
+    rule: "Enable hyphens: auto on narrow text columns. Without hyphenation, justified text in narrow columns gets rivers of whitespace. With hyphenation, words break at syllable boundaries with a hyphen, maintaining even spacing. Use hyphens: manual (only break at &shy;) for headlines where you control breaks. Apply with lang attribute for language-correct hyphenation."
+    framework_css: |
+      /* FAIL: justified text in narrow column without hyphenation */
+      .sidebar p { text-align: justify; }
+      /* PASS: hyphenation for even spacing in narrow columns */
+      .sidebar p { text-align: justify; hyphens: auto; }
+
+  - id: letter-spacing-caps
+    severity: intermediate
+    rule: "Use letter-spacing on uppercase text. Uppercase letters are designed to sit next to lowercase letters — when they're all uppercase, they're too tight. Add letter-spacing: 0.05em to 0.1em for all-caps text. CSS text-transform: uppercase applies the transform without adjusting letter-spacing — you must add it manually."
+    framework_css: |
+      /* FAIL: all-caps without letter-spacing — too tight */
+      .label { text-transform: uppercase; }
+      /* PASS: letter-spacing for all-caps readability */
+      .label { text-transform: uppercase; letter-spacing: 0.08em; }

@@ -1,0 +1,127 @@
+# frontend-architecture — Modern frontend architecture patterns.
+#
+# Sources: patterns.dev, Astro docs, Qwik docs, Solid docs, Svelte 5 docs,
+# React 19 docs, web.dev. See SOURCES.md.
+# Regex: Python re.search. A match = a VIOLATION.
+# Coverage: ~4 rules (33%) checkable, ~8 rules (67%) teaching-only.
+# Injected size: ~130 tokens for 12 rules.
+
+class:
+  id: frontend-architecture
+  title: "Frontend Architecture — Islands, Resumability, Streaming SSR & Signals"
+  version: 1.0.0
+  sources:
+    - "patterns.dev"
+    - "Astro Documentation"
+    - "Qwik Documentation"
+    - "Solid.js Documentation"
+    - "React 19 Documentation"
+  prerequisites: []
+  target_violations:
+    - "js-only-no-html"
+    - "full-hydration-spa"
+    - "no-signals-vdom"
+    - "client-data-fetch-default"
+    - "no-streaming-ssr"
+    - "mpa-spa-wrong-choice"
+    - "no-progressive-enhancement"
+    - "no-edge-rendering"
+    - "no-islands-pattern"
+    - "bundle-size-no-check"
+  estimated_cost_tokens: 160
+  rule_count: 10
+
+rules:
+
+  - id: js-only-no-html
+    severity: fundamental
+    rule: "Always render meaningful HTML on first response. A page whose <body> is an empty <div id='root'> that requires JavaScript to populate is a blank page for: search engines (debatable, but still risky), social media link previews, slow networks, and users with JS disabled. Send HTML first, enhance with JS — progressive enhancement, not progressive dependence."
+    check_regex: '(?s)<body>\s*<div\s+id\s*=\s*[\"\''](root|app)[\"\'']\s*>\s*</div>\s*<script'
+    framework_html: |
+      <!-- FAIL: blank page without JS -->
+      <body><div id="root"></div><script src="/bundle.js"></script></body>
+      <!-- PASS: HTML first — server-rendered content -->
+      <body><header>...</header><main><article>...</article></main><script src="/app.js" type="module"></script></body>
+
+  - id: full-hydration-spa
+    severity: fundamental
+    rule: "Don't hydrate the entire page as a single SPA when only parts of it are interactive. Full hydration (one React/Vue app at #app) downloads and executes JavaScript for the whole page even if 90% is static content. Use islands architecture (Astro), partial hydration, or Server Components to send JS only to interactive elements."
+    framework_jsx: |
+      // FAIL: full hydration for a mostly-static page
+      // hydrateRoot(document.getElementById('root'), <App />)  — hydrates everything
+      // PASS: islands — only interactive components get JS
+      // <Header /> (static, no JS), <LikeButton client:load /> (interactive island), <Footer /> (static)
+
+  - id: no-signals-vdom
+    severity: intermediate
+    rule: "Consider signals-based frameworks (Solid.js, Svelte 5, Preact Signals, Qwik) for fine-grained reactivity without a virtual DOM. Signals track which DOM nodes depend on which state — when state changes, only those nodes update. No VDOM diff, no component re-render. This is the direction the industry is moving: React itself is exploring signals for the future."
+    framework_js: |
+      // React (VDOM): component re-renders on state change, VDOM diffs, patches DOM
+      const [count, setCount] = useState(0);  // whole component re-renders on change
+      // Solid (Signals): only the text node updates, no diff
+      const [count, setCount] = createSignal(0);  // only the DOM node reading count() updates
+
+  - id: client-data-fetch-default
+    severity: fundamental
+    rule: "Default to server-side data fetching. Fetch data on the server (Server Components, Astro frontmatter, SvelteKit load functions, Remix loader) and stream HTML to the client. Client-side data fetching (useEffect + fetch, SWR, TanStack Query on client) should be for: real-time updates, user-specific interactive data, and post-hydration interactions — not for the initial page data."
+    framework_jsx: |
+      // FAIL: client-side fetch for initial page data
+      function Page() { const [data, setData] = useState(null); useEffect(() => { fetch('/api/data').then(r => r.json()).then(setData); }, []); return data ? <Content /> : <Spinner />; }
+      // PASS: server-side data fetching
+      export default async function Page() { const data = await db.query(); return <Content data={data} />; }
+
+  - id: no-streaming-ssr
+    severity: intermediate
+    rule: "Use streaming SSR to send HTML as it's generated, rather than waiting for all data to load. React Suspense + renderToPipeableStream, Solid renderToStream, SvelteKit streaming. The browser renders the page shell immediately while slow data streams in. Without streaming, the user stares at a white screen waiting for the slowest API call. With streaming, they see content progressively."
+    framework_jsx: |
+      // FAIL: all-or-nothing — user waits for slowest data
+      <div><Header /><SlowData /><Footer /></div>
+      // PASS: streaming with Suspense — shell renders immediately
+      <div><Header /><Suspense fallback={<Skeleton />}><SlowData /></Suspense><Footer /></div>
+
+  - id: mpa-spa-wrong-choice
+    severity: fundamental
+    rule: "Choose MPA (multi-page app) for content sites, marketing pages, documentation, e-commerce browsing, and blogs — they don't need an SPA. Choose SPA for app-like experiences with heavy client-side state: dashboards, design tools, chat, maps. The default should be MPA (or MPA with islands). SPA is the exception, not the rule — and SPA can be built within an MPA framework (Astro with React islands, Next.js with strategic 'use client')."
+    framework_jsx: |
+      // FAIL: SPA for a marketing site — 200KB JS for static content
+      // (React SPA with client-side routing for 5 static pages)
+      // PASS: MPA with islands — static HTML, JS only for interactive parts
+      // Astro: 5 .astro pages, 1 interactive component (contact form) as a Preact island
+
+  - id: no-progressive-enhancement
+    severity: fundamental
+    rule: "Build with progressive enhancement: HTML works without JS → CSS enhances → JS adds interactivity. A <form> should submit without JavaScript (action + method). A <a> should navigate without a router. JavaScript enhances the experience (client-side validation, optimistic UI, smooth transitions) but is not required for core functionality. JS-dependent core features are fragile."
+    framework_html: |
+      <!-- FAIL: JS-dependent core interaction -->
+      <div onclick="submitForm()">Submit</div>  <!-- not a form, not a button, no keyboard -->
+      <!-- PASS: HTML first, JS enhances -->
+      <form action="/submit" method="post"><button type="submit">Submit</button></form>
+      <!-- JS enhancement: preventDefault(), validate, optimistic UI -->
+
+  - id: no-islands-pattern
+    severity: advanced
+    rule: "Implement the islands architecture: static HTML as the ocean, interactive components as islands. Each island is an independent application with its own framework, state, and hydration. Islands don't share state unless explicitly wired. This enables: framework mixing (React island next to Vue island), granular hydration (only interactive parts hydrate), and zero JS for static content."
+    framework_astro: |
+      // FAIL: one big React app for the whole page
+      // PASS: islands — static ocean, interactive dots
+      <Header /> {/* static — no JS */}
+      <LikeButton client:load />  {/* React island — hydrates immediately */}
+      <CartPreview client:idle />  {/* Svelte island — hydrates when idle */}
+
+  - id: no-edge-rendering
+    severity: advanced
+    rule: "Use edge rendering for global, latency-sensitive pages. Run SSR at the CDN edge — the server is physically close to the user (<50ms vs 300ms+ for a single origin). Frameworks supporting edge: Next.js (Edge Runtime), Astro (Deno/Cloudflare), SvelteKit (adapter-edge), Remix (Cloudflare Pages). Static content benefits most from edge: landing pages, docs, product pages."
+    framework_jsx: |
+      // PASS: edge-rendered page — runs close to user
+      export const runtime = 'edge';  // Next.js Edge Runtime
+      export default function Page() { return <div>Instant load for users worldwide</div>; }
+
+  - id: bundle-size-no-check
+    severity: intermediate
+    rule: "Monitor bundle size. Use import() for dynamic imports — code-split at route boundaries, heavy libraries (charts, rich text editors, maps), and below-fold interactive components. Tools: webpack-bundle-analyzer, esbuild-visualizer, import cost VS Code extension. A 500KB bundle on a marketing page is a performance failure. Target: <100KB JS per route for content sites, <300KB for apps."
+    check_regex: 'import\s+\{[^}]*\}\s+from\s+[\"\''][^\"\'']*(chart|map|editor|three|d3|moment|lodash|fullcalendar)[^\"\'']*[\"\'']'
+    framework_jsx: |
+      // FAIL: static import of heavy library
+      import { Chart } from 'chart.js';  // 200KB in main bundle
+      // PASS: dynamic import — loads only when needed
+      const Chart = await import('chart.js');  // code-split, on-demand

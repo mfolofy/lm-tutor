@@ -1,0 +1,218 @@
+# credential-marketing-sales-ui — Marketing + Sales + Front-End UI Enforcement.
+# A multi-disciplinary credential that teaches models to think like a marketer,
+# sell like a closer, and enforce front-end UI quality like a design lead.
+# Designed for landing pages, pitch decks, and customer-facing web experiences.
+#
+# Source standards: AMA Code of Ethics, FTC 16 CFR Part 255, SPIN Selling,
+# Challenger Sale, WCAG 2.2, Material Design 3, Gestalt principles, NN/g heuristics.
+# See SOURCES.md for per-rule citations.
+#
+# Every rule is self-contained: rules with check_regex are deterministically
+# enforceable by Layer 1; teaching-only rules inject knowledge for the Socratic
+# fix step and LLM judge (Layer 2).
+#
+# Injected size: ~480 tokens (checkable rules only; framework examples back
+# the Socratic fix step, not the generation prefix).
+
+class:
+  id: credential-marketing-sales-ui
+  title: "Credential — Marketing + Sales + Front-End UI Enforcement"
+  version: 1.0.0
+  sources:
+    - "AMA Code of Ethics"
+    - "FTC 16 CFR Part 255"
+    - "SPIN Selling (Rackham)"
+    - "Challenger Sale (Dixon & Adamson)"
+    - "WCAG 2.2"
+    - "Material Design 3"
+    - "Gestalt Principles"
+    - "NN/g Usability Heuristics"
+  prerequisites: ["brushes"]
+  target_violations:
+    - "missing-social-proof"
+    - "weak-cta"
+    - "no-objection-handling"
+    - "low-color-contrast"
+    - "non-responsive-layout"
+    - "inconsistent-typography"
+    - "missing-alt-text"
+    - "vague-value-prop"
+    - "no-scarcity-or-urgency"
+    - "reading-order-broken"
+  estimated_cost_tokens: 480
+
+rules:
+
+  # ── MARKETING RULES (6) ──────────────────────────────────────────────
+
+  - id: value-prop-clarity
+    severity: fundamental
+    rule: "The value proposition must be specific, concrete, and differentiate from alternatives within the first 3 seconds of scan. 'AI-powered platform' is not a value proposition. 'Auditable AI on regulated data — without moving a byte to the cloud' is. Use the [customer] + [problem] + [solution] + [outcome] structure. Test: can someone repeat the offer in one sentence after a 5-second glance?"
+    framework_prompt: |
+      # FAIL — vague value prop
+      We offer AI-powered solutions for modern enterprises.
+      # PASS — specific, concrete, differentiated
+      Governed AI that runs on your own hardware — the one thing regulated buyers cannot get from cloud vendors.
+
+  - id: social-proof
+    severity: fundamental
+    rule: "Include specific, verifiable social proof near the call-to-action. Generic claims ('trusted by thousands') are not social proof — they are the opposite. Effective social proof: named logos of known clients or partners, specific metrics ('3 of the top 5 banks'), recognizable individual endorsements, or demonstrable track record the prospect can independently verify (LinkedIn profile, live demo, public code repositories). Place social proof within the same viewport as the primary CTA."
+    check_regex: |-
+      (?i)(?:trusted\s+by\s+(?:over\s+)?\d+\s*[kKmMbB]|leading\s+(?:companies|providers|businesses)|thousands\s+of\s+(?:satisfied|happy|successful))\s
+    framework_prompt: |
+      # FAIL — fake social proof
+      Trusted by over 10,000 companies worldwide.
+      # PASS — verifiable social proof
+      Built by the architect who delivered the ProMAX Media Dashboard — live, used daily, on the record at linkedin.com/in/...
+
+  - id: privacy-claims-honesty
+    severity: fundamental
+    rule: "When making privacy or security claims, be specific about what is and is not protected. 'We respect your privacy' is meaningless. 'Stores nothing — your words live in your own storage. Nothing to breach on our side' is meaningful and verifiable. If the claim can be verified (open-source code, live demo, third-party audit), link to it. Never make absolute security claims that cannot be proven."
+    framework_prompt: |
+      # FAIL — vague privacy
+      We take your privacy seriously. Your data is safe with us.
+      # PASS — specific, verifiable
+      Ephemeral by design — nothing you type is stored server-side. Crisis detection runs client-side. Open-source and auditable at github.com/mfolofy/lm-tutor.
+
+  - id: marketing-ethics
+    severity: fundamental
+    rule: "Apply AMA Code of Ethics: do not fabricate testimonials, inflate credentials, or misrepresent capabilities. Every claim must be supportable by evidence the prospect can independently verify. Claims about performance, benchmarks, or track record must cite their source. If the product is early-stage, say so — honesty in the pitch is itself a differentiator when competitors exaggerate."
+    framework_prompt: |
+      # FAIL — inflated claim
+      Enterprise-grade security with SOC 2 Type II certification and 99.99% uptime.
+      # PASS — honest, supportable
+      In production at Ghost Stack — governance engine and audit trail work today. The full platform is being built fast, by hand. No fake customers, no inflated numbers.
+
+  - id: copy-concision
+    severity: advanced
+    rule: "Every paragraph must be reducible by 30% without losing meaning. Lead with the most specific, benefit-bearing noun. Cut adverbs (simply, easily, quickly, just). Cut weasel words (virtually, essentially, potentially, might). One sentence = one idea. If a sentence has two commas, split it. Headlines should fit on one line at 1200px viewport width. Subheadings under 60 characters."
+    framework_prompt: |
+      # FAIL — padded copy
+      Our revolutionary platform enables enterprises to quickly and easily leverage the power of AI to transform their business operations in a secure and compliant manner.
+      # PASS — lean copy
+      AI on your hardware. Governed by default. Passes any regulator's audit.
+
+  - id: brand-voice-consistency
+    severity: advanced
+    rule: "Define and maintain a single brand voice register throughout the page. Do not switch between 'we are building the future' (aspirational) and 'click here to buy' (transactional) in adjacent paragraphs. Pick a register — manifesto, direct, technical, or warm — and stay in it. A pitch deck for Grant Cardone uses certainty and scale (his register). A consumer landing page uses warmth and benefit. Never mix the two."
+    framework_prompt: |
+      # FAIL — mixed register
+      We're on a mission to democratize AI infrastructure. Buy now.
+      # PASS — consistent register
+      Already built. Already running. You can use it on this page in about ten seconds. That's the deal.
+
+  # ── SALES RULES (5) ──────────────────────────────────────────────────
+
+  - id: objection-handling
+    severity: fundamental
+    rule: "Anticipate and answer the prospect's top 3 objections BEFORE they form them. The objections are predictable: 'too early', 'too expensive', 'not secure enough', 'we already have a vendor', 'what if you leave'. Address each with a specific, credible pre-buttal in the body copy. Do not wait for an FAQ section — answer the objection in the flow that raises it."
+    framework_prompt: |
+      # FAIL — no objection handling
+      Contact us for pricing and availability.
+      # PASS — pre-buttal built in
+      Early-stage? Honestly, yes — but Mai is live right now, and the governance engine passes audit. You can verify everything on this page.
+
+  - id: cta-clarity
+    severity: fundamental
+    rule: "Every call-to-action must name the specific action and the specific outcome. 'Get Started', 'Learn More', and 'Submit' are weak — they describe the action, not the result. Strong CTAs name what happens next with specificity. 'Deploy Your Demo' > 'Get Started'. 'See Mai Reflect' > 'Try It'. 'Book the Pitch' > 'Contact Us'. One primary CTA per viewport. Secondary actions must be visually subordinate."
+    check_regex: |-
+      (?i)(?:get\s+started|learn\s+more|submit|click\s+here|sign\s+up|read\s+more)\s*['"]?\s*(?:$|[<>\s])
+    framework_prompt: |
+      # FAIL — weak CTA
+      Get Started
+      # PASS — specific outcome CTA
+      See Mai Reflect
+
+  - id: urgency-pattern
+    severity: advanced
+    rule: "If urgency or scarcity is used, it must be specific and genuine. 'Limited time offer' without a deadline is not urgency — it is generic pressure that savvy buyers ignore. Effective urgency: availability constraints ('3 slots open this quarter'), time-bound access ('Fable free tier ends June 22'), or genuine milestones ('reviews close at 200 findings'). If no genuine urgency exists, do not fabricate it — let quality speak."
+    framework_prompt: |
+      # FAIL — false urgency
+      Limited time offer. Act now before it's too late.
+      # PASS — genuine urgency
+      Fable free tier ends June 22 — reviews queued before then, or it moves to usage-based.
+
+  - id: qualification-signal
+    severity: advanced
+    rule: "If the page has a form, demo request, or contact pathway, qualify the lead before routing. A single email field with no context is a dead end. Instead: signal what happens next, set expectations on response time, and ask one qualifying question that routes the prospect appropriately. 'Tell us your use case' > just 'Email'. An unqualified lead is worse than no lead — it wastes the follow-up."
+    framework_prompt: |
+      # FAIL — dead-end form
+      Email: [________] Subscribe
+      # PASS — qualifying form
+      What industry? [dropdown] — we'll route you to the right architect within 24 hours.
+
+  - id: close-pattern
+    severity: advanced
+    rule: "If the page is a pitch (deck or sales page), end with a specific, low-friction next step. Open-ended ('let us know if interested') defers the decision. A strong close names the meeting format, duration, and what the prospect will leave with. 'Twenty minutes. I sell you in five. Imagine what you'll 10X with the rest.' — that is a close because it commits both sides to a specific, small next action."
+    framework_prompt: |
+      # FAIL — open-ended non-close
+      Let us know if this sounds interesting.
+      # PASS — specific close
+      Twenty minutes. I sell you in five. Imagine what you'll 10X with the rest.
+
+  # ── FRONT-END UI ENFORCEMENT RULES (6) ───────────────────────────────
+
+  - id: visual-hierarchy
+    severity: fundamental
+    rule: "Every page must have a clear visual hierarchy that leads the eye: primary headline → supporting subhead → body → CTA. No two elements may compete for primary attention within the same viewport. The primary CTA must be the most visually prominent interactive element — not the nav, not a secondary link, not a decorative element. Use size, weight, and color (not animation) as the primary hierarchy carriers."
+    framework_prompt: |
+      # FAIL — competing hierarchy
+      [Large decorative illustration] [Medium headline] [Two equally styled buttons side by side]
+      # PASS — clear hierarchy
+      [Massive display headline] [Supporting paragraph, smaller] [Single CTA button, red, 0px radius]
+
+  - id: color-contrast-enforce
+    severity: fundamental
+    rule: "All text must meet WCAG 2.2 AA contrast minimum of 4.5:1 (3:1 for large text ≥18px or ≥14px bold). Gray text (#999, #aaa, #bbb) on white background always fails — verify with a contrast checker. Interactive states (hover, focus, active) must also meet contrast minimums. Do not use color alone to convey information — pair with icons, text labels, or patterns. Test in grayscale to verify meaning survives."
+    check_regex: |-
+      color:\s*#[89a-f][0-9a-f]{2}[0-9a-f]{2}\s*;?\s*$|color:\s*rgba?\(\s*(?:1[0-9]{2}|2[0-4][0-9]|25[0-5])\s*,\s*(?:1[0-9]{2}|2[0-4][0-9]|25[0-5])\s*,\s*(?:1[0-9]{2}|2[0-4][0-9]|25[0-5])\s*,\s*0\.[0-5]
+    framework_prompt: |
+      # FAIL — inaccessible contrast
+      .muted-text { color: #999; }  /* 2.8:1 on white — fails AA for all text sizes */
+      # PASS — accessible contrast
+      .muted-text { color: #64748b; }  /* 4.6:1 on white — passes AA */
+
+  - id: responsive-foundation
+    severity: fundamental
+    rule: "The layout must function at every viewport from 360px to 1600px without horizontal scroll. Use `clamp()` for fluid typography — never fixed px values for font sizes on body or heading text. Use CSS Grid or flexbox with `gap` rather than margin hacks. Test the mobile layout first: if the hero headline wraps to 3+ lines at 375px, reduce size or tighten copy. Touch targets ≥44×44px at all breakpoints."
+    check_regex: |-
+      font-size:\s*(?:1[4-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9]|60)\s*px
+    framework_prompt: |
+      # FAIL — fixed px headline
+      h1 { font-size: 56px; }  /* doesn't scale on mobile */
+      # PASS — fluid headline
+      h1 { font-size: clamp(2.2rem, 8.5vw, 6rem); }  /* scales gracefully */
+
+  - id: reduced-motion-enforce
+    severity: fundamental
+    rule: "Every animation must be paired with a `@media (prefers-reduced-motion: reduce)` rule that disables or minimizes motion. The default state must be no motion — animation is the enhancement, not the baseline. Do not animate elements that convey meaning (status indicators can pulse, but must have a static meaningful state). Keyframe animations must have a `animation: none` reset under the reduce-media query."
+    check_regex: |-
+      @keyframes\s+\w+
+    framework_prompt: |
+      # FAIL — animation without guard
+      @keyframes pulse { 0%{opacity:1} 50%{opacity:.5} }
+      .dot { animation: pulse 2s infinite; }
+      # PASS — animation with guard
+      @keyframes pulse { 0%{opacity:1} 50%{opacity:.55} }
+      .dot { animation: pulse 2s infinite; }
+      @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+
+  - id: interactive-focus
+    severity: fundamental
+    rule: "Never remove `outline` without replacing it with a visible `:focus-visible` style. All interactive elements (buttons, links, inputs, custom widgets) must have a visible focus indicator at both rest and active states. The focus ring must be at least 2px thick and have 3:1 contrast against the adjacent background. Use ` outline: 2px solid <accessible-color>; outline-offset: 2px;` as the minimum."
+    check_regex: |-
+      outline:\s*none\s*;?(?![^}]*focus-visible)
+    framework_prompt: |
+      # FAIL — focus destroyed
+      .btn:focus { outline: none; }  /* keyboard users cannot see focus */
+      # PASS — focus replaced
+      .btn:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+
+  - id: spacing-consistency
+    severity: advanced
+    rule: "Use a consistent 4px-based spacing scale (4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 108) for padding, margins, and gaps. Arbitrary values (9px, 13px, 22px, 31px) create visual noise. Card/container padding must be ≥16px on all sides. Section gaps must be consistent — if most are 108px, all should be 108px or intentionally variant for hierarchy. Inconsistent spacing is the most common signal of amateur design."
+    framework_prompt: |
+      # FAIL — arbitrary spacing
+      .card { padding: 17px 22px; margin-bottom: 31px; }
+      # PASS — scale spacing
+      .card { padding: 20px 24px; margin-bottom: 32px; }

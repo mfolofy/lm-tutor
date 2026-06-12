@@ -1,0 +1,1 @@
+"""web-vitals — Core Web Vitals: INP, LCP, CLS, TBT, and performance optimization."""

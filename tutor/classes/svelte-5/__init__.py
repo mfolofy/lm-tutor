@@ -1,0 +1,1 @@
+"""svelte-5 — Svelte 5 runes: $state, $derived, $effect fine-grained reactivity."""

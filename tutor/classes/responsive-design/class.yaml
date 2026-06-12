@@ -1,0 +1,115 @@
+# responsive-design — Modern responsive design patterns.
+# Sources: CSS Containment 3, CSS Values 4, Utopia, Every Layout. 10 rules. ~120 tokens.
+
+class:
+  id: responsive-design
+  title: "Modern Responsive Design — Container Queries, Intrinsic Design & Fluid Typography"
+  version: 1.0.0
+  sources: ["CSS Containment Level 3 (CR)", "CSS Values 4 (CR)", "Utopia.fyi"]
+  prerequisites: []
+  target_violations:
+    - "media-over-container"
+    - "viewport-over-container-units"
+    - "100vh-mobile-bug"
+    - "px-font-size"
+    - "hard-breakpoints-only"
+    - "no-fluid-typography"
+    - "picture-srcset-missing"
+    - "no-min-max-clamp"
+    - "orientation-query-missing"
+    - "content-based-layout"
+  estimated_cost_tokens: 130
+  rule_count: 10
+
+rules:
+  - id: media-over-container
+    severity: fundamental
+    rule: "Use @container queries for component-level responsiveness instead of @media queries. @media responds to the viewport; @container responds to the component's own width. A card component should adapt to its container, not the viewport — a card in a sidebar (300px) should render differently than the same card in the main content (800px). container-type: inline-size enables this."
+    framework_css: |
+      /* FAIL: @media — card doesn't know it's in a sidebar */
+      @media (min-width: 768px) { .card { display: flex; } }
+      /* PASS: @container — card adapts to its container */
+      .card-wrapper { container-type: inline-size; }
+      @container (min-width: 400px) { .card { display: flex; } }
+
+  - id: viewport-over-container-units
+    severity: intermediate
+    rule: "Use container query units (cqw, cqi, cqb) inside container queries instead of viewport units (vw, vi). Inside a @container block, cqi is 1% of the container's inline size — not the viewport. This means component sizing is self-contained. A card with font-size: 5cqi scales with the card width, not the browser width."
+    framework_css: |
+      /* FAIL: vw inside a container query — still viewport-relative */
+      @container (min-width: 400px) { .card { font-size: 3vw; } }
+      /* PASS: cqi — relative to the container, not the viewport */
+      @container (min-width: 400px) { .card { font-size: clamp(1rem, 5cqi, 2rem); } }
+
+  - id: 100vh-mobile-bug
+    severity: fundamental
+    rule: "Use dvh (dynamic viewport height) instead of 100vh for full-screen sections on mobile. 100vh does not account for mobile browser address bars — content overflows behind the bar. 100dvh recalculates as the browser chrome appears/disappears. 100svh is the smallest possible (address bar visible). 100lvh is the largest (address bar hidden)."
+    check_regex: '100vh'
+    framework_css: |
+      /* FAIL: 100vh — overflows behind mobile address bar */
+      .hero { min-height: 100vh; }
+      /* PASS: dynamic viewport — adapts to browser chrome */
+      .hero { min-height: 100dvh; }
+
+  - id: px-font-size
+    severity: fundamental
+    rule: "Never set font-size in px. Pixels override user font-size preferences (browser setting) and break accessibility. Use rem (root-relative) for body text, and clamp() with container units for fluid headings. 1rem = the user's preferred base font size (usually 16px, but the user controls this)."
+    check_regex: '\bfont-size\s*:\s*\d+px'
+    framework_css: |
+      /* FAIL */ body { font-size: 16px; } h1 { font-size: 48px; }
+      /* PASS */ body { font-size: 1rem; } h1 { font-size: clamp(2rem, 5cqi, 3rem); }
+
+  - id: no-fluid-typography
+    severity: intermediate
+    rule: "Use clamp() for fluid typography — a single declaration that scales smoothly between a minimum and maximum without media queries. clamp(1rem, 4cqi, 3rem) means: minimum 1rem, scales with container, maximum 3rem. No breakpoints, no jumps, no JS. Use Utopia.fyi to generate fluid scales."
+    framework_css: |
+      /* FAIL: breakpoint-based font-size jumps */
+      h1 { font-size: 2rem; } @media (min-width: 768px) { h1 { font-size: 3rem; } }
+      /* PASS: fluid — scales smoothly, no breakpoints */
+      h1 { font-size: clamp(2rem, 5cqi, 3rem); }
+
+  - id: no-min-max-clamp
+    severity: intermediate
+    rule: "Use min(), max(), and clamp() for responsive values instead of media queries. width: min(100%, 800px) caps width at 800px but shrinks on smaller screens. padding: max(1rem, 5cqi) ensures minimum padding but scales up. These CSS math functions eliminate ~30% of @media breakpoints."
+    framework_css: |
+      /* FAIL: media query for simple responsive constraint */
+      .content { width: 800px; } @media (max-width: 800px) { .content { width: 100%; } }
+      /* PASS: min() — one line, no breakpoint */
+      .content { width: min(100%, 800px); }
+
+  - id: picture-srcset-missing
+    severity: intermediate
+    rule: "Use <picture> + srcset for art direction, and srcset + sizes for resolution switching. <picture> lets you serve different images at different breakpoints (crop, aspect ratio, content). srcset lets the browser choose the best resolution. One <img> with a fixed src serves the same file to a 4K monitor and a 400px phone."
+    framework_html: |
+      <!-- FAIL: one image for all context -->
+      <img src="hero-2400w.jpg" alt="Hero">
+      <!-- PASS: art direction (different crops) + resolution switching -->
+      <picture><source media="(min-width: 800px)" srcset="hero-wide-1200w.webp 1200w"><img src="hero-narrow-800w.webp" alt="Hero"></picture>
+
+  - id: hard-breakpoints-only
+    severity: intermediate
+    rule: "Use intrinsic design patterns (flex-wrap, grid auto-fit/minmax) instead of hard-coded breakpoints for layout. A grid with repeat(auto-fit, minmax(250px, 1fr)) creates a responsive grid WITHOUT any @media queries — columns wrap naturally. flex-wrap: wrap does the same for flex. The layout responds to content size, not viewport width."
+    framework_css: |
+      /* FAIL: hard-coded breakpoints for column count */
+      .grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+      @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+      /* PASS: auto-fit — no breakpoints needed */
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+  - id: orientation-query-missing
+    severity: advanced
+    rule: "Query orientation and aspect-ratio for layout decisions, not just width. A landscape tablet and a portrait phone may have the same width but need different layouts. @media (orientation: landscape) and @media (aspect-ratio > 1) catch these cases. Also use the pointer media feature for touch vs mouse interaction sizing."
+    framework_css: |
+      /* PASS: orientation-aware layout */
+      @media (orientation: portrait) { .gallery { grid-template-columns: 1fr; } }
+      @media (orientation: landscape) { .gallery { grid-template-columns: repeat(3, 1fr); } }
+      @media (pointer: coarse) { button { min-height: 48px; } }  /* touch target */
+
+  - id: content-based-layout
+    severity: advanced
+    rule: "Let content determine layout size, not the other way around. Use intrinsic sizing keywords: min-content, max-content, fit-content. Don't force a fixed width on text containers — text is most readable at 45-75 characters per line, which is a content-based measurement, not a pixel measurement. max-width: 65ch is the responsive line-length pattern."
+    framework_css: |
+      /* FAIL: fixed width on text */
+      article { width: 800px; }
+      /* PASS: content-based — readable line length regardless of font size */
+      article { max-width: 65ch; }
