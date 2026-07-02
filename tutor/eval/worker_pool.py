@@ -4,12 +4,13 @@ Process isolation without the per-call cold-start tax. Workers are forked
 (POSIX) / spawned (Windows) ONCE at ``start()`` and kept alive, each
 pre-importing the harness and looping on a task queue.
 
-This is used by the **benchmark** and **MCP server** paths, where many
-evaluations are amortised over a long-lived process. The one-shot
-``tutor eval`` CLI does NOT use the pool — it calls
-``tutor.eval.harness.grade`` directly in-process, which is both faster and
-deterministic for a single grade (important on Windows/3.14 where spawn
-re-imports the main module).
+NOT YET WIRED: nothing in the codebase currently uses this pool. The
+benchmark runner and the MCP server both call ``tutor.eval.harness.grade``
+directly in-process (as does the one-shot ``tutor eval`` CLI, where direct
+calls are also faster and deterministic — important on Windows/3.14 where
+spawn re-imports the main module). This module is the intended seam for
+amortising many evaluations over a long-lived process once a consumer needs
+it.
 
 Worker target ``_worker_loop`` is importable at module level so spawn can
 pickle it; do not nest it inside another function.

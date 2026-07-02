@@ -9,7 +9,7 @@
 From this folder, use `python -m tutor` (no `pip install` needed):
 
 ```bash
-python -m tutor list                                          # 55 classes
+python -m tutor list                                          # 56 classes
 python -m tutor learn --model deepseek-chat --class brushes   # get a teaching prefix
 echo "<html><img src=a.png></html>" | python -m tutor eval    # grade output from stdin
 python -m tutor --help                                        # every command
@@ -36,6 +36,10 @@ Pro      DeepSeek V4 Pro (1.6T/49B MoE)      14.0   1.0        93%
 
 [Benchmark methodology and full data >](docs/benchmark-methodology.md)
 
+*Reproducibility note: the bundled runner (`python -m tutor.benchmark`) drives
+the DeepSeek API only. The Gemma/Claude rows were collected manually per the
+methodology doc; their raw run data is not stored in this repository.*
+
 ---
 
 ## What It Does
@@ -51,7 +55,7 @@ Pro      DeepSeek V4 Pro (1.6T/49B MoE)      14.0   1.0        93%
   testing, performance, DevOps, modern CSS, React Server Components, View
   Transitions, design tokens, web animation, Core Web Vitals, Web Components,
   build tooling, Three.js, 3D graphics, responsive design, typography, Astro,
-  Svelte 5, and 18 professional credentials (attorney through veterinarian).
+  Svelte 5, and 24 professional credential classes (attorney through veterinarian).
 - **Adapts to the model** — small models get fundamentals + scaffolded tools.
   Capable models get the full curriculum. Track assignment is automatic.
 
@@ -193,6 +197,9 @@ penalty of perjury. All output must include professional disclaimer.
 | **credential-judge** | Judge/Judicial Officer | ABA Code of Judicial Conduct, USC Title 28 |
 | **credential-socialworker** | Social Worker | NASW Code of Ethics, state licensing, HIPAA |
 | **credential-vet** | Veterinarian | AVMA Code of Ethics, state practice acts, DEA |
+| **credential-psychiatry** | Psychiatrist | APA Principles of Medical Ethics, DSM-5-TR, HIPAA, Tarasoff |
+| **credential-anthropology** | Anthropologist | AAA Code of Ethics, SfAA Guidelines, UNESCO |
+| **credential-marketing-sales-ui** | Marketing/Sales + UI | AMA Code of Ethics, FTC 16 CFR 255, WCAG 2.2, NN/g heuristics |
 
 [See full attorney example >](docs/credential-example-attorney.md)
 
@@ -205,7 +212,7 @@ penalty of perjury. All output must include professional disclaimer.
 | **Classes** | YAML files with `[RULE]` checklists + FAIL/PASS examples. ~120 tokens per 10 rules — optimized for context windows. |
 | **Registry** | Curated capability profiles per model. Track assignment based on working memory and reasoning depth. |
 | **Injector** | `tutor learn` renders the class into a token-efficient prefix and prepends it to the generation prompt. |
-| **Harness** | `tutor eval` grades output against the same class.yaml. Selectors and regex — deterministic, no variance. |
+| **Harness** | `tutor eval` grades output against the same class.yaml. Selectors and regex — deterministic, no variance. 253 of the 838 rules carry a machine check; classes whose rules are teaching-only report `rules_checked: 0` and their result is not a verified pass. |
 | **Tracker** | Every eval result saved per model. `tutor profile` shows pass rates, weakest rules, next-class suggestions. |
 | **Booster** | Scratchpad sandbox, self-consistency checks, few-shot exemplars, edge-case prediction. For models under the capability threshold. |
 | **Fix** | `tutor fix` — iterative correction loop. Eval → per-violation fix suggestions → re-eval. |
@@ -237,7 +244,8 @@ echo "<html><img src='a.png'>" | tutor eval
 
 ## Status
 
-**Beta.** 55 classes, ~800 rules, 1,800+ tests. Benchmarked across 5 model tiers
+**Beta.** 56 classes, 838 rules (253 machine-checkable by the Layer 1 harness;
+the rest are teaching-only), 1,869 tests. Benchmarked across 5 model tiers
 (Gemma 3 4B through DeepSeek V4 Pro) with 5-run placebo-controlled protocol.
 Working in production at Ghost Stack.
 

@@ -24,12 +24,27 @@ MODEL = "deepseek-v4-flash"
 
 
 class TestGhostAgentEnrollment:
-    """All 4 Ghost agents must be enrolled with their required classes."""
+    """Enrolling the 4 Ghost agents' class sets round-trips through the store.
+
+    NOTE: this used to read the developer's live ``~/.tutor/track_state.json``
+    and assert that the agents had been enrolled on THIS machine — an
+    environment assertion that failed on every fresh clone and tested no code.
+    It now performs the enrollment into an isolated state dir and verifies the
+    store persists and returns it.
+    """
 
     @pytest.fixture(scope="class")
-    def enrolled_classes(self) -> set[str]:
-        store = TrackStateStore()
-        state = store.load(MODEL)
+    def enrolled_classes(self, tmp_path_factory) -> set[str]:
+        state_dir = tmp_path_factory.mktemp("tutor-state")
+        store = TrackStateStore(state_dir=state_dir)
+
+        all_required: set[str] = set()
+        for classes in AGENT_CLASSES.values():
+            all_required.update(classes)
+        store.save(MODEL, {"classes_enrolled": sorted(all_required)})
+
+        # Re-read through a fresh store instance to prove persistence.
+        state = TrackStateStore(state_dir=state_dir).load(MODEL)
         if state is None:
             return set()
         return set(state.get("classes_enrolled", []))

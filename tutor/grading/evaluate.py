@@ -31,6 +31,7 @@ def evaluate_submission(submission: str, syllabus: str = "brushes") -> dict:
         "syllabus": result.syllabus,
         "pass": result.passed,
         "rules_checked": result.rules_checked,
+        "rules_total": result.rules_total,
         "violations": [v.model_dump() for v in result.violations],
         "by_severity": by_severity,
         "error": result.error,

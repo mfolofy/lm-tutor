@@ -43,7 +43,8 @@ class Violation(BaseModel):
 class EvalResult(BaseModel):
     syllabus: str
     passed: bool
-    rules_checked: int
+    rules_checked: int          # rules that carry a machine check (selector/regex)
+    rules_total: int = 0        # all rules in the class, checkable or not
     violations: list[Violation] = []
     hint: str | None = None
     error: str | None = None
@@ -214,6 +215,7 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
     rules = cls.get("rules", []) or []
     elements = _parse_html(submission)
     violations: list[Violation] = []
+    rules_checked = 0
 
     for rule in rules:
         rule_id = rule.get("id", "?")
@@ -222,6 +224,10 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
         wcag = rule.get("wcag")
 
         selector = rule.get("check_selector")
+        regex = rule.get("check_regex")
+        if selector or regex:
+            rules_checked += 1
+
         if selector:
             for el in _check_selector(selector, elements):
                 violations.append(Violation(
@@ -230,7 +236,6 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
                     matched=_render(el),
                 ))
 
-        regex = rule.get("check_regex")
         if regex:
             try:
                 pattern = re.compile(regex)
@@ -243,12 +248,23 @@ def grade(submission: str, syllabus: str = "brushes") -> EvalResult:
                     matched=m.group(0)[:120],
                 ))
 
+    if violations:
+        hint = None
+    elif rules_checked == 0:
+        hint = (
+            f"0 of {len(rules)} rules in '{syllabus}' are machine-checkable — "
+            "Layer 1 verified nothing. Do not treat this result as a pass."
+        )
+    else:
+        hint = "No fundamental violations found by Layer 1."
+
     return EvalResult(
         syllabus=syllabus,
         passed=len(violations) == 0,
-        rules_checked=len(rules),
+        rules_checked=rules_checked,
+        rules_total=len(rules),
         violations=violations,
-        hint=None if violations else "No fundamental violations found by Layer 1.",
+        hint=hint,
     )
 
 

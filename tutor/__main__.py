@@ -70,7 +70,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_fix.add_argument(
         "--once", action="store_true",
-        help="Single pass: print fix suggestions, exit. Do not auto-iterate.",
+        help="Single pass: print fix suggestions, exit (this is also the default).",
+    )
+    p_fix.add_argument(
+        "--auto", action="store_true",
+        help="Iterate: after printing fixes, read the next submission from stdin "
+             "(terminated by a line '---END---' or EOF) and re-eval, up to --max-iter.",
     )
     p_fix.add_argument(
         "--max-iter", type=int, default=5,

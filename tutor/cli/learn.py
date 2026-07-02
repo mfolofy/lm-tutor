@@ -40,12 +40,34 @@ def _render_injection(cls: dict, booster: bool = False) -> str:
     return "\n".join(lines)
 
 
+_FAIL_MARK = "<!-- FAIL -->"
+_PASS_MARK = "<!-- PASS -->"
+
+
+def _syllabus_examples(cls: dict, limit: int = 3) -> list[dict]:
+    """Extract FAIL/PASS example pairs from the class rules' framework blocks."""
+    examples: list[dict] = []
+    for rule in cls.get("rules", []) or []:
+        block = rule.get("framework_html") or ""
+        if _FAIL_MARK in block and _PASS_MARK in block:
+            fail_part, _, pass_part = block.partition(_PASS_MARK)
+            fail = fail_part.replace(_FAIL_MARK, "").strip()
+            good = pass_part.strip()
+            if fail and good:
+                examples.append({"fail": fail, "pass": good})
+        if len(examples) >= limit:
+            break
+    return examples
+
+
 def _run_auto_booster(class_name: str, cls: dict) -> str:
     """Run Booster tools automatically for a remedial model.
 
     Returns a structured "booster pack" string with:
       - Foresight: edge cases the model should watch for
-      - Exemplars: few-shot prompt block
+      - Exemplars: few-shot prompt block built from the class's FAIL/PASS
+        examples (omitted when the class has none — an empty exemplar block
+        would be injection theater)
     """
     from tutor.booster.tools import (
         downstream_lookahead,
@@ -65,11 +87,13 @@ def _run_auto_booster(class_name: str, cls: dict) -> str:
         for i, ec in enumerate(foresight["edge_cases_to_handle"], 1):
             parts.append(f"  {i}. {ec}")
 
-    # Few-shot exemplars from the class syllabus.
-    exemplars = inject_few_shot(task_desc, examples=None)
-    if exemplars and isinstance(exemplars, dict) and "few_shot_prompt" in exemplars:
-        parts.append("\n# Booster: Few-Shot Examples")
-        parts.append(exemplars["few_shot_prompt"])
+    # Few-shot exemplars from the class syllabus (only when it has some).
+    examples = _syllabus_examples(cls)
+    if examples:
+        exemplars = inject_few_shot(task_desc, examples=examples)
+        if exemplars and isinstance(exemplars, dict) and "few_shot_prompt" in exemplars:
+            parts.append("\n# Booster: Few-Shot Examples")
+            parts.append(exemplars["few_shot_prompt"])
 
     return "\n".join(parts)
 

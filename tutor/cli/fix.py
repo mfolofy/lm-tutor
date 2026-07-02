@@ -6,7 +6,10 @@ alongside each violation. The model can then fix the output and re-pipe.
 
 With ``--auto``, the command loops: after printing fix suggestions it reads
 the next submission from stdin and re-evals, continuing until the submission
-passes or ``--max-iter`` rounds are exhausted.
+passes or ``--max-iter`` rounds are exhausted. In auto mode each submission is
+terminated by a line containing only ``---END---`` (or EOF) so a caller can
+keep the pipe open between rounds — a plain ``read()`` to EOF would make a
+second submission impossible.
 
 Exit code is always 0 for a successful grade (pass or fail). Non-zero means
 the grade itself failed (missing class, I/O error).
@@ -132,13 +135,30 @@ def _run_fix_booster(submission: str, class_name: str | None) -> dict:
     return booster_output
 
 
+SUBMISSION_DELIMITER = "---END---"
+
+
+def _read_submission() -> str:
+    """Read one submission: lines until a '---END---' line or EOF.
+
+    Unlike ``sys.stdin.read()`` this leaves the stream usable for the next
+    round, so ``--auto`` can actually receive a resubmission over a pipe.
+    """
+    lines: list[str] = []
+    for line in sys.stdin:
+        if line.strip() == SUBMISSION_DELIMITER:
+            break
+        lines.append(line)
+    return "".join(lines)
+
+
 def run(args) -> int:
     class_name = getattr(args, "class_name", None)
     max_iter = getattr(args, "max_iter", 5)
-    auto = getattr(args, "auto", False)
+    auto = getattr(args, "auto", False) and not getattr(args, "once", False)
     use_booster = getattr(args, "booster", False)
 
-    submission = sys.stdin.read()
+    submission = _read_submission() if auto else sys.stdin.read()
 
     # Phase 3: pre-run Booster for remedial-model fix context.
     booster_context = None
@@ -186,7 +206,7 @@ def run(args) -> int:
         # Auto mode: wait for the next submission on stdin.
         # Print a delimiter so the caller knows to send the next version.
         print("---FIX_AND_RESUBMIT---", flush=True)
-        submission = sys.stdin.read()
+        submission = _read_submission()
         if not submission.strip():
             print(json.dumps({"error": "Empty resubmission — stopping."}))
             return 1

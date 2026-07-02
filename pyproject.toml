@@ -40,7 +40,7 @@ tutor = "tutor.__main__:main"
 [tool.setuptools.packages.find]
 include = ["tutor*"]
 
+# NOTE: glob keys like "tutor.classes.*" are rejected by setuptools >= 74
+# (keys must be package names or "*"), which broke `pip install -e .` outright.
 [tool.setuptools.package-data]
-"tutor.registry" = ["*.json"]
-"tutor.classes.brushes" = ["*.yaml"]
-"tutor.classes.*" = ["*.yaml"]
+"*" = ["*.yaml", "*.json", "*.md", "_requirements.txt"]

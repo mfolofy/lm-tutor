@@ -1,443 +1,835 @@
 {
-  "version": 1,
+  "version": 2,
   "classes": [
     {
       "id": "api-design",
       "version": "1.0.0",
-      "domain": "api-standards",
       "rules_count": 18,
+      "checkable_rules": 7,
       "standards": [
-        "Fielding REST",
-        "Google API Design Guide",
-        "OpenAPI 3.1"
+        "Fielding \u2014 Architectural Styles and the Design of Network-based Software Architectures (2000)",
+        "Google API Design Guide (google.aip.dev)",
+        "Microsoft REST API Guidelines (github.com/microsoft/api-guidelines)",
+        "JSON:API 1.1 Specification (jsonapi.org)",
+        "OpenAPI 3.1 Specification (openapis.org)",
+        "GraphQL Specification (October 2021) (spec.graphql.org)",
+        "gRPC Specification (grpc.io/docs/guides/)"
       ],
-      "description": "REST, GraphQL, and gRPC API design -- resource naming, HTTP methods, status codes, error formats, pagination"
+      "description": "REST, GraphQL, and gRPC API design -- resource naming, HTTP methods, status codes, error formats, pagination",
+      "domain": "api-standards"
     },
     {
       "id": "architect",
-      "version": "1.0",
-      "domain": "architecture",
+      "version": "1.0.0",
       "rules_count": 22,
+      "checkable_rules": 4,
       "standards": [
-        "NIST SP 800-53",
-        "Fowler PoEAA",
-        "RFC 5280"
+        "Fowler \u2014 Patterns of Enterprise Application Architecture",
+        "Richards & Ford \u2014 Fundamentals of Software Architecture",
+        "Hohpe & Woolf \u2014 Enterprise Integration Patterns",
+        "NIST SP 800-53 / SOC2 TSC / CMMC 2.0",
+        "Governance model patterns (role-based access, policy enforcement, segregation of duties)"
       ],
-      "description": "Threat modeling, data flow diagrams, trust boundaries, architecture governance"
+      "description": "Threat modeling, data flow diagrams, trust boundaries, architecture governance",
+      "domain": "architecture"
+    },
+    {
+      "id": "astro",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 0,
+      "standards": [
+        "Astro Documentation (docs.astro.build)"
+      ],
+      "description": "Astro \u2014 Islands Architecture, View Transitions & Content Collections"
     },
     {
       "id": "audit",
-      "version": "1.0",
-      "domain": "compliance",
-      "rules_count": 18,
+      "version": "1.0.0",
+      "rules_count": 19,
+      "checkable_rules": 7,
       "standards": [
-        "NIST SP 800-53",
         "SOC2",
-        "HIPAA"
+        "HIPAA",
+        "CMMC 2.0",
+        "NIST SP 800-53"
       ],
-      "description": "Tamper-evident logging, retention, evidence collection, compliance controls"
+      "description": "Tamper-evident logging, retention, evidence collection, compliance controls",
+      "domain": "compliance"
     },
     {
       "id": "brushes",
-      "version": "1.3",
-      "domain": "ui-ux",
-      "rules_count": 12,
+      "version": "2.0.0",
+      "rules_count": 38,
+      "checkable_rules": 28,
       "standards": [
-        "WCAG 2.2"
+        "WCAG 2.2",
+        "ARIA 1.2",
+        "HTML Spec"
       ],
-      "description": "Accessible UI patterns -- color contrast, focus order, ARIA landmarks"
+      "description": "Accessible UI patterns -- color contrast, focus order, ARIA landmarks",
+      "domain": "ui-ux"
+    },
+    {
+      "id": "build-tooling",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 1,
+      "standards": [
+        "Biome Documentation (biomejs.dev)",
+        "Oxlint / oxc (oxc.rs)",
+        "Lightning CSS (lightningcss.dev)",
+        "Vite Documentation (vitejs.dev)"
+      ],
+      "description": "Modern Build Tooling \u2014 Biome, Oxlint, Lightning CSS, Vite & Turbopack"
     },
     {
       "id": "code-review",
-      "version": "1.1",
-      "domain": "code-quality",
+      "version": "1.0.0",
       "rules_count": 18,
+      "checkable_rules": 2,
       "standards": [
-        "IEEE 1028",
-        "OWASP Top 10 2025"
+        "ITIL v4 Service Management (Change Enablement, Incident Management)",
+        "arXiv 2603.25773 -- The Specification as Quality Gate",
+        "House/everybody-lies -- Deterministic Pre-scan + Multi-Specialist Adversarial Review"
       ],
-      "description": "Code review best practices -- security, correctness, style, gatekeeper workflows"
+      "description": "Code review best practices -- security, correctness, style, gatekeeper workflows",
+      "domain": "code-quality"
     },
     {
       "id": "credential-adjuster",
       "version": "1.0.0",
-      "domain": "insurance-claims",
       "rules_count": 16,
+      "checkable_rules": 5,
       "standards": [
-        "NAIC UCSPA",
-        "State Fair Claims Practices Acts",
-        "Common Law Bad Faith",
-        "HIPAA Privacy Rule"
+        "NAIC Unfair Claims Settlement Practices Model Act (UCSPA)",
+        "State Unfair Claims Settlement Practices Regulations (UCL/UPC)",
+        "Fair Claims Settlement Practices Acts (FCSPA)",
+        "Common Law Bad Faith (First-Party & Third-Party)",
+        "Fair Debt Collection Practices Act (FDCPA)",
+        "HIPAA Privacy Rule (45 CFR 164)",
+        "State Insurance Privacy Laws",
+        "California Fair Claims Settlement Practices Regulations (10 CCR 2695)",
+        "Texas Unfair Claim Settlement Practices Act (Tex. Ins. Code Sec. 541)",
+        "New York Insurance Law Sec. 2601 (Unfair Claims Settlement)",
+        "Florida Unfair Insurance Trade Practices Act (Fla. Stat. 626.9541)",
+        "Model Act on Mediation / Appraisal Provisions"
       ],
-      "description": "Insurance claims adjuster standards -- good faith, investigation, coverage analysis, settlement, fraud handling, confidentiality"
+      "description": "Insurance claims adjuster standards -- good faith, investigation, coverage analysis, settlement, fraud handling, confidentiality",
+      "domain": "insurance-claims"
+    },
+    {
+      "id": "credential-anthropology",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 6,
+      "standards": [
+        "AAA Code of Ethics (American Anthropological Association)",
+        "SfAA Ethical Guidelines (Society for Applied Anthropology)",
+        "UNESCO Universal Declaration on Cultural Diversity (2001)",
+        "ICOMOS International Cultural Heritage Standards",
+        "Geneva Convention IV -- Cultural Property (1954 Hague Convention)"
+      ],
+      "description": "Anthropological/ethnographic professional standards -- do no harm, informed consent, cultural relativism, no cultural appropriation, positionality, data sovereignty, heritage sensitivity",
+      "domain": "anthropology"
     },
     {
       "id": "credential-cpa",
       "version": "1.0.0",
-      "domain": "accounting",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
         "GAAP (ASC Codification)",
         "GAAS (AICPA)",
-        "AICPA Code of Professional Conduct"
+        "AICPA Code of Professional Conduct",
+        "Sarbanes-Oxley Act of 2002",
+        "Circular 230 (Treasury Department)",
+        "SEC Rules",
+        "FINRA",
+        "BSA/AML Requirements"
       ],
-      "description": "Certified Public Accountant standards -- GAAP, GAAS, AICPA ethics, audit procedures, tax preparation"
+      "description": "Certified Public Accountant standards -- GAAP, GAAS, AICPA ethics, audit procedures, tax preparation",
+      "domain": "accounting"
     },
     {
       "id": "credential-dentist",
       "version": "1.0.0",
-      "domain": "dental",
       "rules_count": 15,
+      "checkable_rules": 6,
       "standards": [
-        "ADA Code of Ethics",
-        "CDC Infection Control",
-        "OSHA Bloodborne Pathogens"
+        "ADA Code of Ethics (2025)",
+        "CDC Guidelines for Infection Control in Dental Health-Care Settings",
+        "OSHA Bloodborne Pathogens Standard (29 CFR \u00a7 1910.1030)",
+        "HIPAA Privacy Rule (45 CFR \u00a7 164.500\u2013534)",
+        "DEA Controlled Substances Act (21 U.S.C. \u00a7 801\u2013971)",
+        "ALARA Principles (ADA/FDA Guidelines)"
       ],
-      "description": "Dental professional standards -- infection control, radiation safety, ethics, recordkeeping"
+      "description": "Dental professional standards -- infection control, radiation safety, ethics, recordkeeping",
+      "domain": "dental"
     },
     {
       "id": "credential-electrician",
       "version": "1.0.0",
-      "domain": "electrical-standards",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
-        "NEC (NFPA 70)",
-        "OSHA 1926 Subpart K",
-        "NFPA 70E",
-        "NECA Standards",
-        "State Licensing Boards"
+        "NEC (NFPA 70) \u2014 National Electrical Code",
+        "OSHA 29 CFR 1926 Subpart K \u2014 Electrical Safety in Construction",
+        "NFPA 70E \u2014 Standard for Electrical Safety in the Workplace",
+        "NECA Standards \u2014 National Electrical Contractors Association",
+        "State Electrical Licensing Boards (50 states)"
       ],
-      "description": "Licensed electrician standards -- NEC compliance, grounding/bonding, overcurrent protection, wiring methods, GFCI/AFCI, load calculations, working clearance, lockout/tagout, arc flash PPE, labeling"
+      "description": "Licensed electrician standards -- NEC compliance, grounding/bonding, overcurrent protection, wiring methods, GFCI/AFCI, load calculations, working clearance, lockout/tagout, arc flash PPE, labeling",
+      "domain": "electrical-standards"
     },
     {
       "id": "credential-finra",
       "version": "1.0.0",
-      "domain": "finance",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
         "Investment Advisers Act of 1940",
         "Securities Act of 1933",
-        "Securities Exchange Act of 1934"
+        "Securities Exchange Act of 1934",
+        "FINRA Rules (1250, 2020, 2111, 2210, 3110, 3210, 3220)",
+        "SEC Rules (204-2, 10b-5, Regulation S-P, Regulation FD)",
+        "USA PATRIOT Act",
+        "Gramm-Leach-Bliley Act",
+        "Bank Secrecy Act / AML Requirements"
       ],
-      "description": "Financial advisor/broker standards -- securities regulation, fiduciary duty, suitability, FINRA rules"
+      "description": "Financial advisor/broker standards -- securities regulation, fiduciary duty, suitability, FINRA rules",
+      "domain": "finance"
     },
     {
       "id": "credential-hr",
       "version": "1.0.0",
-      "domain": "human-resources",
       "rules_count": 17,
+      "checkable_rules": 6,
       "standards": [
         "FLSA",
         "FMLA",
-        "ADA"
+        "ADA",
+        "Title VII",
+        "ADEA",
+        "EPA",
+        "EEOC",
+        "NLRB",
+        "COBRA",
+        "WARN Act",
+        "IRCA",
+        "GINA",
+        "USERRA"
       ],
-      "description": "Human resources professional standards -- employment law, benefits administration, labor relations, workplace safety"
+      "description": "Human resources professional standards -- employment law, benefits administration, labor relations, workplace safety",
+      "domain": "human-resources"
     },
     {
       "id": "credential-jd",
       "version": "1.0.0",
-      "domain": "legal",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
         "ABA Model Rules",
         "Restatement (3d) Law Governing Lawyers",
         "FRE"
       ],
-      "description": "Attorney professional standards -- ethics, privilege, conflicts of interest, client communication"
+      "description": "Attorney professional standards -- ethics, privilege, conflicts of interest, client communication",
+      "domain": "legal"
     },
     {
       "id": "credential-journalist",
       "version": "1.0.0",
-      "domain": "journalism",
       "rules_count": 15,
+      "checkable_rules": 6,
       "standards": [
         "SPJ Code of Ethics",
         "API Journalism Essentials",
-        "AP Stylebook"
+        "AP Stylebook",
+        "ASNE Principles",
+        "RCFP",
+        "FTC Endorsement Guides"
       ],
-      "description": "Journalist/reporter standards -- truthfulness, independence, sourcing, attribution, corrections"
+      "description": "Journalist/reporter standards -- truthfulness, independence, sourcing, attribution, corrections",
+      "domain": "journalism"
     },
     {
       "id": "credential-judge",
       "version": "1.0.0",
-      "domain": "judicial",
       "rules_count": 15,
+      "checkable_rules": 6,
       "standards": [
-        "ABA Code of Judicial Conduct",
-        "US Constitution (5th, 6th, 14th)",
-        "Federal Rules of Evidence"
+        "ABA Code of Judicial Conduct (2020)",
+        "US Constitution (5th, 6th, 14th Amendments)",
+        "Federal Rules of Evidence",
+        "Federal Rules of Civil Procedure",
+        "Federal Rules of Criminal Procedure",
+        "US Sentencing Guidelines (USSG 2024)",
+        "28 USC Secs. 144, 455 (Judicial Disqualification)",
+        "18 USC Sec. 401 (Contempt)"
       ],
-      "description": "Judicial professional standards -- impartiality, recusal, ex parte communication, sentencing"
+      "description": "Judicial professional standards -- impartiality, recusal, ex parte communication, sentencing",
+      "domain": "judicial"
     },
     {
       "id": "credential-lcsw",
       "version": "1.0.0",
-      "domain": "mental-health",
       "rules_count": 15,
+      "checkable_rules": 6,
       "standards": [
-        "NASW Code of Ethics",
-        "APA Ethical Principles",
-        "ACA Code of Ethics"
+        "NASW Code of Ethics (2024)",
+        "APA Ethical Principles of Psychologists (2024)",
+        "ACA Code of Ethics (2024)",
+        "HIPAA Privacy Rule (45 CFR 164)",
+        "Tarasoff v. Regents of UC (1976)",
+        "State licensing board regulations"
       ],
-      "description": "Therapist/mental health professional standards -- confidentiality, mandatory reporting, dual relationships, informed consent"
+      "description": "Therapist/mental health professional standards -- confidentiality, mandatory reporting, dual relationships, informed consent",
+      "domain": "mental-health"
+    },
+    {
+      "id": "credential-marketing-sales-ui",
+      "version": "1.0.0",
+      "rules_count": 17,
+      "checkable_rules": 6,
+      "standards": [
+        "AMA Code of Ethics",
+        "FTC 16 CFR Part 255",
+        "SPIN Selling (Rackham)",
+        "Challenger Sale (Dixon & Adamson)",
+        "WCAG 2.2",
+        "Material Design 3",
+        "Gestalt Principles",
+        "NN/g Usability Heuristics"
+      ],
+      "description": "Credential \u2014 Marketing + Sales + Front-End UI Enforcement"
     },
     {
       "id": "credential-md",
       "version": "1.0.0",
-      "domain": "medical",
       "rules_count": 15,
+      "checkable_rules": 6,
       "standards": [
-        "HIPAA Privacy Rule",
+        "HIPAA Privacy Rule (45 CFR \u00a7 164.500\u2013534)",
         "AMA Code of Medical Ethics",
-        "EMTALA"
+        "EMTALA (42 U.S.C. \u00a7 1395dd)",
+        "Standard of Care Doctrine",
+        "Informed Consent Requirements"
       ],
-      "description": "Physician medical standards -- patient confidentiality, informed consent, end-of-life care, mandatory reporting"
+      "description": "Physician medical standards -- patient confidentiality, informed consent, end-of-life care, mandatory reporting",
+      "domain": "medical"
     },
     {
       "id": "credential-paramedic",
       "version": "1.0.0",
-      "domain": "ems",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
         "NREMT Paramedic National Standards",
         "State EMS Protocols",
-        "NHTSA EMS Agenda"
+        "NHTSA EMS Agenda for the Future (2008)",
+        "HIPAA (45 CFR 164)",
+        "DEA Regulations (21 CFR 1300)",
+        "Local Medical Director Protocols"
       ],
-      "description": "Paramedic/EMS professional standards -- patient assessment, pain management, refusal, consent, mandatory reporting"
+      "description": "Paramedic/EMS professional standards -- patient assessment, pain management, refusal, consent, mandatory reporting",
+      "domain": "ems"
     },
     {
       "id": "credential-pe",
       "version": "1.0.0",
-      "domain": "engineering",
       "rules_count": 16,
+      "checkable_rules": 5,
       "standards": [
-        "NSPE Code of Ethics",
-        "ASCE Code of Ethics",
-        "NCEES Model Law"
+        "NSPE Code of Ethics (2024)",
+        "ASCE Code of Ethics (2020)",
+        "NCESS Model Law / Model Rules",
+        "IBC (International Building Code)",
+        "ASCE 7 (Minimum Design Loads)",
+        "ACI 318 (Building Code Requirements for Structural Concrete)",
+        "AIA Contract Documents (B101, A201)",
+        "NEPA (National Environmental Policy Act)",
+        "Clean Water Act / Clean Air Act"
       ],
-      "description": "Professional engineer standards -- public safety, stamping, competence, conflicts of interest"
+      "description": "Professional engineer standards -- public safety, stamping, competence, conflicts of interest",
+      "domain": "engineering"
     },
     {
       "id": "credential-pharmacist",
       "version": "1.0.0",
-      "domain": "pharmacy",
       "rules_count": 15,
+      "checkable_rules": 5,
       "standards": [
         "OBRA '90",
         "HIPAA (45 CFR 164)",
-        "DEA Regulations (21 CFR 1300-1399)"
+        "DEA Regulations (21 CFR 1300-1399)",
+        "USP 795/797",
+        "FDA Guidelines",
+        "ISMP Guidelines",
+        "State Pharmacy Practice Acts"
       ],
-      "description": "Pharmacy professional standards -- patient counseling, controlled substances, patient confidentiality, medication errors"
+      "description": "Pharmacy professional standards -- patient counseling, controlled substances, patient confidentiality, medication errors",
+      "domain": "pharmacy"
     },
     {
       "id": "credential-pilot",
       "version": "1.0.0",
-      "domain": "aviation",
       "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
-        "14 CFR Part 61",
-        "14 CFR Part 91",
-        "14 CFR Part 121"
+        "14 CFR Part 61 (Certification: Pilots and Instructors)",
+        "14 CFR Part 91 (General Operating and Flight Rules)",
+        "14 CFR Part 121 (Domestic, Flag, and Supplemental Operations)",
+        "14 CFR Part 135 (Commuter and On-Demand Operations)",
+        "FAA Aeronautical Information Manual (AIM Ch. 4\u20135, 7)",
+        "Advisory Circular 120-71 (Crew Resource Management)",
+        "Pilot's Handbook of Aeronautical Knowledge (PHAK)",
+        "NTSB Part 830 (Notification and Reporting of Aircraft Accidents)"
       ],
-      "description": "Pilot professional standards -- FAA regulations, cockpit resource management, weather minimums, flight planning"
+      "description": "Pilot professional standards -- FAA regulations, cockpit resource management, weather minimums, flight planning",
+      "domain": "aviation"
     },
     {
       "id": "credential-pm",
       "version": "1.0.0",
-      "domain": "project-management",
       "rules_count": 16,
+      "checkable_rules": 5,
       "standards": [
         "PMBOK Guide 7th Ed",
-        "PMP Code of Ethics",
-        "PRINCE2 2023"
+        "PMP Code of Ethics & Professional Conduct",
+        "PRINCE2 (2023)",
+        "ISO 21500:2021",
+        "Agile Manifesto (2001)"
       ],
-      "description": "Project management professional standards -- scope, schedule, cost, risk, stakeholder management"
-    },
-    {
-      "id": "credential-ra",
-      "version": "1.0.0",
-      "domain": "architecture-licensed",
-      "rules_count": 16,
-      "standards": [
-        "AIA Code of Ethics",
-        "IBC (International Building Code)",
-        "ADA Standards for Accessible Design"
-      ],
-      "description": "Registered architect standards -- building codes, accessibility, life safety, structural integrity, ethics"
-    },
-    {
-      "id": "credential-realtor",
-      "version": "1.0.0",
-      "domain": "real-estate",
-      "rules_count": 16,
-      "standards": [
-        "NAR Code of Ethics",
-        "Fair Housing Act",
-        "RESPA"
-      ],
-      "description": "Real estate agent standards -- fair housing, disclosure, fiduciary duty, agency relationships"
-    },
-    {
-      "id": "credential-rn",
-      "version": "1.0.0",
-      "domain": "nursing",
-      "rules_count": 16,
-      "standards": [
-        "ANA Code of Ethics",
-        "NPA (State Nurse Practice Acts)",
-        "HIPAA (45 CFR 164)"
-      ],
-      "description": "Registered nurse standards -- patient privacy, scope of practice, mandatory reporting, informed consent"
-    },
-    {
-      "id": "credential-socialworker",
-      "version": "1.0.0",
-      "domain": "social-work",
-      "rules_count": 15,
-      "standards": [
-        "NASW Code of Ethics",
-        "ASWB Model Practice Act",
-        "HIPAA Privacy Rule"
-      ],
-      "description": "Social worker standards -- client confidentiality, mandatory reporting, cultural competence, informed consent"
-    },
-    {
-      "id": "credential-vet",
-      "version": "1.0.0",
-      "domain": "veterinary",
-      "rules_count": 15,
-      "standards": [
-        "AVMA Principles of Ethics",
-        "Animal Welfare Act",
-        "DEA Controlled Substances Regulations"
-      ],
-      "description": "Veterinary professional standards -- animal welfare, controlled substances, informed consent, euthanasia protocols"
-    },
-    {
-      "id": "defense",
-      "version": "0.5",
-      "domain": "app-security",
-      "rules_count": 19,
-      "standards": [
-        "OWASP Top 10 2025"
-      ],
-      "description": "Defense-in-depth, WAF rules, rate limiting, anomaly detection"
-    },
-    {
-      "id": "devops",
-      "version": "1.0.0",
-      "domain": "devops",
-      "rules_count": 17,
-      "standards": [
-        "Google SRE",
-        "DORA",
-        "ITIL 4"
-      ],
-      "description": "DevOps and SRE practices -- CI/CD pipelines, incident response, SLIs/SLOs, deployment strategies, monitoring"
-    },
-    {
-      "id": "javascript-best-practices",
-      "version": "1.0.0",
-      "domain": "javascript",
-      "rules_count": 16,
-      "standards": [
-        "MDN Web Docs",
-        "ECMAScript Spec",
-        "Airbnb JS Style Guide"
-      ],
-      "description": "JavaScript best practices -- ES6+ syntax, async/await, module patterns, type coercion avoidance"
-    },
-    {
-      "id": "perf",
-      "version": "0.5",
-      "domain": "performance",
-      "rules_count": 18,
-      "standards": [
-        "Web Vitals",
-        "Lighthouse",
-        "RAIL model"
-      ],
-      "description": "Response time budgets, caching strategy, query optimization, Core Web Vitals"
-    },
-    {
-      "id": "prompt-design",
-      "version": "1.0",
-      "domain": "llm-safety",
-      "rules_count": 17,
-      "standards": [
-        "OWASP LLM Top 10"
-      ],
-      "description": "Prompt injection defense, output sanitization, role confinement, jailbreak prevention"
-    },
-    {
-      "id": "python-best-practices",
-      "version": "1.0.0",
-      "domain": "python",
-      "rules_count": 16,
-      "standards": [
-        "PEP 8",
-        "PEP 257",
-        "PEP 484"
-      ],
-      "description": "Python best practices -- PEP 8 style, type hints, docstrings, idiomatic Python patterns"
-    },
-    {
-      "id": "security",
-      "version": "2.0",
-      "domain": "app-security",
-      "rules_count": 20,
-      "standards": [
-        "OWASP Top 10 2025"
-      ],
-      "description": "Input validation, auth, session management, crypto, secure configuration"
-    },
-    {
-      "id": "test",
-      "version": "0.5",
-      "domain": "code-quality",
-      "rules_count": 18,
-      "standards": [
-        "xUnit Test Patterns",
-        "FIRST Principles",
-        "TDD"
-      ],
-      "description": "Test pyramid, property-based testing, mutation testing, BDD, flaky test prevention"
-    },
-    {
-      "id": "typescript-best-practices",
-      "version": "1.0.0",
-      "domain": "typescript",
-      "rules_count": 17,
-      "standards": [
-        "TypeScript Handbook",
-        "TypeScript ESLint",
-        "Microsoft TS Coding Guidelines"
-      ],
-      "description": "TypeScript best practices -- strict types, generics, discriminated unions, type narrowing"
+      "description": "Project management professional standards -- scope, schedule, cost, risk, stakeholder management",
+      "domain": "project-management"
     },
     {
       "id": "credential-psychiatry",
       "version": "1.0.0",
-      "domain": "psychiatry",
       "rules_count": 10,
+      "checkable_rules": 5,
       "standards": [
-        "APA Principles of Medical Ethics (Psychiatry Annotations)",
-        "DSM-5-TR",
-        "HIPAA Privacy Rule (45 CFR 164)"
+        "APA Principles of Medical Ethics with Annotations Especially Applicable to Psychiatry",
+        "DSM-5-TR -- Diagnostic and Statistical Manual of Mental Disorders (5th Ed, Text Revision)",
+        "HIPAA Privacy Rule (45 CFR 164)",
+        "APA/APM Clinical Practice Guidelines",
+        "Tarasoff v. Regents of UC (1976)"
       ],
-      "description": "Psychiatric/mental health professional standards -- no diagnosis without examination, crisis protocol, informed consent, confidentiality limits, no medication recommendations, scope boundaries"
+      "description": "Psychiatric/mental health professional standards -- no diagnosis without examination, crisis protocol, informed consent, confidentiality limits, no medication recommendations, scope boundaries",
+      "domain": "psychiatry"
     },
     {
-      "id": "credential-anthropology",
+      "id": "credential-ra",
       "version": "1.0.0",
-      "domain": "anthropology",
-      "rules_count": 10,
+      "rules_count": 16,
+      "checkable_rules": 6,
       "standards": [
-        "AAA Code of Ethics",
-        "SfAA Ethical Guidelines",
-        "UNESCO Universal Declaration on Cultural Diversity"
+        "AIA Code of Ethics and Professional Conduct (2024)",
+        "IBC (International Building Code)",
+        "ADA Standards for Accessible Design",
+        "ICC A117.1 (Accessible and Usable Buildings)",
+        "AIA Contract Documents (A101, A201, B101)",
+        "NCARB Legislative Policy and Model Law",
+        "LEED v5 / WELL v2 Rating Systems",
+        "IECC (International Energy Conservation Code)"
       ],
-      "description": "Anthropological/ethnographic professional standards -- do no harm, informed consent, cultural relativism, no cultural appropriation, positionality, data sovereignty, heritage sensitivity"
+      "description": "Registered architect standards -- building codes, accessibility, life safety, structural integrity, ethics",
+      "domain": "architecture-licensed"
+    },
+    {
+      "id": "credential-realtor",
+      "version": "1.0.0",
+      "rules_count": 16,
+      "checkable_rules": 4,
+      "standards": [
+        "NAR Code of Ethics and Standards of Practice (2025)",
+        "Fair Housing Act (42 USC 3601-3619)",
+        "RESPA (12 USC 2601-2617)",
+        "TILA / Reg Z (15 USC 1601-1667f)",
+        "Uniform Residential Landlord Tenant Act",
+        "State real estate commission rules and licensing laws",
+        "Agency common law (restatement of agency 3d)"
+      ],
+      "description": "Real estate agent standards -- fair housing, disclosure, fiduciary duty, agency relationships",
+      "domain": "real-estate"
+    },
+    {
+      "id": "credential-rn",
+      "version": "1.0.0",
+      "rules_count": 16,
+      "checkable_rules": 6,
+      "standards": [
+        "ANA Code of Ethics (2015)",
+        "NPA (State Nurse Practice Acts)",
+        "HIPAA (45 CFR 164)",
+        "NPSG (Joint Commission)",
+        "CDC Guidelines",
+        "ANA Scope and Standards of Practice (2021)"
+      ],
+      "description": "Registered nurse standards -- patient privacy, scope of practice, mandatory reporting, informed consent",
+      "domain": "nursing"
+    },
+    {
+      "id": "credential-socialworker",
+      "version": "1.0.0",
+      "rules_count": 15,
+      "checkable_rules": 5,
+      "standards": [
+        "NASW Code of Ethics (2024)",
+        "ASWB Model Social Work Practice Act (2023)",
+        "HIPAA Privacy Rule (45 CFR 164)",
+        "Title IV-E (42 USC 671 et seq.)",
+        "CSWE Educational Policy and Accreditation Standards (2022)",
+        "State licensing board regulations"
+      ],
+      "description": "Social worker standards -- client confidentiality, mandatory reporting, cultural competence, informed consent",
+      "domain": "social-work"
+    },
+    {
+      "id": "credential-vet",
+      "version": "1.0.0",
+      "rules_count": 15,
+      "checkable_rules": 6,
+      "standards": [
+        "AVMA Principles of Veterinary Medical Ethics (2024)",
+        "Animal Welfare Act (7 U.S.C. \u00a7 2131 et seq.)",
+        "DEA Controlled Substances Regulations (21 CFR Part 1300)",
+        "AMDUCA (21 U.S.C. \u00a7 360b)",
+        "State Veterinary Practice Acts",
+        "VCPR Requirements (AVMA / Federal)"
+      ],
+      "description": "Veterinary professional standards -- animal welfare, controlled substances, informed consent, euthanasia protocols",
+      "domain": "veterinary"
+    },
+    {
+      "id": "css-color",
+      "version": "1.0.0",
+      "rules_count": 12,
+      "checkable_rules": 0,
+      "standards": [
+        "CSS Color Module Level 4 (W3C CR)",
+        "CSS Color Module Level 5 (Editor's Draft, 2026-06-05)",
+        "Interop 2026"
+      ],
+      "description": "Modern CSS Color \u2014 oklch(), color-mix(), contrast-color(), and P3 Gamut"
+    },
+    {
+      "id": "css-modern",
+      "version": "1.0.0",
+      "rules_count": 22,
+      "checkable_rules": 2,
+      "standards": [
+        "CSS Anchor Positioning (W3C WD 2025-10-07)",
+        "CSS Nesting Module (CR)",
+        "CSS Containment Level 3 (CR)",
+        "Selectors Level 4 (CR)",
+        "Scroll-driven Animations (WD)",
+        "CSS Text Level 4 (WD)",
+        "CSS Grid Level 2 (CR)",
+        "CSS Cascading Level 5 (CR)",
+        "Interop 2026"
+      ],
+      "description": "Modern CSS \u2014 Platform Features That Replace JavaScript"
+    },
+    {
+      "id": "defense",
+      "version": "1.0.0",
+      "rules_count": 19,
+      "checkable_rules": 8,
+      "standards": [
+        "OWASP Top 10 2025",
+        "OWASP ASVS v5.0",
+        "CWE Top 25"
+      ],
+      "description": "Defense-in-depth, WAF rules, rate limiting, anomaly detection",
+      "domain": "app-security"
+    },
+    {
+      "id": "design-tokens",
+      "version": "1.0.0",
+      "rules_count": 16,
+      "checkable_rules": 2,
+      "standards": [
+        "DTCG v2025.10 (W3C Community Group Report)",
+        "Style Dictionary (amzn.github.io/style-dictionary)",
+        "Figma Dev Mode & Tokens Studio",
+        "W3C Design Tokens Community Group"
+      ],
+      "description": "Design Tokens \u2014 DTCG v2025.10 Specification & Workflows"
+    },
+    {
+      "id": "devops",
+      "version": "1.0.0",
+      "rules_count": 17,
+      "checkable_rules": 7,
+      "standards": [
+        "Google \u2014 Site Reliability Engineering (O'Reilly, 2016)",
+        "Google \u2014 The Site Reliability Workbook (O'Reilly, 2018)",
+        "Forsgren, Humble, Kim \u2014 Accelerate: The Science of Lean Software and DevOps (DORA, 2018)",
+        "ITIL 4 Foundation (AXELOS, 2019)",
+        "AWS Well-Architected Framework (aws.amazon.com/well-architected)",
+        "CNCF Trail Map (cncf.io/trailmap)",
+        "Wiggins \u2014 The Twelve-Factor App (12factor.net, 2011)"
+      ],
+      "description": "DevOps and SRE practices -- CI/CD pipelines, incident response, SLIs/SLOs, deployment strategies, monitoring",
+      "domain": "devops"
+    },
+    {
+      "id": "frontend-architecture",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 2,
+      "standards": [
+        "patterns.dev",
+        "Astro Documentation",
+        "Qwik Documentation",
+        "Solid.js Documentation",
+        "React 19 Documentation"
+      ],
+      "description": "Frontend Architecture \u2014 Islands, Resumability, Streaming SSR & Signals"
+    },
+    {
+      "id": "html-apis",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 3,
+      "standards": [
+        "WHATWG HTML Living Standard",
+        "MDN Web Docs"
+      ],
+      "description": "Modern HTML APIs \u2014 Popover, Dialog, inert & Platform Primitives"
+    },
+    {
+      "id": "javascript-best-practices",
+      "version": "1.0.0",
+      "rules_count": 16,
+      "checkable_rules": 7,
+      "standards": [
+        "MDN Web Docs",
+        "ECMAScript Spec",
+        "Airbnb JS Style Guide",
+        "Google JS Style Guide",
+        "ESLint Docs"
+      ],
+      "description": "JavaScript best practices -- ES6+ syntax, async/await, module patterns, type coercion avoidance",
+      "domain": "javascript"
+    },
+    {
+      "id": "perf",
+      "version": "1.0.0",
+      "rules_count": 18,
+      "checkable_rules": 4,
+      "standards": [
+        "Web Vitals",
+        "HTTP Archive",
+        "Lighthouse",
+        "MDN Performance"
+      ],
+      "description": "Response time budgets, caching strategy, query optimization, Core Web Vitals",
+      "domain": "performance"
+    },
+    {
+      "id": "prompt-design",
+      "version": "1.0.0",
+      "rules_count": 17,
+      "checkable_rules": 5,
+      "standards": [
+        "DAIR.AI Prompt Engineering Guide",
+        "OpenAI Prompt Engineering Guide",
+        "Anthropic Prompt Engineering Guide",
+        "Meta-Prompting (arXiv 2311.12055)",
+        "Chain-of-Thought Prompting (arXiv 2201.11903)",
+        "Constitutional AI (Anthropic, arXiv 2212.08073)",
+        "kimi-filters research \u2014 brush-stroke prompt patterns catalog"
+      ],
+      "description": "Prompt injection defense, output sanitization, role confinement, jailbreak prevention",
+      "domain": "llm-safety"
+    },
+    {
+      "id": "python-best-practices",
+      "version": "1.0.0",
+      "rules_count": 16,
+      "checkable_rules": 6,
+      "standards": [
+        "PEP 8",
+        "PEP 257",
+        "PEP 484",
+        "Python Docs",
+        "Flake8 Docs",
+        "Black Docs"
+      ],
+      "description": "Python best practices -- PEP 8 style, type hints, docstrings, idiomatic Python patterns",
+      "domain": "python"
+    },
+    {
+      "id": "react-server-components",
+      "version": "1.0.0",
+      "rules_count": 18,
+      "checkable_rules": 0,
+      "standards": [
+        "React 19 Documentation (react.dev)",
+        "Next.js 15 App Router Documentation",
+        "React Server Components RFC"
+      ],
+      "description": "React 19 Server Components \u2014 Architecture & Patterns"
+    },
+    {
+      "id": "responsive-design",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 2,
+      "standards": [
+        "CSS Containment Level 3 (CR)",
+        "CSS Values 4 (CR)",
+        "Utopia.fyi"
+      ],
+      "description": "Modern Responsive Design \u2014 Container Queries, Intrinsic Design & Fluid Typography"
+    },
+    {
+      "id": "security",
+      "version": "1.0.0",
+      "rules_count": 20,
+      "checkable_rules": 6,
+      "standards": [
+        "NIST SP 800-53 Rev 5"
+      ],
+      "description": "Input validation, auth, session management, crypto, secure configuration",
+      "domain": "app-security"
+    },
+    {
+      "id": "svelte-5",
+      "version": "1.0.0",
+      "rules_count": 3,
+      "checkable_rules": 0,
+      "standards": [
+        "Svelte 5 Documentation (svelte.dev)"
+      ],
+      "description": "Svelte 5 Runes \u2014 $state, $derived, $effect Fine-Grained Reactivity"
+    },
+    {
+      "id": "test",
+      "version": "1.0.0",
+      "rules_count": 18,
+      "checkable_rules": 4,
+      "standards": [
+        "xUnit Test Patterns (Meszaros, 2007)",
+        "FIRST Principles (Tim Ottinger / Clean Code)",
+        "Practical Test Pyramid (Ham Vocke, 2018)",
+        "Property-Based Testing (F# for Fun and Profit, Scott Wlaschin)"
+      ],
+      "description": "Test pyramid, property-based testing, mutation testing, BDD, flaky test prevention",
+      "domain": "code-quality"
+    },
+    {
+      "id": "three-js",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 0,
+      "standards": [
+        "Three.js Documentation",
+        "React Three Fiber Docs",
+        "WebGPU Spec (W3C)"
+      ],
+      "description": "Three.js & 3D on the Web \u2014 Scene Graph, R3F & WebGPU"
+    },
+    {
+      "id": "typescript-best-practices",
+      "version": "1.0.0",
+      "rules_count": 17,
+      "checkable_rules": 7,
+      "standards": [
+        "TypeScript Handbook",
+        "TypeScript ESLint",
+        "Microsoft TS Coding Guidelines",
+        "Google TS Style Guide"
+      ],
+      "description": "TypeScript best practices -- strict types, generics, discriminated unions, type narrowing",
+      "domain": "typescript"
+    },
+    {
+      "id": "view-transitions",
+      "version": "1.0.0",
+      "rules_count": 15,
+      "checkable_rules": 1,
+      "standards": [
+        "CSS View Transitions Module Level 1 (W3C CR)",
+        "CSS View Transitions Module Level 2 (Editor's Draft, 2026-04-29)",
+        "MDN Web Docs",
+        "Chrome 147 Release Notes"
+      ],
+      "description": "View Transitions API \u2014 Native Page & Element Animations"
+    },
+    {
+      "id": "web-animation",
+      "version": "1.0.0",
+      "rules_count": 12,
+      "checkable_rules": 2,
+      "standards": [
+        "CSS Scroll-driven Animations Level 1 (W3C WD)",
+        "Framer Motion Documentation",
+        "GSAP Documentation",
+        "WCAG 2.2 SC 2.3.3"
+      ],
+      "description": "Web Animation \u2014 CSS Scroll-Driven, Framer Motion, GSAP & Motion Design"
+    },
+    {
+      "id": "web-components",
+      "version": "1.0.0",
+      "rules_count": 12,
+      "checkable_rules": 0,
+      "standards": [
+        "WHATWG HTML Living Standard",
+        "MDN Web Docs",
+        "GitHub Catalyst Documentation",
+        "Lit Documentation"
+      ],
+      "description": "Web Components \u2014 Custom Elements, Shadow DOM, Catalyst & Lit"
+    },
+    {
+      "id": "web-typography",
+      "version": "1.0.0",
+      "rules_count": 10,
+      "checkable_rules": 0,
+      "standards": [
+        "CSS Fonts Module Level 4 (CR)",
+        "CSS Fonts Module Level 5 (WD)",
+        "MDN"
+      ],
+      "description": "Web Typography \u2014 Variable Fonts, font-palette & Modern Text Rendering"
+    },
+    {
+      "id": "web-vitals",
+      "version": "1.0.0",
+      "rules_count": 12,
+      "checkable_rules": 0,
+      "standards": [
+        "web.dev/vitals (Google)",
+        "MDN Web Docs",
+        "W3C Event Timing API"
+      ],
+      "description": "Core Web Vitals \u2014 INP, LCP, CLS & Performance Optimization"
+    },
+    {
+      "id": "webgpu",
+      "version": "1.0.0",
+      "rules_count": 4,
+      "checkable_rules": 0,
+      "standards": [
+        "WebGPU Spec (W3C)",
+        "MDN"
+      ],
+      "description": "WebGPU \u2014 Browser-Based GPU Compute & Rendering"
+    },
+    {
+      "id": "webxr",
+      "version": "1.0.0",
+      "rules_count": 3,
+      "checkable_rules": 0,
+      "standards": [
+        "WebXR Device API (W3C)",
+        "MDN"
+      ],
+      "description": "WebXR \u2014 Immersive AR/VR on the Web"
     }
   ]
 }

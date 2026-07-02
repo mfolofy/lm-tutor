@@ -46,8 +46,15 @@ def _api_key() -> str:
     return ""
 
 
-def _generate_deepseek(prompt: str, temperature: float = 0.7, max_retries: int = 3) -> str | None:
-    """Call DeepSeek API with the given prompt. Returns text or None."""
+def _generate_deepseek(prompt: str, model: str = "deepseek-chat",
+                       temperature: float = 0.7, max_retries: int = 3) -> str | None:
+    """Call the DeepSeek API with the given prompt. Returns text or None.
+
+    Only the DeepSeek endpoint is supported by this runner; ``model`` must be
+    a DeepSeek model id (e.g. ``deepseek-chat``, ``deepseek-reasoner``).
+    Results for non-DeepSeek models in the published tables were collected
+    manually, not by this script.
+    """
     import urllib.request
     import urllib.error
 
@@ -57,11 +64,10 @@ def _generate_deepseek(prompt: str, temperature: float = 0.7, max_retries: int =
         return None
 
     payload = json.dumps({
-        "model": "deepseek-chat",
+        "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": temperature,
         "max_tokens": 4096,
-        "seed": None,  # set per cell
     }).encode()
 
     req = urllib.request.Request(
@@ -193,10 +199,12 @@ def run_benchmark(
         prompt = _build_prompt(TASKS[task], condition)
         cell_seed = seed + i
 
-        # Inject seed into prompt for reproducibility
+        # NOTE: this tag only disambiguates runs in logs/history. It is NOT a
+        # sampling seed — the DeepSeek chat API does not accept one, so runs
+        # are not reproducible at the sampler level.
         seeded_prompt = f"[seed={cell_seed}]\n{prompt}"
 
-        output = _generate_deepseek(seeded_prompt, temperature=temperature)
+        output = _generate_deepseek(seeded_prompt, model=model, temperature=temperature)
         if output is None:
             print(f"  [{i + 1}/{runs}] SKIP (API error)")
             continue
