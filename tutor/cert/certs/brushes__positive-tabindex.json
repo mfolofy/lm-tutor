@@ -1,0 +1,32 @@
+{
+  "rule_id": "positive-tabindex",
+  "class_name": "brushes",
+  "source_check": {
+    "kind": "check_regex",
+    "pattern": "tabindex\\s*=\\s*\"\\s*[1-9][0-9]*\\s*\""
+  },
+  "source_hash": "803cf8f61901c2a8403681772057778f17744c81ae7925a5551b510d9903e5e1",
+  "constraint_regex": "([\\x00-su-􏿿]|t((a(b(i(n(d(e(x[\\t-\\r\\x1c-    -     　]*(=[\\t-\\r\\x1c-    -     　]*(\"[\\t-\\r\\x1c-    -     　]*([1-9]\\d*[\\t-\\r\\x1c-    -     　]*)?)?)?)?)?)?)?)?)?)?t)*([\\x00-`b-su-􏿿]|a([\\x00-ac-su-􏿿]|b([\\x00-hj-su-􏿿]|i([\\x00-mo-su-􏿿]|n([\\x00-ce-su-􏿿]|d([\\x00-df-su-􏿿]|e([\\x00-suvwy-􏿿]|x[\\t-\\r\\x1c-    -     　]*(=[\\t-\\r\\x1c-    -     　]*(\"[\\t-\\r\\x1c-    -     　]*([1-9]\\d*([\\t-\\r\\x1c-    -     　]+[\\x00-\\x08\\x0e-\\x1b!#-su--¡-ᙿᚁ-῿​-‧‪-‮‰-⁞⁠-⿿、-􏿿]|[\\x00-\\x08\\x0e-\\x1b!#-/:-su--¡-ᙿᚁ-῿​-‧‪-‮‰-⁞⁠-⿿、-􏿿])|[\\x00-\\x08\\x0e-\\x1b!-0:-su--¡-ᙿᚁ-῿​-‧‪-‮‰-⁞⁠-⿿、-􏿿])|[\\x00-\\x08\\x0e-\\x1b!#-su--¡-ᙿᚁ-῿​-‧‪-‮‰-⁞⁠-⿿、-􏿿])|[\\x00-\\x08\\x0e-\\x1b!-<>-su--¡-ᙿᚁ-῿​-‧‪-‮‰-⁞⁠-⿿、-􏿿])))))))))*([^\\x00-􏿿].*|t((a(b(i(n(d(e(x[\\t-\\r\\x1c-    -     　]*(=[\\t-\\r\\x1c-    -     　]*(\"[\\t-\\r\\x1c-    -     　]*([1-9]\\d*[\\t-\\r\\x1c-    -     　]*)?)?)?)?)?)?)?)?)?)?t)*((a(b(i(n(d(e(x[\\t-\\r\\x1c-    -     　]*(=[\\t-\\r\\x1c-    -     　]*(\"[\\t-\\r\\x1c-    -     　]*([1-9]\\d*[\\t-\\r\\x1c-    -     　]*(\"[\\x00-􏿿]*)?)?)?)?)?)?)?)?)?)?)?[^\\x00-􏿿].*|a(b(i(n(d(e(x[\\t-\\r\\x1c-    -     　]*(=[\\t-\\r\\x1c-    -     　]*(\"[\\t-\\r\\x1c-    -     　]*([1-9]\\d*[\\t-\\r\\x1c-    -     　]*)?)?)?)?)?)?)?)?)?)?)?",
+  "constraint_recipe": "greenery.parse(rewrite_to_forbidden_language(source_check.pattern).forbidden_pattern).to_fsm().everythingbut().reduce()  # deterministic; the SSOT constraint DFA — constraint_regex is a rendering of this same machine when it fit the render budget.",
+  "alphabet": "Unicode scalar values U+0000..U+10FFFF (surrogates excluded); \\w/\\d/\\s interpreted with Python re's Unicode-aware default semantics",
+  "equivalence": "EXACT",
+  "proofs": {
+    "emptiness": {
+      "passed": true,
+      "states_checked": 30
+    },
+    "fidelity": {
+      "passed": true,
+      "samples": 100000,
+      "divergences": 0,
+      "forbid_less_witnesses": [],
+      "overapprox_witnesses": []
+    },
+    "grader_in_loop": {
+      "passed": true,
+      "walks": 1000,
+      "violations_of_certified_rule": 0
+    }
+  },
+  "guarantee": "On a logits-controlled LOCAL decoding path, output produced under the Outlines constraint regex in this certificate is provably in the COMPLEMENT of check_regex 'tabindex\\\\s*=\\\\s*\"\\\\s*[1-9][0-9]*\\\\s*\"' for rule 'brushes/positive-tabindex' — i.e. the grader's own re.finditer of that pattern can never match (EXACT). This is invariance of THIS rule's check only, proven by DFA-intersection emptiness (A1), a 10^5-sample differential fuzz against Python re incl. Unicode/boundary/empty adversarial cases (A2), and 1000 accepting-walk strings run through the real tutor.eval.harness.grade with zero violations of this rule (A3). It is NOT semantic safety (a homoglyph such as a Cyrillic 'рrint(' passes both grader and certificate), NOT a guarantee about any other rule, applies ONLY to the local logits path (API-model submissions stay detect-only), and holds modulo Outlines correctly enforcing the char-level DFA at the token level."
+}
