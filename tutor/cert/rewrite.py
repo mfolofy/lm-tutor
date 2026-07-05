@@ -153,6 +153,14 @@ def _case_fold_body(body: str, casefold: bool) -> str | None:
             lo, up = c.lower(), c.upper()
             out.append(f"[{lo}{up}]" if lo != up else c)
             i += 1
+        elif c == ".":
+            # A bare, unescaped wildcard dot. Python's re "." does NOT match
+            # "\n" by default (no re.DOTALL); greenery's "." DOES match "\n"
+            # (confirmed: greenery.parse('a.b').to_fsm().accepts('a\nb') is
+            # True). Passing this through would silently certify a rule
+            # against the wrong language for any submission containing a
+            # newline where the match spans it — refuse instead of guessing.
+            return None
         else:
             out.append(c)
             i += 1
@@ -194,10 +202,11 @@ def rewrite_to_forbidden_language(check_regex: str) -> RewriteResult:
     normalized = _case_fold_body(remainder, casefold=case_insensitive)
     if normalized is None:
         reason = (
-            "(?i) present but body has a letter inside a [...] class "
-            "(class-level case folding not implemented — refusing rather than guessing)"
-            if case_insensitive
-            else "body contains a [...] class with an unsupported escape sequence"
+            "body has a bare unescaped '.' (greenery's '.' matches newline, "
+            "Python's default '.' does not — refusing rather than certifying "
+            "the wrong language), OR a letter inside a [...] class under (?i) "
+            "(class-level case folding not implemented), OR an unsupported "
+            "escape sequence inside a [...] class"
         )
         return RewriteResult(ok=False, reason=reason)
     body = normalized
