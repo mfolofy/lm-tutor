@@ -360,6 +360,65 @@ class TestAdherenceTracker:
         assert "architectural" in profile.eaw_by_type or len(profile.eaw_by_type) >= 0
         assert profile.drift_rate >= 0.0
 
+    def test_eaw_threshold_is_load_bearing(self):
+        """`threshold` must change the result — regression for the dead-param bug.
+
+        Old code returned the first-drift token regardless of threshold. With a
+        real adherence ratio (1 - drifted/total), a stricter threshold closes the
+        window earlier than a lax one, so the two calls MUST differ.
+        """
+        book = SessionBook(session_id="thr", model_id="m", tokens_consumed=100000)
+        # 20 tracked constraints so one drift ≠ window closed.
+        book.active_rules = [
+            ActiveRule(id=f"r{i}", rule=f"rule {i}", source="best-practice")
+            for i in range(20)
+        ]
+        # 20 distinct drifts, one per 1000 tokens.
+        book.drift_events = [
+            DriftEvent(token=1000 * (i + 1), turn=i, decision_id=f"r{i}", violation="x")
+            for i in range(20)
+        ]
+        tracker = AdherenceTracker(book)
+        strict = tracker.compute_eaw(threshold=0.95).eaw_overall  # closes at 2nd drift → 2000
+        lax = tracker.compute_eaw(threshold=0.5).eaw_overall      # closes at 11th drift → 11000
+        assert strict == 2000
+        assert lax == 11000
+        assert strict != lax  # the bug made these equal
+
+    def test_eaw_single_drift_among_many_keeps_window_open(self):
+        """One violation out of many constraints keeps adherence above 0.95."""
+        book = SessionBook(session_id="one", model_id="m", tokens_consumed=50000)
+        book.active_rules = [
+            ActiveRule(id=f"r{i}", rule=f"rule {i}", source="best-practice")
+            for i in range(40)
+        ]
+        book.drift_events = [
+            DriftEvent(token=500, turn=0, decision_id="r0", violation="x")
+        ]
+        profile = AdherenceTracker(book).compute_eaw(threshold=0.95)
+        # 1/40 = 0.025 drop → adherence 0.975 ≥ 0.95 → window never closes.
+        assert profile.eaw_overall == 50000
+
+    def test_eaw_ignores_drift_against_untracked_constraint(self):
+        """A drift against a superseded decision must not count — it's no longer tracked.
+
+        Numerator can never exceed the active denominator (no negative adherence).
+        """
+        book = SessionBook(session_id="sup", model_id="m", tokens_consumed=5000)
+        book.decisions = [
+            Decision(id="d1", decision="X", rationale="r", confirmed_at="now",
+                     confirmed_by="auto", status="superseded"),
+            Decision(id="d2", decision="Y", rationale="r", confirmed_at="now",
+                     confirmed_by="auto", status="active"),
+        ]
+        # d1 drifted at 1000, but d1 was later superseded; d2 (the only tracked
+        # constraint) never drifted → window stays open.
+        book.drift_events = [
+            DriftEvent(token=1000, turn=0, decision_id="d1", violation="x")
+        ]
+        profile = AdherenceTracker(book).compute_eaw(threshold=0.95)
+        assert profile.eaw_overall == 5000
+
     def test_drift_rate_calculation(self, sample_book):
         """Drift rate is calculated per 10K tokens."""
         sample_book.drift_events.append(DriftEvent(token=1000, turn=1, decision_id="d1", violation="X"))

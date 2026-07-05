@@ -49,6 +49,7 @@ class EAWProfile:
         compaction_robustness: float, # adherence change across compaction [0, 1]
         injection_sensitivity: float, # adherence improvement per injection [0, 1]
         sample_count: int,
+        threshold: float = EAW_THRESHOLD, # adherence floor this EAW was computed against
     ):
         self.model_id = model_id
         self.task_type = task_type
@@ -59,6 +60,7 @@ class EAWProfile:
         self.compaction_robustness = compaction_robustness
         self.injection_sensitivity = injection_sensitivity
         self.sample_count = sample_count
+        self.threshold = threshold
 
     def to_dict(self) -> dict:
         return {
@@ -71,7 +73,11 @@ class EAWProfile:
             "compaction_robustness": self.compaction_robustness,
             "injection_sensitivity": self.injection_sensitivity,
             "sample_count": self.sample_count,
-            "_metric": "EAW — Effective Adherence Window: tokens before adherence < 0.95",
+            "threshold": self.threshold,
+            "_metric": (
+                "EAW — Effective Adherence Window: tokens before adherence "
+                f"< {self.threshold}"
+            ),
         }
 
 
@@ -224,6 +230,35 @@ class AdherenceTracker:
 
     # ── EAW Calculation ──────────────────────────────────────────────────────
 
+    @staticmethod
+    def _eaw_from_events(
+        events: list["DriftEvent"],
+        tracked_ids: set,
+        threshold: float,
+        total_tokens: int,
+    ) -> int:
+        """First token where adherence drops below ``threshold``.
+
+        adherence(t) = 1 - (distinct tracked constraints drifted by token t) / len(tracked_ids).
+        Only drifts against a constraint in ``tracked_ids`` count — a drift
+        against a constraint we've stopped tracking (e.g. a superseded decision)
+        is ignored, so the numerator can never exceed the denominator. With no
+        drift, or no constraints to drift from, the window is the full session
+        (``total_tokens``). ``threshold`` is honored: a single drift out of many
+        constraints keeps adherence high and does NOT close the window.
+        """
+        total_constraints = len(tracked_ids)
+        if not events or total_constraints <= 0:
+            return total_tokens
+        drifted: set = set()
+        for e in sorted(events, key=lambda ev: ev.token):
+            if e.decision_id not in tracked_ids:
+                continue
+            drifted.add(e.decision_id)
+            if 1.0 - len(drifted) / total_constraints < threshold:
+                return e.token
+        return total_tokens
+
     def compute_eaw(
         self,
         threshold: float = EAW_THRESHOLD,
@@ -231,36 +266,41 @@ class AdherenceTracker:
     ) -> EAWProfile:
         """Compute the Effective Adherence Window for this session.
 
-        EAW = the token count at which adherence drops below ``threshold``.
-
-        For a single session, if no drift occurred, EAW = total tokens.
-        If drift occurred, EAW = token of the *first* drift event.
-        Aggregate across sessions for the real EAW profile.
+        EAW = the token count at which cumulative adherence drops below
+        ``threshold``, where adherence = 1 - (distinct constraints drifted so
+        far) / (total constraints tracked). If adherence never falls below the
+        threshold, EAW = total tokens. Aggregate across sessions for the real
+        EAW profile.
         """
         drift_events = self._book.drift_events
         total_tokens = self._book.tokens_consumed
         sample_count = self._book.turn_count
 
-        # Overall EAW
-        if not drift_events:
-            eaw_overall = total_tokens
-        else:
-            eaw_overall = min(e.token for e in drift_events)
+        # Constraints that could drift (what detect_drift actually evaluates).
+        # Active-only: a superseded/revoked decision is no longer tracked, so a
+        # past drift against it must not count toward adherence.
+        active_decision_ids = {
+            d.id for d in self._book.decisions if d.status == "active"
+        }
+        active_rule_ids = {r.id for r in self._book.active_rules}
+        tracked_ids = active_decision_ids | active_rule_ids
 
-        # EAW by decision type
-        eaw_by_type: dict[str, int] = {}
-        for decision in self._book.decisions:
-            d_events = [e for e in drift_events if e.decision_id == decision.id]
-            if not d_events:
-                eaw_by_type[decision.decision_type] = max(
-                    eaw_by_type.get(decision.decision_type, 0),
-                    total_tokens,
-                )
-            else:
-                eaw_by_type[decision.decision_type] = min(
-                    eaw_by_type.get(decision.decision_type, total_tokens),
-                    min(e.token for e in d_events),
-                )
+        # Overall EAW: first token where adherence crosses below threshold.
+        eaw_overall = self._eaw_from_events(
+            drift_events, tracked_ids, threshold, total_tokens
+        )
+
+        # EAW by decision type: same ratio, scoped to each type's ACTIVE decisions.
+        # (Rules carry no decision_type and are excluded from the by-type
+        # breakdown — they still count in eaw_overall above.)
+        type_ids: dict[str, set] = {}
+        for d in self._book.decisions:
+            if d.status == "active":
+                type_ids.setdefault(d.decision_type, set()).add(d.id)
+        eaw_by_type: dict[str, int] = {
+            dt: self._eaw_from_events(drift_events, ids, threshold, total_tokens)
+            for dt, ids in type_ids.items()
+        }
 
         # Drift rate (per 10K tokens)
         if total_tokens > 0:
@@ -284,6 +324,7 @@ class AdherenceTracker:
             compaction_robustness=compaction_robustness,
             injection_sensitivity=injection_sensitivity,
             sample_count=sample_count,
+            threshold=threshold,
         )
 
     def _compute_recovery_rate(self) -> float:
@@ -442,4 +483,5 @@ def aggregate_eaw(
         compaction_robustness=compaction[mid],
         injection_sensitivity=sensitivity[mid],
         sample_count=sum(p.sample_count for p in profiles),
+        threshold=profiles[0].threshold,
     )
