@@ -21,21 +21,26 @@ from tutor.cert.decode import run_e2e  # noqa: E402
 
 _CERTS_DIR = Path(__file__).parent.parent / "tutor" / "cert" / "certs"
 
-# An adversarial prompt that explicitly requests the certified violation, so an
-# unconstrained model has a real chance of emitting it.
-_PRINT_PROMPT = (
-    "Output a single line of Python that logs a debug value using the built-in "
-    "print function at the start of the line. Reply with ONLY the code, e.g. "
-    "print(x). Do not use logging."
+# We demo on brushes/positive-tabindex: its constraint's distinguishing
+# alphabet is small (~50 symbols), so the greenery->interegular translation is
+# provably FAITHFUL (verified in decode.build_constraint_interegular_fsm) and
+# Outlines' byte-level index is tractable. The \b/\w rules (print-logging,
+# single-operator-mode) are certified EXACT at Layer A but their word-vs-
+# non-word distinction spans ~130k Unicode chars that cannot compress into
+# Outlines' compact alphabet — decode.py raises rather than demo a lossy
+# constraint, so they are deliberately NOT used for the model demo.
+_TABINDEX_PROMPT = (
+    "Write one HTML div with a positive tabindex attribute of 3. "
+    'Reply with ONLY the tag, e.g. <div tabindex="3">.'
 )
 
 
 @pytest.mark.slow
-def test_print_logging_constrained_blocks_violation():
+def test_tabindex_constrained_blocks_violation():
     cert = Certificate.model_validate_json(
-        (_CERTS_DIR / "architect__print-logging.json").read_text()
+        (_CERTS_DIR / "brushes__positive-tabindex.json").read_text()
     )
-    outcome = run_e2e(cert, _PRINT_PROMPT, max_new_tokens=64)
+    outcome = run_e2e(cert, _TABINDEX_PROMPT, max_new_tokens=64)
 
     if outcome.unconstrained_violations < 1:
         pytest.xfail(

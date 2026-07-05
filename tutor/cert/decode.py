@@ -46,34 +46,122 @@ def build_constraint_interegular_fsm(cert: Certificate):
     forbidden = greenery.parse(rw.forbidden_pattern).to_fsm()
     constraint = forbidden.everythingbut().reduce()
 
-    # greenery.Fsm -> interegular.FSM. Both are explicit DFAs; we translate
-    # the transition map, expanding greenery Charclasses into interegular's
-    # symbol/partition model.
-    return _greenery_to_interegular(constraint, interegular)
+    # greenery.Fsm -> interegular.FSM with a COMPACT alphabet (so Outlines'
+    # byte-level index is tractable). This compaction rides all "bulk" chars on
+    # anything_else, which is LOSSY for a constraint that must distinguish two
+    # large Unicode classes routing differently (e.g. word vs non-word for a
+    # \b / \w-lookbehind rule — \w has ~130k members that cannot collapse).
+    ifsm = _greenery_to_interegular(constraint, interegular)
+    _assert_translation_faithful(constraint, ifsm, cert)
+    return ifsm
+
+
+def _assert_translation_faithful(gconstraint, ifsm, cert, samples: int = 4000, seed: int = 5) -> None:
+    """Fuzz the interegular translation against the greenery constraint DFA;
+    raise if the compact-alphabet translation is LOSSY for this rule (rather
+    than let Layer B silently demonstrate a WRONG constraint). tabindex-style
+    rules pass; \\b/\\w rules over the full Unicode alphabet do not."""
+    import random
+
+    rng = random.Random(seed)
+    pool = list(' \t\n\r=:;"\'(){}[].,-_/0123456789abcdefgtruABX') + ["é", "Ω", "中", "print", "tabindex"]
+    # Explicit adversarial boundary cases: a Unicode word char immediately
+    # adjacent to the pattern is exactly where a \b/\w rule's compact-alphabet
+    # translation goes wrong (word vs non-word can't both ride anything_else).
+    adversarial = [
+        "éprint(", "Ωprint(", "中print(", "_print(", "9print(", ".print(", " print(", "print(",
+        "single_operator=trueé", "single_operator=trueΩ", "single_operator=true中",
+        "single_operator=true_", "single_operator=true9", "single_operator=true ",
+        'tabindex="3"', 'tabindex="0"', "",
+    ]
+    diverged = []
+    for s in adversarial:
+        if gconstraint.accepts(s) != ifsm.accepts(s):
+            diverged.append(s)
+    for _ in range(samples):
+        parts = [rng.choice(pool) for _ in range(rng.randint(0, 10))]
+        s = "".join(parts)
+        if gconstraint.accepts(s) != ifsm.accepts(s):
+            diverged.append(s)
+        if len(diverged) >= 5:
+            break
+    if diverged:
+        raise ValueError(
+            f"compact interegular translation is LOSSY for {cert.class_name}/{cert.rule_id} "
+            f"(diverges from the certified greenery DFA on e.g. {diverged[:3]!r}). This rule's "
+            "constraint distinguishes two large Unicode classes (word vs non-word) that cannot "
+            "ride a single anything_else. Layer A still certifies it EXACT; only this Outlines "
+            "demo path is limited. Use a rule whose distinguishing alphabet is small (e.g. "
+            "brushes/positive-tabindex)."
+        )
+
+
+def _distinguished_chars(gfsm) -> set[str]:
+    """The (small) set of characters that any edge charclass in ``gfsm``
+    treats specially — i.e. the boundary chars. A negated ("everything but")
+    class distinguishes exactly the chars it EXCLUDES; a *small* non-negated
+    class distinguishes the chars it INCLUDES. A *large* non-negated class
+    (e.g. the full-Σ span used for ``Σ*`` or a ``\\w`` range) is NOT
+    enumerated — its bulk is carried by ``anything_else`` and only its
+    boundaries (already contributed by the other classes it is partitioned
+    against) matter. This keeps the interegular alphabet tiny instead of
+    exploding to ~1.1M full-Unicode entries."""
+    big = 512  # a class whose SMALLER side exceeds this rides anything_else
+    sigma_size = 0x110000 - 0x800  # scalar values, surrogates excluded
+    out: set[str] = set()
+    for _s, trans in gfsm.map.items():
+        for cc in trans:
+            accepted = cc.num_chars()  # cheap: from ord_ranges, no expansion
+            if accepted == 0:
+                continue  # dead edge — contributes nothing to the language
+            if cc.negated:
+                excluded = sigma_size - accepted
+                if excluded <= big:
+                    out.update(cc.get_chars())        # few EXCLUDED chars
+                elif accepted <= big:
+                    out.update((~cc).get_chars())     # few ACCEPTED chars
+                # else both halves large -> boundary carried by other classes
+            elif accepted <= big:
+                out.update(cc.get_chars())            # small positive class
+            # else large positive class -> bulk via anything_else
+    return out
+
+
+def _generic_other_char(distinguished: set[str]) -> str:
+    """A character NOT in ``distinguished`` — the representative for
+    ``anything_else`` routing."""
+    for cp in range(0x21, 0x110000):
+        if 0xD800 <= cp <= 0xDFFF:
+            continue
+        ch = chr(cp)
+        if ch not in distinguished:
+            return ch
+    raise RuntimeError("no generic 'other' character available")  # unreachable
 
 
 def _greenery_to_interegular(gfsm, interegular):
     """Translate a greenery Fsm into an interegular.FSM preserving the exact
-    accepted language over the same alphabet."""
-    # interegular represents transitions with a TransitionKey partition and an
-    # anything_else symbol. We enumerate greenery's charclass edges directly.
-    from interegular.fsm import FSM, anything_else
+    accepted language, with a COMPACT alphabet.
 
-    # Assign each concrete char used on a non-negated edge its own symbol; all
-    # negated ("everything else") edges share interegular's anything_else.
+    interegular's model: ``alphabet`` maps each concrete char (and the special
+    ``anything_else`` symbol) to an INTEGER transition key (chars sharing a key
+    are indistinguishable); ``map`` is {state:{key:state}}. We assign a key to
+    ``anything_else`` and to each *distinguished* char only (see
+    _distinguished_chars) — large positive classes ride ``anything_else`` — so
+    the alphabet stays small enough for Outlines' byte-level index.
+    """
+    from interegular.fsm import FSM, Alphabet, anything_else
+
     states = list(gfsm.states)
     state_index = {s: i for i, s in enumerate(states)}
 
-    alphabet_symbols: set = set()
-    concrete_chars: set[str] = set()
-    for _s, trans in gfsm.map.items():
-        for cc in trans:
-            if not cc.negated:
-                concrete_chars.update(cc.get_chars())
-    alphabet_symbols = set(concrete_chars) | {anything_else}
+    distinguished = _distinguished_chars(gfsm)
+    other = _generic_other_char(distinguished)
 
-    # Build interegular alphabet mapping (symbol -> transition key).
-    alphabet = interegular.fsm.Alphabet({sym: sym for sym in alphabet_symbols})
+    symbol_to_key: dict = {anything_else: 0}
+    for i, ch in enumerate(sorted(distinguished), start=1):
+        symbol_to_key[ch] = i
+    alphabet = Alphabet(symbol_to_key)
 
     imap: dict = {}
     for s, trans in gfsm.map.items():
@@ -81,16 +169,15 @@ def _greenery_to_interegular(gfsm, interegular):
         row: dict = {}
         for cc, nstate in trans.items():
             ni = state_index[nstate]
-            if cc.negated:
-                excluded = set(cc.get_chars())
-                # anything_else plus every concrete char not excluded goes here
-                row[anything_else] = ni
-                for ch in concrete_chars:
-                    if ch not in excluded:
-                        row[ch] = ni
-            else:
-                for ch in cc.get_chars():
-                    row[ch] = ni
+            # anything_else routes here iff this class accepts a generic "other"
+            if cc.accepts(other):
+                row[0] = ni
+            # each distinguished char routes per its own membership
+            for ch, key in symbol_to_key.items():
+                if ch is anything_else:
+                    continue
+                if cc.accepts(ch):
+                    row[key] = ni
         imap[si] = row
 
     return FSM(
@@ -99,6 +186,7 @@ def _greenery_to_interegular(gfsm, interegular):
         initial=state_index[gfsm.initial],
         finals={state_index[s] for s in gfsm.finals},
         map=imap,
+        __no_validation__=True,
     )
 
 
