@@ -37,6 +37,7 @@ cert = [
     "outlines>=0.0.30",
     "transformers>=4.40",
     "torch>=2.2",
+    "datasets>=2.0",  # outlines' tokenizer hashing imports datasets.fingerprint
 ]
 # The airtight structural layer alone, without the heavy model demo deps.
 cert-core = [
