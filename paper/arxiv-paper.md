@@ -8,6 +8,10 @@ authors:
 date: June 2026
 ---
 
+> **⚠ BENCHMARK NUMBERS RETRACTED (2026-09-14) — see [`paper/retraction-2026-09-14.md`](retraction-2026-09-14.md).**
+> An independent review found the WCAG grader did not check label association and the defense/OWASP row graded
+> output its rules could not match. Every reduction percentage below is withdrawn pending a re-run.
+
 ## Abstract
 
 Large language models generate code that reflects their training distribution.

@@ -19,6 +19,10 @@ Want the shorter `tutor ...` command? `pip install -e .` once (see [Quick Start]
 
 ---
 
+> **⚠ BENCHMARK NUMBERS RETRACTED (2026-09-14) — see [`paper/retraction-2026-09-14.md`](paper/retraction-2026-09-14.md).**
+> An independent review found the WCAG grader did not check label association and the defense/OWASP row graded
+> output its rules could not match. Every reduction percentage below is withdrawn pending a re-run.
+
 A single `tutor learn` injection reduces output violations by 55-93% on
 mid-to-frontier models — and does so through correct-pattern steering,
 not structured prompting (placebo-controlled at 3x the format effect,

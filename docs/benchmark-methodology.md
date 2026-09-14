@@ -2,6 +2,10 @@
 
 > How we measure whether lm-tutor works, and what the data says.
 
+> **⚠ BENCHMARK NUMBERS RETRACTED (2026-09-14) — see [`paper/retraction-2026-09-14.md`](../paper/retraction-2026-09-14.md).**
+> An independent review found the WCAG grader did not check label association and the defense/OWASP row graded
+> output its rules could not match. Every reduction percentage below is withdrawn pending a re-run.
+
 ## Core Question
 
 Does structured curriculum injection (`tutor learn`) reduce fundamental
