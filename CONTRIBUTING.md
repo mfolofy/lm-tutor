@@ -105,6 +105,15 @@ If a class needs libraries, list them in
 `~/.tutor/venvs/<name>/` on first use — never into the core environment, so
 classes never conflict.
 
+## Private classes outside the repo
+
+Set `TUTOR_CLASS_PATH` to one or more folders (`os.pathsep`-separated: `;` on
+Windows, `:` elsewhere) holding `<class-id>/class.yaml` directories, and tutor
+loads them next to the built-in `tutor/classes/`. Use it for a class that must
+not live in this public repo. The built-in folder is searched first, so an
+external class cannot shadow a shipped one; missing folders are ignored.
+`tutor class --new --name <id> --dir <folder>` scaffolds into such a folder
+(no test skeleton is written for external classes).
 ## Tests
 
 Pattern (see `tests/test_brushes.py`): for each rule, assert the FAIL example

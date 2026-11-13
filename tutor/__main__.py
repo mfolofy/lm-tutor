@@ -146,6 +146,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_class.add_argument("--title", default=None, help="Human-readable title (generated from --name if omitted).")
     p_class.add_argument("--sources", default="", help="Comma-separated source standards, e.g. 'WCAG 2.2, OWASP'.")
     p_class.add_argument("--dry-run", action="store_true", help="Preview scaffold without creating files.")
+    p_class.add_argument("--dir", default=None, help="Write the class into this folder instead of the built-in one (put it on TUTOR_CLASS_PATH to use it).")
 
     # tutor booster — 4 sub-tools
     p_booster = sub.add_parser("booster", help="Booster tools for small models.")
@@ -323,7 +324,7 @@ def _run_class(args) -> int:
         return run(args)
 
     # No flag — show help.
-    print("Usage: tutor class --new --name <class-id> [--title ...] [--sources ...] [--dry-run]")
+    print("Usage: tutor class --new --name <class-id> [--title ...] [--sources ...] [--dir <folder>] [--dry-run]")
     return 1
 
 

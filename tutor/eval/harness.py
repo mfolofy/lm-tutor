@@ -23,13 +23,13 @@ happy path.
 
 import re
 from html.parser import HTMLParser
-from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel
 
-_CLASSES_DIR = Path(__file__).parent.parent / "classes"
+from tutor._class_paths import class_dirs, find_class_dir
+
 
 
 class Violation(BaseModel):
@@ -193,9 +193,13 @@ def _render(el: _Element) -> str:
 
 def load_syllabus(class_name: str) -> dict[str, Any]:
     """Load a class.yaml by class name. Raises FileNotFoundError if missing."""
-    path = _CLASSES_DIR / class_name / "class.yaml"
-    if not path.exists():
-        raise FileNotFoundError(f"No class.yaml for class '{class_name}' at {path}")
+    class_dir = find_class_dir(class_name)
+    if class_dir is None:
+        searched = ", ".join(str(d) for d in class_dirs())
+        raise FileNotFoundError(
+            f"No class.yaml for class '{class_name}' in: {searched}"
+        )
+    path = class_dir / "class.yaml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
