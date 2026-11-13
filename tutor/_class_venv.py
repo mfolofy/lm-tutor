@@ -15,8 +15,9 @@ import subprocess
 import venv
 from pathlib import Path
 
+from tutor._class_paths import find_class_dir
+
 DEFAULT_VENV_DIR = Path.home() / ".tutor" / "venvs"
-_CLASSES_DIR = Path(__file__).parent / "classes"
 
 
 def _bin_dir(venv_path: Path) -> Path:
@@ -58,8 +59,9 @@ class ClassVenvManager:
 
             venv.create(venv_path, clear=True, with_pip=True)
 
-            req = _CLASSES_DIR / class_name / "_requirements.txt"
-            if req.exists() and req.read_text(encoding="utf-8").strip():
+            class_dir = find_class_dir(class_name)
+            req = (class_dir / "_requirements.txt") if class_dir else None
+            if req is not None and req.exists() and req.read_text(encoding="utf-8").strip():
                 pip = _bin_dir(venv_path) / ("pip.exe" if os.name == "nt" else "pip")
                 subprocess.run(
                     [str(pip), "install", "-r", str(req)],

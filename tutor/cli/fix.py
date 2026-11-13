@@ -17,21 +17,20 @@ the grade itself failed (missing class, I/O error).
 
 import json
 import sys
-from pathlib import Path
-
+from tutor._class_paths import find_class_dir
 from tutor.eval import grade
 from tutor.cli.eval import infer_syllabus
 
-_CLASSES_DIR = Path(__file__).parent.parent / "classes"
 
 
 def _load_class(class_name: str) -> dict | None:
     """Load a class.yaml and return rules indexed by id."""
     import yaml
 
-    path = _CLASSES_DIR / class_name / "class.yaml"
-    if not path.exists():
+    class_dir = find_class_dir(class_name)
+    if class_dir is None:
         return None
+    path = class_dir / "class.yaml"
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError:

@@ -15,9 +15,7 @@ could not be performed.
 import json
 import logging
 import sys
-from pathlib import Path
-
-_CLASSES_DIR = Path(__file__).parent.parent / "classes"
+from tutor._class_paths import find_class_dir, iter_class_dirs
 
 _LANG_TO_CLASS: dict[str, str] = {
     "python": "python-best-practices",
@@ -63,7 +61,7 @@ def infer_syllabus(submission: str) -> str:
     elif content.startswith("{") or content.startswith("["):
         guess = "audit"
 
-    if not (_CLASSES_DIR / guess / "class.yaml").exists():
+    if find_class_dir(guess) is None:
         guess = "brushes"
     return guess
 
@@ -73,9 +71,8 @@ def list_classes() -> list[dict]:
     import yaml
 
     out: list[dict] = []
-    if not _CLASSES_DIR.exists():
-        return out
-    for path in sorted(_CLASSES_DIR.glob("*/class.yaml")):
+    for class_dir in iter_class_dirs():
+        path = class_dir / "class.yaml"
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except yaml.YAMLError:

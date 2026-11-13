@@ -19,7 +19,8 @@ after you have written ``SOURCES.md``.
 import sys
 from pathlib import Path
 
-_CLASSES_DIR = Path(__file__).parent.parent / "classes"
+from tutor._class_paths import BUILTIN_CLASSES_DIR, find_class_dir
+
 _TESTS_DIR = Path(__file__).parent.parent.parent / "tests"
 
 # ── Templates ──────────────────────────────────────────────────────────────
@@ -224,8 +225,14 @@ def _format_sources_csv(sources_str: str) -> tuple[str, str, str]:
 
 
 def scaffold(class_id: str, title: str | None = None,
-             sources: str = "", dry_run: bool = False) -> int:
-    """Create the three files for a new class."""
+             sources: str = "", dry_run: bool = False,
+             dest_dir: str | Path | None = None) -> int:
+    """Create the three files for a new class.
+
+    ``dest_dir`` writes the class into that folder instead of the built-in one
+    (for a private class pack, see ``TUTOR_CLASS_PATH``); the test skeleton is
+    only generated for the built-in folder.
+    """
     class_id = _sanitize_name(class_id)
     if not class_id:
         print("[tutor class] Error: class name cannot be empty.", file=sys.stderr)
@@ -234,13 +241,17 @@ def scaffold(class_id: str, title: str | None = None,
     title = title or _default_title(class_id)
     sources_text, sources_list, targets = _format_sources_csv(sources)
 
-    class_dir = _CLASSES_DIR / class_id
+    external = dest_dir is not None
+    class_dir = (Path(dest_dir) if external else BUILTIN_CLASSES_DIR) / class_id
     class_yaml_path = class_dir / "class.yaml"
     sources_path = class_dir / "SOURCES.md"
-    test_path = _TESTS_DIR / f"test_{class_id}.py"
+    test_path = None if external else _TESTS_DIR / f"test_{class_id}.py"
 
-    # Check for conflicts.
-    conflicts = [p for p in (class_yaml_path, sources_path, test_path) if p.exists()]
+    # Check for conflicts (a name already used anywhere on the class path too).
+    existing = find_class_dir(class_id)
+    conflicts = [p for p in (class_yaml_path, sources_path, test_path) if p and p.exists()]
+    if existing is not None and (existing / "class.yaml") not in conflicts:
+        conflicts.append(existing / "class.yaml")
     if conflicts:
         print("[tutor class] Error: these files already exist:", file=sys.stderr)
         for p in conflicts:
@@ -271,7 +282,8 @@ def scaffold(class_id: str, title: str | None = None,
         print(f"[tutor class] DRY RUN — would create:")
         print(f"  {class_yaml_path}")
         print(f"  {sources_path}")
-        print(f"  {test_path}")
+        if test_path:
+            print(f"  {test_path}")
         print()
         print(f"[tutor class] {class_id}: title='{title}', sources='{sources_text}'")
         return 0
@@ -281,19 +293,24 @@ def scaffold(class_id: str, title: str | None = None,
     class_yaml_path.write_text(class_yaml_content, encoding="utf-8")
     sources_path.write_text(sources_content, encoding="utf-8")
 
-    _TESTS_DIR.mkdir(parents=True, exist_ok=True)
-    test_path.write_text(test_content, encoding="utf-8")
+    if test_path:
+        _TESTS_DIR.mkdir(parents=True, exist_ok=True)
+        test_path.write_text(test_content, encoding="utf-8")
 
-    print(f"[tutor class] Scaffolded '{class_id}' — 3 files:")
+    print(f"[tutor class] Scaffolded '{class_id}' — {3 if test_path else 2} files:")
     print(f"  {class_yaml_path}")
     print(f"  {sources_path}")
-    print(f"  {test_path}")
+    if test_path:
+        print(f"  {test_path}")
     print()
     print("  Next steps:")
     print(f"    1. Write {sources_path} FIRST (cite standards)")
     print(f"    2. Replace example rules in {class_yaml_path}")
-    print(f"    3. Replace example tests in {test_path}")
-    print(f"    4. pytest tests/test_{class_id}.py")
+    if test_path:
+        print(f"    3. Replace example tests in {test_path}")
+        print(f"    4. pytest tests/test_{class_id}.py")
+    else:
+        print("    3. Make sure the folder is on TUTOR_CLASS_PATH so tutor can find it")
 
     return 0
 
@@ -303,9 +320,11 @@ def run(args) -> int:
     title = getattr(args, "title", None) or None
     sources = getattr(args, "sources", "") or ""
     dry_run = getattr(args, "dry_run", False)
+    dest_dir = getattr(args, "dir", None) or None
 
     if not name:
-        print("Usage: tutor class --new <name> [--title ...] [--sources ...] [--dry-run]", file=sys.stderr)
+        print("Usage: tutor class --new <name> [--title ...] [--sources ...] [--dir <folder>] [--dry-run]", file=sys.stderr)
         return 1
 
-    return scaffold(name, title=title, sources=sources, dry_run=dry_run)
+    return scaffold(name, title=title, sources=sources, dry_run=dry_run,
+                    dest_dir=dest_dir)

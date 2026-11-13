@@ -244,6 +244,20 @@ tutor learn --model deepseek-chat --class brushes
 echo "<html><img src='a.png'>" | tutor eval
 ```
 
+### Private classes outside the repo
+
+Set `TUTOR_CLASS_PATH` to one or more folders (separated by `;` on Windows,
+`:` elsewhere), each holding `<class-id>/class.yaml` directories, and every
+command (`list`, `eval`, `fix`, `learn`, `prefix`, the MCP server) finds those
+classes alongside the built-in ones. Missing folders are ignored, and a built-in
+class always wins a name clash, so an external pack can never shadow a shipped
+class. Unset, nothing changes.
+
+```bash
+export TUTOR_CLASS_PATH=/path/to/my-classes      # PowerShell: $env:TUTOR_CLASS_PATH = "C:\my-classes"
+tutor class --new --name my-class --dir /path/to/my-classes
+tutor list
+```
 ---
 
 ## Status

@@ -58,6 +58,7 @@ import yaml
 from greenery.rxelems import from_fsm
 from pydantic import BaseModel
 
+from tutor._class_paths import find_class_dir
 from tutor.cert.rewrite import rewrite_to_forbidden_language
 
 # Rendering the complement DFA back to a positive regex string (greenery
@@ -77,7 +78,6 @@ def _render_alarm(signum, frame):  # noqa: ARG001
     raise _RenderTimeout()
 
 _CERTS_DIR = Path(__file__).parent / "certs"
-_CLASSES_DIR = Path(__file__).parent.parent / "classes"
 
 # A concrete representative character used to instantiate the "negated
 # charclass" transitions of a DFA when enumerating accepting strings. It must
@@ -140,7 +140,10 @@ class Certificate(BaseModel):
 # ───────────────────────────── rule loading ────────────────────────────────
 
 def _load_rule(class_name: str, rule_id: str) -> dict:
-    path = _CLASSES_DIR / class_name / "class.yaml"
+    class_dir = find_class_dir(class_name)
+    if class_dir is None:
+        raise FileNotFoundError(f"No class.yaml for class {class_name!r}")
+    path = class_dir / "class.yaml"
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     for r in doc.get("rules", []) or []:
         if r.get("id") == rule_id:
